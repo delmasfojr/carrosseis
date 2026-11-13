@@ -6,7 +6,7 @@ const MODELOS = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 
 const BLOCO = 30 * 60;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-let DESENHOS = new Set(), PROMPT = '';
+let DESENHOS = new Set(), DESCRICOES = {}, PROMPT = '', PROMPT_DESENHOS = '';
 
 /* ---------------------------------------------------------------- guardar no aparelho */
 const banco = new Promise((ok, erro) => {
@@ -46,9 +46,9 @@ const mmss = s => s >= 3600 ? `${Math.floor(s / 3600)}h${String(Math.floor(s % 3
 
 async function pedirAoGemini(link, inicio, fim, aviso) {
   let prompt = PROMPT;
-  if (DESENHOS.size) prompt += '\n\nDESENHOS: nos campos "emoji" e "questao_emoji", prefira escrever o NOME EXATO de um ' +
-    'desenho desta lista (o que melhor ilustrar o card, sem repetir no mesmo carrossel). ' +
-    'Só use um emoji se nenhum desenho combinar.\nLista: ' + [...DESENHOS].sort().join(', ');
+  // a regra de escolha dos desenhos fica em prompt-desenhos.md (o PC usa o mesmo arquivo)
+  if (DESENHOS.size) prompt += '\n\n' + PROMPT_DESENHOS +
+    Object.entries(DESCRICOES).map(([n, d]) => `${n} = ${d}`).join('\n');
   const video = {fileData: {fileUri: link}};
   if (inicio != null) {
     video.videoMetadata = {startOffset: `${inicio}s`, endOffset: `${fim}s`};
@@ -248,9 +248,10 @@ function linkPadrao(texto) {
 
 /* ---------------------------------------------------------------- início */
 async function iniciar() {
-  [PROMPT, DESENHOS] = await Promise.all([
+  [PROMPT, PROMPT_DESENHOS, DESENHOS] = await Promise.all([
     fetch(BASE + 'prompt.md').then(r => r.text()),
-    fetch(BASE + 'desenhos.json').then(r => r.json()).then(l => new Set(l)),
+    fetch(BASE + 'prompt-desenhos.md').then(r => r.text()),
+    fetch(BASE + 'desenhos.json').then(r => r.json()).then(d => { DESCRICOES = d; return new Set(Object.keys(d)); }),
   ]);
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => tela(b.dataset.tela));
   $('#gerar').onclick = () => {

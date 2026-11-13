@@ -2,7 +2,7 @@
    Fontes, desenhos, mascote e biblioteca NÃO passam por aqui: no Android isso travava o desenho dos cards.
    O próprio navegador guarda esses arquivos no cache dele. */
 const CACHE = 'carrosseis-v2';
-const TELAS = /\/(|index\.html|app\.js|cards\.js|prompt\.md|desenhos\.json|manifest\.webmanifest)$/;
+const TELAS = /\/(|index\.html|app\.js|cards\.js|prompt\.md|prompt-desenhos\.md|desenhos\.json|manifest\.webmanifest)$/;
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);

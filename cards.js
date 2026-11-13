@@ -133,7 +133,9 @@ setTimeout(uma,20000);
 
   function html(c, n, base, desenhos) {
     const ilu = (valor, tam) => {
-      const v = String(valor ?? '').trim();
+      let v = String(valor ?? '').trim();
+      // palavra que não é desenho do banco (o Gemini inventou): usa o lápis em vez de escrever a palavra
+      if (v && !desenhos.has(v) && /^[a-z0-9 _-]+$/i.test(v)) v = desenhos.has('lapis') ? 'lapis' : '✏️';
       if (v && desenhos.has(v))
         return `<img src="${base}desenhos/${encodeURIComponent(v)}.webp" style="width:${tam}px;height:${tam}px;object-fit:contain;display:block">`;
       return `<span style="font-size:${tam}px">${t(v)}</span>`;
