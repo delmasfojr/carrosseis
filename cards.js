@@ -120,8 +120,12 @@ function ajustar(){
   while(estoura()&&s>0.6){s-=0.03;document.body.style.setProperty('--s',s);}
   window.AJUSTADO=true;
 }
-if(document.readyState==='complete')document.fonts.ready.then(ajustar);
-else window.addEventListener('load',()=>document.fonts.ready.then(ajustar));
+// espera fontes e imagens, mas sem travar: no máximo 8 s pelas fontes e 20 s no total
+let feito=false;
+const uma=()=>{if(!feito){feito=true;ajustar();}};
+const depois=()=>Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,8000))]).then(uma);
+if(document.readyState==='complete')depois();else window.addEventListener('load',depois);
+setTimeout(uma,20000);
 <\/script>`;
 
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

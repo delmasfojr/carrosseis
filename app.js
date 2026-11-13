@@ -90,15 +90,21 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
 let fonteCSS = null;
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 async function desenharCard(conteudo, n) {
+  // O card é desenhado NA tela, mas invisível: fora da tela o Android "adormece" o quadro e ele nunca termina.
   const ifr = document.createElement('iframe');
-  ifr.style.cssText = 'position:fixed;left:-4000px;top:0;width:1080px;height:1350px;border:0';
+  ifr.style.cssText = 'position:fixed;left:0;top:0;width:1080px;height:1350px;border:0;opacity:0;pointer-events:none;z-index:-1';
+  document.documentElement.style.overflow = 'hidden';
   document.body.appendChild(ifr);
   ifr.srcdoc = Cards.html(conteudo, n, BASE, DESENHOS)
     .replace('</body>', `<script src="${BASE}vendor/html-to-image.js"><\/script></body>`);
   try {
     const t0 = Date.now();
     while (!(ifr.contentWindow && ifr.contentWindow.AJUSTADO && ifr.contentWindow.htmlToImage)) {
-      if (Date.now() - t0 > 30000) throw new Error('O card ' + n + ' não carregou.');
+      if (Date.now() - t0 > 60000) {
+        const w = ifr.contentWindow, d = w && w.document;
+        throw new Error(`O card ${n} não carregou (página: ${d && d.readyState}; fontes: ${d && d.fonts && d.fonts.status}; ` +
+          `ajuste: ${!!(w && w.AJUSTADO)}; imagem: ${!!(w && w.htmlToImage)}).`);
+      }
       await new Promise(r => setTimeout(r, 100));
     }
     const w = ifr.contentWindow, no = w.document.querySelector('.card');
@@ -106,7 +112,7 @@ async function desenharCard(conteudo, n) {
     const op = {width: 1080, height: 1350, pixelRatio: 1, fontEmbedCSS: fonteCSS};
     if (IOS) await w.htmlToImage.toBlob(no, op);  // o Safari às vezes erra as imagens na 1ª vez
     return await w.htmlToImage.toBlob(no, op);
-  } finally { ifr.remove(); }
+  } finally { ifr.remove(); document.documentElement.style.overflow = ''; }
 }
 async function desenharCarrossel(item, aviso) {
   item.imagens = [];
@@ -145,10 +151,11 @@ async function gerar(link, inicio, longo, daFila = false) {
     }
     if (longo) setFila([{link, inicio: fim}, ...fila().filter(f => f.link !== link)]);
     else setFila(fila().filter(f => f.link !== link));
-    for (const [k, conteudo] of carrosseis.entries()) {
-      const item = {id: `${Date.now()}-${k}`, criado: new Date().toISOString(), link, conteudo};
-      await desenharCarrossel(item, aviso);
-    }
+    // guarda o texto ANTES de desenhar: se o desenho falhar, não se perde o trabalho do Gemini
+    const novos = carrosseis.map((conteudo, k) =>
+      ({id: `${Date.now()}-${k}`, criado: new Date().toISOString(), link, conteudo, imagens: []}));
+    for (const item of novos) await salvar(item);
+    for (const item of novos) await desenharCarrossel(item, aviso);
     aviso('');
     alert(`Pronto! ${carrosseis.length} carrossel(éis) novo(s).` + (longo ? '\nO resto do vídeo ficou na fila (“Continuar”).' : ''));
     tela('lista');
@@ -176,13 +183,17 @@ async function mostrarLista() {
   const itens = (await todos()).sort((a, b) => b.id.localeCompare(a.id));
   $('#vazio').hidden = itens.length > 0;
   $('#itens').innerHTML = itens.map(i => `<button class="cartao ${i.postado ? 'postado' : ''}" data-id="${i.id}">
-    <img src="${url(i.imagens[0])}" alt=""><span><b>${esc(i.conteudo.tema)}</b><small>${new Date(i.criado).toLocaleDateString('pt-BR')}${i.postado ? ' · postado ✓' : ''}</small></span></button>`).join('');
+    ${i.imagens && i.imagens.length ? `<img src="${url(i.imagens[0])}" alt="">` : '<em class="semimg">Toque para desenhar</em>'}<span><b>${esc(i.conteudo.tema)}</b><small>${new Date(i.criado).toLocaleDateString('pt-BR')}${i.postado ? ' · postado ✓' : ''}</small></span></button>`).join('');
   $('#itens').querySelectorAll('.cartao').forEach(b => b.onclick = () => abrir(b.dataset.id));
 }
 
 let atual = null;
 async function abrir(id) {
   atual = await um(id);
+  if (!atual.imagens || atual.imagens.length < Cards.TOTAL) {  // texto salvo, mas ainda sem imagens
+    try { await desenharCarrossel(atual, aviso); aviso(''); }
+    catch (e) { aviso(''); return alert('Não consegui desenhar: ' + e.message); }
+  }
   tela('ver');
   $('#vertitulo').textContent = atual.conteudo.tema;
   $('#slides').innerHTML = atual.imagens.map(b => `<img src="${url(b)}" alt="">`).join('');
