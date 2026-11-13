@@ -6,7 +6,7 @@ const MODELOS = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 
 const BLOCO = 30 * 60;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-let DESENHOS = new Set(), DESCRICOES = {}, PROMPT = '', PROMPT_DESENHOS = '';
+let DESENHOS = new Map(), DESCRICOES = {}, PROMPT = '', PROMPT_DESENHOS = '';
 
 /* ---------------------------------------------------------------- guardar no aparelho */
 const banco = new Promise((ok, erro) => {
@@ -49,7 +49,7 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
   let prompt = PROMPT;
   // a regra de escolha dos desenhos fica em prompt-desenhos.md (o PC usa o mesmo arquivo)
   if (DESENHOS.size) prompt += '\n\n' + PROMPT_DESENHOS +
-    Object.entries(DESCRICOES).map(([n, d]) => `${n} = ${d}`).join('\n');
+    Object.entries(DESCRICOES).map(([n, d]) => `${n} = ${d} (palavras: ${(DESENHOS.get(n) || []).join(', ')})`).join('\n');
   const video = {fileData: {fileUri: link}};
   if (inicio != null) {
     video.videoMetadata = {startOffset: `${inicio}s`, endOffset: `${fim}s`};
@@ -215,6 +215,8 @@ async function mostrarLista() {
   limparUrls();
   const itens = (await todos()).sort((a, b) => b.id.localeCompare(a.id));
   $('#vazio').hidden = itens.length > 0;
+  $('#limpar').hidden = itens.length === 0;
+  $('#apagarpostados').hidden = !itens.some(i => i.postado);
   $('#itens').innerHTML = itens.map(i => `<button class="cartao ${i.postado ? 'postado' : ''}" data-id="${i.id}">
     ${i.imagens && i.imagens.length ? `<img src="${url(i.imagens[0])}" alt="">` : '<em class="semimg">Toque para desenhar</em>'}<span><b>${esc(i.conteudo.tema)}</b><small>${new Date(i.criado).toLocaleDateString('pt-BR')}${i.postado ? ' · postado ✓' : ''}</small></span></button>`).join('');
   $('#itens').querySelectorAll('.cartao').forEach(b => b.onclick = () => abrir(b.dataset.id));
@@ -252,7 +254,9 @@ async function iniciar() {
   [PROMPT, PROMPT_DESENHOS, DESENHOS] = await Promise.all([
     fetch(BASE + 'prompt.md').then(r => r.text()),
     fetch(BASE + 'prompt-desenhos.md').then(r => r.text()),
-    fetch(BASE + 'desenhos.json').then(r => r.json()).then(d => { DESCRICOES = d; return new Set(Object.keys(d)); }),
+    // nome do desenho -> palavras-gatilho (o card só usa o adesivo se o texto tiver uma delas)
+    Promise.all([fetch(BASE + 'desenhos.json').then(r => r.json()), fetch(BASE + 'gatilhos.json').then(r => r.json())])
+      .then(([d, g]) => { DESCRICOES = d; return new Map(Object.keys(d).map(n => [n, g[n] || []])); }),
   ]);
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => tela(b.dataset.tela));
   $('#gerar').onclick = () => {
@@ -269,6 +273,18 @@ async function iniciar() {
     alert(r.ok ? 'A chave funciona! ✅' : `A chave não funcionou (${r.status}).`);
   };
   $('#voltar').onclick = () => tela('lista');
+  $('#apagarpostados').onclick = async () => {
+    const postados = (await todos()).filter(i => i.postado);
+    if (!confirm(`Apagar do celular os ${postados.length} carrosséis marcados como postados? (não dá para desfazer)`)) return;
+    for (const i of postados) await apagar(i.id);
+    mostrarLista();
+  };
+  $('#apagartodos').onclick = async () => {
+    const n = (await todos()).length;
+    if (!confirm(`Apagar do celular TODOS os ${n} carrosséis? (não dá para desfazer)`)) return;
+    await tx('readwrite', s => s.clear());
+    mostrarLista();
+  };
   $('#compartilhar').onclick = () => {
     // o share tem de sair JÁ no toque: qualquer alert/espera antes faz o Android recusar
     const files = arquivos();
