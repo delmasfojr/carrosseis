@@ -150,7 +150,7 @@ setTimeout(uma,20000);
       const dots = Array.from({length: TOTAL}, (_, i) => `<i class="${i + 1 === n ? 'on' : ''}"></i>`).join('');
       const fontes = [['Kalam', 'Kalam-Bold.ttf'], ['Anton', 'Anton-Regular.ttf'], ['Open Sans', 'OpenSans.ttf']]
         .map(([f, a]) => `@font-face{font-family:'${f}';font-weight:300 900;src:url('${base}fontes/${a}')}`).join('');
-      return `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="only light"><style>:root{color-scheme:only light}${fontes}${CSS}</style></head><body>
+      return `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><style>:root{color-scheme:light dark}${fontes}${CSS}</style></head><body>
 <div class="card">
   <div class="top">@DELMAO<span>SIMPLIFICA</span></div>
   <div class="titulo">${tit}</div><div class="barra"></div>

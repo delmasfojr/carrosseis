@@ -1,23 +1,26 @@
-/* Guarda o app no celular para abrir rápido (e sem internet, menos a parte do Gemini).
-   Arquivos do app: busca a versão nova e cai na guardada se estiver sem internet.
-   Desenhos, mascote e fontes: usa o guardado (não mudam). */
-const CACHE = 'carrosseis-v1';
+/* Guarda só as telas do app no celular (para abrir mesmo com internet ruim).
+   Fontes, desenhos, mascote e biblioteca NÃO passam por aqui: no Android isso travava o desenho dos cards.
+   O próprio navegador guarda esses arquivos no cache dele. */
+const CACHE = 'carrosseis-v2';
+const TELAS = /\/(|index\.html|app\.js|cards\.js|prompt\.md|desenhos\.json|manifest\.webmanifest)$/;
 self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', e => e.waitUntil((async () => {
+  for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+  await self.clients.claim();
+})()));
 self.addEventListener('fetch', e => {
   const u = new URL(e.request.url);
-  if (e.request.method !== 'GET' || u.origin !== location.origin) return;  // Gemini passa direto
-  const fixo = /\/(desenhos|mascote|fontes|vendor)\//.test(u.pathname);
-  e.respondWith(caches.open(CACHE).then(async c => {
-    const guardado = await c.match(e.request);
-    if (fixo && guardado) return guardado;
+  if (e.request.method !== 'GET' || u.origin !== location.origin || !TELAS.test(u.pathname)) return;
+  e.respondWith((async () => {  // busca a versão nova; sem internet, usa a guardada
+    const c = await caches.open(CACHE);
     try {
       const r = await fetch(e.request);
       if (r.ok) c.put(e.request, r.clone());
       return r;
     } catch (err) {
+      const guardado = await c.match(e.request);
       if (guardado) return guardado;
       throw err;
     }
-  }));
+  })());
 });

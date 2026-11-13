@@ -87,16 +87,49 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
 }
 
 /* ---------------------------------------------------------------- desenhar os cards */
-let fonteCSS = null;
+// O card (num iframe) NÃO baixa nada sozinho: no celular esses downloads de dentro do quadro travavam.
+// O app baixa cada arquivo uma vez (fontes, desenhos, mascote, biblioteca) e entrega tudo embutido.
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const baixados = new Map();
+function baixar(u, comoTexto) {
+  if (!baixados.has(u)) baixados.set(u, (async () => {
+    const ctl = new AbortController(), relogio = setTimeout(() => ctl.abort(), 45000);
+    try {
+      const r = await fetch(u, {signal: ctl.signal});
+      if (!r.ok) throw new Error(`erro ${r.status}`);
+      if (comoTexto) return await r.text();
+      const b = await r.blob();
+      return await new Promise((ok, erro) => {
+        const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = () => erro(f.error); f.readAsDataURL(b);
+      });
+    } catch (e) {
+      baixados.delete(u);
+      throw new Error(`não consegui baixar ${u.replace(BASE, '')} (${e.name === 'AbortError' ? 'demorou demais' : e.message})`);
+    } finally { clearTimeout(relogio); }
+  })());
+  return baixados.get(u);
+}
+async function embutir(html) {
+  // acha cada endereço BASE + (fontes|desenhos|mascote)/arquivo e troca pelo conteúdo embutido
+  const urls = new Set();
+  for (const parte of html.split(BASE).slice(1)) {
+    const m = parte.match(/^(fontes|desenhos|mascote)\/[^'")\s]+/);
+    if (m) urls.add(BASE + m[0]);
+  }
+  const lista = [...urls], dados = await Promise.all(lista.map(u => baixar(u)));
+  lista.forEach((u, i) => { html = html.split(u).join(dados[i]); });
+  const lib = (await baixar(BASE + 'vendor/html-to-image.js', true)).split('</script').join('<\\/script');
+  return html.replace('</body>', `<script>${lib}<\/script></body>`);
+}
 async function desenharCard(conteudo, n) {
-  // O card é desenhado NA tela, mas invisível: fora da tela o Android "adormece" o quadro e ele nunca termina.
+  const html = await embutir(Cards.html(conteudo, n, BASE, DESENHOS));
+  const fonteCSS = (html.match(/@font-face\{[^}]*\}/g) || []).join('');
+  // desenhado NA tela, mas invisível: fora da tela o Android "adormece" o quadro
   const ifr = document.createElement('iframe');
   ifr.style.cssText = 'position:fixed;left:0;top:0;width:1080px;height:1350px;border:0;opacity:0;pointer-events:none;z-index:-1';
   document.documentElement.style.overflow = 'hidden';
   document.body.appendChild(ifr);
-  ifr.srcdoc = Cards.html(conteudo, n, BASE, DESENHOS)
-    .replace('</body>', `<script src="${BASE}vendor/html-to-image.js"><\/script></body>`);
+  ifr.srcdoc = html;
   try {
     const t0 = Date.now();
     while (!(ifr.contentWindow && ifr.contentWindow.AJUSTADO && ifr.contentWindow.htmlToImage)) {
@@ -108,7 +141,6 @@ async function desenharCard(conteudo, n) {
       await new Promise(r => setTimeout(r, 100));
     }
     const w = ifr.contentWindow, no = w.document.querySelector('.card');
-    if (!fonteCSS) fonteCSS = await w.htmlToImage.getFontEmbedCSS(no);
     const op = {width: 1080, height: 1350, pixelRatio: 1, fontEmbedCSS: fonteCSS};
     if (IOS) await w.htmlToImage.toBlob(no, op);  // o Safari às vezes erra as imagens na 1ª vez
     return await w.htmlToImage.toBlob(no, op);
