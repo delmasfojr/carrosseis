@@ -33,7 +33,7 @@ REGRAS DE CONTEÚDO
 - A regra tem de ser matematicamente correta, sem simplificar a ponto de ficar errada.
 - Frases do mascote sem erro de português (nada de trocadilho com palavra escrita errada).
 - Para destacar palavras em laranja, coloque entre **asteriscos duplos**. Use 1 ou 2 destaques por texto, no máximo.
-- Emojis: um ÚNICO emoji por campo "emoji", bem ligado ao assunto (ex.: 📏 🎯 🏆 🥛 🔍 ✅ ❓ 📐 💰 🧮 📊 ⏱️ 🍕 🛒 🚗 🏠).
+- Campos "emoji" e "questao_emoji": siga as regras de DESENHOS no fim (um desenho só entra se o texto daquele pedaço tiver uma das palavras dele; senão, deixe vazio).
 - Poses do mascote: escolha a que combina com o card (lista fechada no formato da resposta).
 
 O QUE VAI EM CADA CARD (respeite os tamanhos, a arte é pequena)

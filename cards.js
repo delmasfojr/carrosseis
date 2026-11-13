@@ -1,7 +1,9 @@
 /* Desenho dos 5 cards do carrossel @delmaosimplifica.
    Usado pelo app do celular (index.html) e pelo gerador do PC (carrossel.py).
    Cards.html(conteudo, n, base, desenhos) -> página HTML completa (1080×1350) do card n (1 a 5).
-     base: endereço da pasta app/ (terminado em "/"); desenhos: Set com os nomes do banco. */
+     base: endereço da pasta app/ (terminado em "/");
+     desenhos: Map nome -> palavras-gatilho (desenhos/gatilhos.json). Um adesivo só entra se o texto
+     daquele pedaço do card tiver uma palavra dele; senão o código procura outro que tenha; se nenhum tiver, fica sem adesivo. */
 const Cards = (() => {
   const NAVY = '#0F1B2D', LAR = '#FF7A00', TOTAL = 5;
   const POSES = ['explicando', 'ideia', 'joinha', 'resolvendo', 'pensando', 'desafiando', 'confiante', 'estudando'];
@@ -145,14 +147,68 @@ setTimeout(uma,20000);
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const t = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b class="hl">$1</b>');
 
+  // símbolos que não são desenhos do banco, também com palavras-gatilho
+  const SIMBOLOS = {
+    '✖️': ['multiplic*', 'produto*', 'vezes', 'cruzad*', 'cruzar', 'dobro', 'triplo', 'quadruplo'],
+    '➕': ['soma', 'somar', 'somando', 'adicion*', 'acrescent*'],
+    '➖': ['subtra*', 'diferenca entre', 'tirar de'],
+    '➗': ['divid*', 'divis*', 'quociente*', 'repart*'],
+    '≈': ['aproxim*', 'estim*', 'arredond*', 'cerca de', 'mais ou menos'],
+  };
+  const GLIFO = {'✖️': '×', '➕': '+', '➖': '−', '➗': '÷', '≈': '≈'};
+  const norm = s => String(s ?? '').replace(/\*\*/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const RX = new Map();
+  const regex = g => {  // 'palavra' (aceita plural), 'radical*', 'duas palavras'
+    if (!RX.has(g)) {
+      const fim = g.endsWith('*'), corpo = (fim ? g.slice(0, -1) : g).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      RX.set(g, new RegExp(`(^|[^a-z0-9])${corpo}${fim ? '[a-z0-9]*' : '(s|es)?'}(?![a-z0-9])`));
+    }
+    return RX.get(g);
+  };
+  // quanto o adesivo combina com o texto: tamanho da maior palavra-gatilho encontrada (0 = não combina)
+  const nota = (gatilhos, texto) => Math.max(0, ...(gatilhos || []).filter(g => regex(g).test(texto)).map(g => g.replace('*', '').length));
+
+  const PLANOS = new WeakMap();
+  function plano(c, desenhos) {  // escolhe os adesivos do carrossel inteiro de uma vez (sem repetir)
+    if (PLANOS.has(c)) return PLANOS.get(c);
+    const semGatilho = !(desenhos instanceof Map);
+    const todos = [...(semGatilho ? [] : desenhos), ...Object.entries(SIMBOLOS)];
+    const usados = new Set();
+    // grupos de texto em ordem de prioridade: primeiro o texto principal do pedaço; os outros só se ele não der nada.
+    // Em cada grupo: fica o desenho que o Gemini pediu, se combinar; senão, o que combinar melhor.
+    const escolher = (pedido, ...grupos) => {
+      const v = String(pedido ?? '').trim();
+      if (semGatilho) return v;  // lista antiga, sem gatilhos: aceita o que veio
+      for (const partes of grupos) {
+        const texto = ' ' + norm(partes.join(' ')) + ' ';
+        let melhor = v && !usados.has(v) && nota(desenhos.get(v) || SIMBOLOS[v], texto) ? v : '', pontos = 0;
+        if (!melhor) for (const [nome, g] of todos) {
+          const p = usados.has(nome) ? 0 : nota(g, texto);
+          if (p > pontos) { melhor = nome; pontos = p; }
+        }
+        if (melhor) { usados.add(melhor); return melhor; }
+      }
+      return '';
+    };
+    const {capa: cp = {}, regra: rg = {}, exemplo: ex = {}, resumo: rs = {}} = c;
+    const r = {
+      capa: escolher(cp.questao_emoji, [cp.questao_destaque, cp.conta], [cp.linha1, cp.linha2, cp.subtitulo]),
+      regra: (rg.itens || []).map(i => escolher(i.emoji, [i.pergunta, i.nota])),
+      exemplo: escolher(ex.emoji, [ex.enunciado, ex.pergunta]),
+      etapas: (rs.etapas || []).map(e => escolher(e.emoji, [e.rotulo])),
+    };
+    PLANOS.set(c, r);
+    return r;
+  }
+
   function html(c, n, base, desenhos) {
-    const ilu = (valor, tam) => {
-      let v = String(valor ?? '').trim();
-      // palavra que não é desenho do banco (o Gemini inventou): usa o lápis em vez de escrever a palavra
-      if (v && !desenhos.has(v) && /^[a-z0-9 _-]+$/i.test(v)) v = desenhos.has('lapis') ? 'lapis' : '✏️';
-      if (v && desenhos.has(v))
+    const P = plano(c, desenhos);
+    const ilu = (v, tam) => {
+      if (!v) return '';
+      if (desenhos.has(v))
         return `<img src="${base}desenhos/${encodeURIComponent(v)}.webp" style="width:${tam}px;height:${tam}px;object-fit:contain;display:block">`;
-      return `<span style="font-size:${tam}px">${t(v)}</span>`;
+      // símbolo: desenhado como letra laranja (o emoji colorido do sistema fugia da paleta)
+      return `<span style="font-family:Arial,sans-serif;font-size:${Math.round(tam * 1.1)}px;line-height:1;color:${LAR};font-weight:900">${GLIFO[v] || t(v)}</span>`;
     };
     const pose = (nome, padrao) => `${base}mascote/${POSES.includes(nome) ? nome : padrao}.webp`;
     const titulo = (l1, l2, junto) => {
@@ -191,14 +247,14 @@ setTimeout(uma,20000);
       <div class="prot">${t(cp.questao_rotulo)}</div>
       ${conta ? `<div class="pconta mao">${t(conta)}</div>` : ''}
       <div class="pperg">${t(cp.questao_destaque)}</div>
-      <div class="pemoji">${ilu(cp.questao_emoji, conta ? 90 : 130)}</div>
+      <div class="pemoji">${ilu(P.capa, conta ? 90 : 130)}</div>
     </div>`;
       else cartao = `<div class="questao">
       <div class="qtopo"><span class="qrot">${t(cp.questao_rotulo)}</span><span class="qnum">Questão</span></div>
       <div class="qdest">${t(cp.questao_destaque)}</div>
       <div class="qcorpo">${conta ? `<div class="qconta mao">${t(conta)}</div>`
         : '<div class="linhas"><i></i><i style="width:90%"></i><i></i><i style="width:70%"></i></div>'}
-        <div class="qemoji">${ilu(cp.questao_emoji, conta ? 100 : 130)}</div></div>
+        <div class="qemoji">${ilu(P.capa, conta ? 100 : 130)}</div></div>
     </div>`;
       return moldura(titulo(cp.linha1, cp.linha2, false), `
   <p class="sub">${t(cp.subtitulo)}</p>
@@ -211,7 +267,7 @@ setTimeout(uma,20000);
 
     if (n === 2) {
       const tres = rg.itens.length >= 3;
-      const itens = rg.itens.map(i => `<div class="item"><div class="iemoji">${ilu(i.emoji, 110)}</div><div class="div"></div>
+      const itens = rg.itens.map((i, k) => `<div class="item">${P.regra[k] ? `<div class="iemoji">${ilu(P.regra[k], 110)}</div>` : ""}<div class="div"></div>
       <div class="iperg">${t(i.pergunta)}</div><div class="inota mao">${t(i.nota)}</div></div>`).join('');
       return moldura(titulo(rg.linha1, rg.linha2), `
   <p class="texto">${t(rg.texto)}</p>
@@ -225,7 +281,7 @@ setTimeout(uma,20000);
     if (n === 3) {
       const passos = ex.passos.map((p, k) => `<div class="passo"><span class="num">${k + 1}</span><span>${t(p)}</span></div>`).join('');
       return moldura(titulo(ex.linha1, ex.linha2), `
-  <div class="box enun"><span class="tag">EXEMPLO</span><p>${t(ex.enunciado)}</p><span class="e">${ilu(ex.emoji, 170)}</span></div>
+  <div class="box enun"><span class="tag">EXEMPLO</span><p>${t(ex.enunciado)}</p><span class="e">${ilu(P.exemplo, 170)}</span></div>
   <div><div class="perg">${t(ex.pergunta)}</div></div>
   <div class="zona" style="min-height:calc(var(--s)*440px);margin-top:20px">
     <img class="mascote" src="${pose(ex.pose, 'resolvendo')}" style="left:-30px;max-height:480px">
@@ -236,7 +292,7 @@ setTimeout(uma,20000);
 
     if (n === 4) {
       const etapas = rs.etapas.map((e, k) => `<div class="etapa"><span class="n">${k + 1}</span><div class="r">${t(e.rotulo)}</div>
-      <div class="e" style="display:flex;justify-content:center">${ilu(e.emoji, 110)}</div></div>`).join('<span class="seta">&#10140;</span>');
+      <div class="e" style="display:flex;justify-content:center">${ilu(P.etapas[k], 110)}</div></div>`).join('<span class="seta">&#10140;</span>');
       return moldura(titulo(rs.linha1, rs.linha2), `
   <div class="dest"><span class="e">${ilu(desenhos.has('prancheta') ? 'prancheta' : '📋', 150)}</span><p>${t(rs.destaque)}</p></div>
   <div class="etapas">${etapas}</div>
