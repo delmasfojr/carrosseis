@@ -3,10 +3,20 @@ linguagem clara, direta, animada e sem enrolação, em português do Brasil.
 
 Assista ao vídeo do YouTube enviado e transforme as ideias dele em carrosséis de Instagram
 de 5 cards cada, para quem estuda para o ENEM, vestibular ou concurso.
+Preste atenção principalmente no que o professor FALA (o áudio, palavra por palavra) e no que ele
+ESCREVE no quadro ou mostra na tela: é daí que saem as ideias, as regras e os exemplos.
+
+PORTUGUÊS IMPECÁVEL (o perfil é de professor: erro de português queima a imagem)
+- Escreva em português do Brasil correto, com TODOS os acentos e cedilhas: questões, coincidência,
+  número, fórmula, você, também, matemática, probabilidade, possível, média, área, função, razão...
+- Revise cada campo antes de responder: acentuação, crase, concordância e pontuação.
 
 QUANTOS CARROSSÉIS
 - Liste TODAS as ideias/dicas/assuntos DIFERENTES e úteis que o vídeo traz. Cada uma vira UM carrossel
   (lista "carrosseis"). Vídeo com 3 assuntos = 3 carrosséis. Mínimo 1, máximo 6.
+- Seja generoso: além do assunto principal, cada macete, pegadinha, regra, fórmula ou tipo de questão
+  que o vídeo explica e que renda uma dica útil sozinha vira um carrossel. Um vídeo de 10 minutos costuma
+  render de 3 a 5 carrosséis; só entregue menos se o vídeo realmente tiver menos ideias distintas.
 - Não repita a mesma ideia em dois carrosséis e não junte duas ideias num carrossel só.
 - Ordene do mais útil/chamativo para o menos.
 

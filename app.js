@@ -57,8 +57,8 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
   }
   const corpo = JSON.stringify({
     contents: [{parts: [video, {text: prompt}]}],
-    generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.7,
-      mediaResolution: 'MEDIA_RESOLUTION_LOW'},
+    generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.6,
+      ...(inicio != null ? {mediaResolution: 'MEDIA_RESOLUTION_LOW'} : {})},
   });
   let ultimo = '';
   for (let rodada = 0; rodada < 2; rodada++) {
@@ -235,13 +235,15 @@ async function iniciar() {
     alert(r.ok ? 'A chave funciona! ✅' : `A chave não funcionou (${r.status}).`);
   };
   $('#voltar').onclick = () => tela('lista');
-  $('#compartilhar').onclick = async () => {
-    const copiou = await copiarLegenda();
+  $('#compartilhar').onclick = () => {
+    // o share tem de sair JÁ no toque: qualquer alert/espera antes faz o Android recusar
     const files = arquivos();
-    if (navigator.canShare && navigator.canShare({files})) {
-      if (copiou) alert('A legenda foi copiada. No Instagram, é só colar.');
-      try { await navigator.share({files}); } catch (e) { if (e.name !== 'AbortError') alert('Não deu para compartilhar: ' + e.message); }
-    } else alert('Este navegador não compartilha imagens. Use "Baixar imagens".');
+    if (!(navigator.canShare && navigator.canShare({files})))
+      return alert('Este navegador não compartilha imagens. Use "Baixar imagens".');
+    const copia = copiarLegenda();
+    navigator.share({files}).catch(e => { if (e.name !== 'AbortError') alert('Não deu para compartilhar: ' + e.message); });
+    copia.then(ok => aviso(ok ? 'Legenda copiada: no Instagram, escolha "Feed" e cole a legenda.' : ''));
+    setTimeout(() => aviso(''), 8000);
   };
   $('#baixar').onclick = () => arquivos().forEach(f => {
     const a = document.createElement('a'); a.href = url(f); a.download = `${atual.conteudo.tema} - ${f.name}`; a.click();
