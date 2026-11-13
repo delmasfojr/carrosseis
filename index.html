@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F1B2D">
+<title>Carrosséis Delmão</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icone-192.png">
+<link rel="apple-touch-icon" href="icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+@font-face{font-family:'Anton';src:url('fontes/Anton-Regular.ttf')}
+@font-face{font-family:'Open Sans';font-weight:300 900;src:url('fontes/OpenSans.ttf')}
+:root{--navy:#0F1B2D;--lar:#FF7A00;--creme:#FFF6E6;--cinza:#D9DDE3;--azul:#E6F1FF}
+*{box-sizing:border-box}
+body{margin:0;background:var(--creme);color:var(--navy);font:16px/1.4 'Open Sans',system-ui,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+header{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;font:26px 'Anton',Impact,sans-serif;letter-spacing:.5px}
+header span{color:var(--lar)}
+main{padding:16px;max-width:640px;margin:0 auto}
+h2{font:30px 'Anton',Impact,sans-serif;text-transform:uppercase;margin:6px 0 12px}
+h2 span{color:var(--lar)}
+h3{font:20px 'Anton',Impact,sans-serif;margin:24px 0 8px}
+label{display:block;font-weight:700;margin:14px 0 6px}
+input[type=text],input[type=url],input[type=password],input[type=number],textarea{width:100%;font:inherit;padding:12px 14px;border:2px solid var(--cinza);border-radius:12px;background:#fff;color:var(--navy)}
+input:focus,textarea:focus{outline:none;border-color:var(--lar)}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:400;margin-top:14px}
+.check input{width:22px;height:22px;margin-top:2px;accent-color:var(--lar)}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:13px 16px;cursor:pointer}
+.principal{background:var(--lar);color:#fff;width:100%;font-size:18px;margin-top:18px}
+.principal:disabled{opacity:.5}
+.sec{background:#fff;color:var(--navy);border:2px solid var(--cinza)}
+.dica{background:var(--azul);border-radius:12px;padding:12px 14px;font-size:14px;margin-top:14px}
+.dica a{color:var(--navy)}
+#status{position:sticky;top:0;z-index:5;background:var(--lar);color:#fff;font-weight:700;padding:12px 16px;border-radius:12px;margin-bottom:12px}
+.filaitem{display:flex;gap:8px;align-items:center;background:#fff;border-radius:12px;padding:10px;margin-bottom:8px;word-break:break-all}
+.filaitem span{flex:1;font-size:14px}
+.filaitem .cont{background:var(--navy);color:#fff;padding:10px 12px}
+.filaitem .tirar{background:none;color:#999;padding:10px}
+#itens{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cartao{display:flex;flex-direction:column;padding:0;background:#fff;text-align:left;overflow:hidden;border:2px solid transparent}
+.cartao img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
+.cartao span{padding:8px 10px;font-weight:400}
+.cartao b{display:block;font-size:14px;line-height:1.25}
+.cartao small{color:#667}
+.cartao.postado{opacity:.6}
+#slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;border-radius:12px}
+#slides img{width:100%;flex:none;scroll-snap-align:center;border-radius:12px;box-shadow:0 2px 8px #0002}
+.acoes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.acoes .principal{grid-column:1/-1;margin:0}
+#legenda{min-height:200px;margin-top:6px}
+.perigo{background:none;color:#b00;text-decoration:underline;padding:12px 0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--navy);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:#fff;border-radius:0;padding:14px 4px;font-size:14px;opacity:.7}
+nav button.on{opacity:1;color:var(--lar)}
+</style>
+</head>
+<body>
+<header>@DELMAO<span>SIMPLIFICA</span></header>
+<main>
+  <div id="status" hidden></div>
+
+  <section class="tela" id="novo" hidden>
+    <h2>Novo <span>carrossel</span></h2>
+    <label for="link">Link do vídeo do YouTube</label>
+    <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+    <label class="check"><input id="longo" type="checkbox"> <span>Vídeo longo (mais de 40 min): ler em partes de 30 min</span></label>
+    <label for="minuto">Começar no minuto</label>
+    <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
+    <button id="gerar" class="principal">Gerar carrosséis</button>
+    <p class="dica">O app cria <b>um carrossel para cada ideia</b> do vídeo, com legenda. Demora de 1 a 5 minutos: deixe o app aberto na tela até terminar.</p>
+    <div id="fila"></div>
+  </section>
+
+  <section class="tela" id="lista" hidden>
+    <h2>Meus <span>carrosséis</span></h2>
+    <p id="vazio" class="dica" hidden>Nenhum carrossel ainda. Toque em <b>Novo</b> e cole um link do YouTube.</p>
+    <div id="itens"></div>
+  </section>
+
+  <section class="tela" id="ver" hidden>
+    <button id="voltar" class="sec">← Voltar</button>
+    <h2 id="vertitulo" style="margin-top:14px"></h2>
+    <div id="slides"></div>
+    <p class="dica" style="margin-top:8px">Arraste para o lado para ver os 5 cards.</p>
+    <div class="acoes">
+      <button id="compartilhar" class="principal">Compartilhar no Instagram</button>
+      <button id="baixar" class="sec">Baixar imagens</button>
+      <button id="copiar" class="sec">Copiar legenda</button>
+    </div>
+    <label for="legenda">Legenda (pode editar)</label>
+    <textarea id="legenda"></textarea>
+    <div class="acoes"><button id="marcar" class="sec" style="grid-column:1/-1"></button></div>
+    <button id="excluir" class="perigo">Excluir este carrossel</button>
+  </section>
+
+  <section class="tela" id="config" hidden>
+    <h2>Chave do <span>Gemini</span></h2>
+    <p>O app usa a sua chave gratuita do Gemini. Ela fica guardada <b>só neste celular</b> e só é enviada ao Google.</p>
+    <label for="chave">Cole a chave aqui</label>
+    <input id="chave" type="password" autocomplete="off" spellcheck="false">
+    <div class="acoes"><button id="testar" class="sec">Testar</button><button id="salvarchave" class="principal" style="grid-column:auto">Salvar</button></div>
+    <p class="dica">Para pegar a chave: abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> no celular, entre com a mesma conta Google e copie a chave (ou crie uma). Não mande a chave para ninguém.</p>
+  </section>
+</main>
+<nav>
+  <button data-tela="novo">＋ Novo</button>
+  <button data-tela="lista">Meus carrosséis</button>
+  <button data-tela="config">Chave</button>
+</nav>
+<script src="cards.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
