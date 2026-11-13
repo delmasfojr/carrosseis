@@ -65,8 +65,10 @@ nav button.on{opacity:1;color:var(--lar)}
     <label for="link">Link do vídeo do YouTube</label>
     <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
     <label class="check"><input id="longo" type="checkbox"> <span>Vídeo longo (mais de 40 min): ler em partes de 30 min</span></label>
-    <label for="minuto">Começar no minuto</label>
-    <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
+    <div id="blocominuto" hidden>
+      <label for="minuto">Começar no minuto</label>
+      <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
+    </div>
     <button id="gerar" class="principal">Gerar carrosséis</button>
     <p class="dica">O app cria <b>um carrossel para cada ideia</b> do vídeo, com legenda. Demora de 1 a 5 minutos: deixe o app aberto na tela até terminar.</p>
     <div id="fila"></div>

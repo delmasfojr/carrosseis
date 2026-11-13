@@ -76,6 +76,9 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
       } finally { clearTimeout(relogio); }
       if (r.ok) return JSON.parse(JSON.parse(texto).candidates[0].content.parts[0].text).carrosseis;
       ultimo = `${modelo} (${r.status}): ${texto.slice(0, 300)}`;
+      if (r.status === 400 && inicio != null) {  // o trecho começa depois do fim do vídeo
+        const e = new Error('O vídeo é mais curto que o trecho pedido.'); e.trecho = true; throw e;
+      }
       if (![404, 429, 500, 503].includes(r.status)) throw new Error(ultimo);  // ex.: chave errada
     }
     if (rodada === 0) { aviso('Todos os modelos ocupados; tentando de novo em 60 s…'); await new Promise(r => setTimeout(r, 60000)); }
@@ -123,12 +126,23 @@ function tela(id) {
 }
 const aviso = txt => { $('#status').textContent = txt; $('#status').hidden = !txt; };
 
-async function gerar(link, inicio, longo) {
+async function gerar(link, inicio, longo, daFila = false) {
   if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
   $('#gerar').disabled = true;
   try {
     const fim = longo ? inicio + BLOCO : null;
-    const carrosseis = await pedirAoGemini(link, longo ? inicio : null, fim, aviso);
+    let carrosseis;
+    try {
+      carrosseis = await pedirAoGemini(link, longo ? inicio : null, fim, aviso);
+    } catch (e) {
+      if (!e.trecho) throw e;
+      if (daFila) {  // continuação de vídeo longo que já acabou
+        setFila(fila().filter(f => f.link !== link)); aviso('');
+        return alert('Esse vídeo já acabou: não há mais partes para ler. Tirei da fila.');
+      }
+      longo = false;  // vídeo curto marcado como longo: lê o vídeo inteiro
+      carrosseis = await pedirAoGemini(link, null, null, aviso);
+    }
     if (longo) setFila([{link, inicio: fim}, ...fila().filter(f => f.link !== link)]);
     else setFila(fila().filter(f => f.link !== link));
     for (const [k, conteudo] of carrosseis.entries()) {
@@ -149,7 +163,7 @@ function mostrarFila() {
   $('#fila').innerHTML = f.length ? '<h3>Continuar vídeos longos</h3>' + f.map((x, i) =>
     `<div class="filaitem"><span>${esc(x.link.replace(/^https?:\/\/(www\.)?/, ''))}<br><small>a partir de ${mmss(x.inicio)}</small></span>
      <button data-i="${i}" class="cont">Continuar</button><button data-i="${i}" class="tirar" title="Tirar da fila">✕</button></div>`).join('') : '';
-  $('#fila').querySelectorAll('.cont').forEach(b => b.onclick = () => { const x = fila()[b.dataset.i]; gerar(x.link, x.inicio, true); });
+  $('#fila').querySelectorAll('.cont').forEach(b => b.onclick = () => { const x = fila()[b.dataset.i]; gerar(x.link, x.inicio, true, true); });
   $('#fila').querySelectorAll('.tirar').forEach(b => b.onclick = () => setFila(fila().filter((_, i) => i != b.dataset.i)));
 }
 
@@ -181,6 +195,14 @@ async function copiarLegenda() {
   try { await navigator.clipboard.writeText($('#legenda').value); return true; } catch { return false; }
 }
 
+/* Qualquer formato de link do YouTube (youtu.be, shorts, live, m., com ?si=…) vira o padrão
+   https://www.youtube.com/watch?v=ID, que é o único que o Gemini aceita sem reclamar. */
+function linkPadrao(texto) {
+  const m = String(texto).trim().match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? `https://www.youtube.com/watch?v=${m[1]}` : null;
+}
+
 /* ---------------------------------------------------------------- início */
 async function iniciar() {
   [PROMPT, DESENHOS] = await Promise.all([
@@ -189,10 +211,12 @@ async function iniciar() {
   ]);
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => tela(b.dataset.tela));
   $('#gerar').onclick = () => {
-    const link = $('#link').value.trim();
-    if (!/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//.test(link)) return alert('Cole um link do YouTube.');
+    const link = linkPadrao($('#link').value);
+    if (!link) return alert('Cole um link do YouTube.');
     gerar(link, Math.max(0, Number($('#minuto').value || 0)) * 60, $('#longo').checked);
   };
+  const mostrarMinuto = () => { $('#blocominuto').hidden = !$('#longo').checked; };
+  $('#longo').onchange = mostrarMinuto; mostrarMinuto();
   $('#chave').value = chave();
   $('#salvarchave').onclick = () => { localStorage.setItem('gemini', $('#chave').value.trim()); alert('Chave salva só neste celular.'); tela('novo'); };
   $('#testar').onclick = async () => {
