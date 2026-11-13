@@ -36,7 +36,8 @@ const obj = p => ({type: 'OBJECT', properties: p, required: Object.keys(p)});
 const lista = i => ({type: 'ARRAY', items: i});  // Gemini 3.x recusa minItems/maxItems
 const ESQUEMA = obj({carrosseis: lista(obj({
   tema: S,
-  capa: obj({linha1: S, linha2: S, subtitulo: S, questao_rotulo: S, questao_destaque: S, questao_emoji: S, frase: S, pose: POSE}),
+  capa: obj({linha1: S, linha2: S, subtitulo: S, estilo: {type: 'STRING', enum: ['questao', 'quadro', 'postit']}, questao_rotulo: S,
+    questao_destaque: S, conta: S, questao_emoji: S, frase: S, pose: POSE}),
   regra: obj({linha1: S, linha2: S, texto: S, itens: lista(obj({emoji: S, pergunta: S, nota: S})), frase: S, pose: POSE}),
   exemplo: obj({linha1: S, linha2: S, enunciado: S, emoji: S, pergunta: S, passos: lista(S), resposta: S, pose: POSE}),
   resumo: obj({linha1: S, linha2: S, destaque: S, etapas: lista(obj({emoji: S, rotulo: S})), frase: S, pose: POSE}),

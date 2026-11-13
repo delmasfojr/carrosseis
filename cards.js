@@ -49,6 +49,20 @@ b{font-weight:800}
 .linhas{flex:1;display:flex;flex-direction:column;gap:18px}
 .linhas i{display:block;height:16px;border-radius:8px;background:#D9DDE3}
 .qemoji{font-size:100px;line-height:1}
+.qconta{flex:1;min-width:0;font-size:calc(var(--s)*62px);text-align:center;white-space:nowrap;color:${NAVY}}
+.quadro{position:absolute;right:0;top:0;width:560px;z-index:2;background:#1F4D3A;border:16px solid #B8763C;
+  border-radius:20px;padding:24px 26px 30px;transform:rotate(-2deg);box-shadow:10px 12px 0 #D9DDE3;text-align:center}
+.qrot2{font-family:${IMP};font-size:42px;color:#FFD95A;letter-spacing:1px}
+.giz{font-size:calc(var(--s)*74px);color:#fff;margin:6px 0 0;white-space:nowrap;line-height:1.15}
+.gizlinha{display:block;margin:4px auto 14px;width:70%;height:6px;border-radius:3px;background:#FFFFFFAA}
+.qperg{font-size:calc(var(--s)*32px);font-weight:700;color:#E6F1FF;line-height:1.25}
+.postit{position:absolute;right:16px;top:6px;width:500px;z-index:2;background:#FFE066;padding:46px 30px 26px;
+  transform:rotate(3deg);box-shadow:8px 12px 0 #D9DDE3;text-align:center;border-radius:4px 4px 30px 4px}
+.fita{position:absolute;top:-24px;left:50%;width:190px;height:48px;margin-left:-95px;background:#FFB46ACC;transform:rotate(-4deg)}
+.prot{font-family:${IMP};font-size:42px;color:${LAR};letter-spacing:1px}
+.pconta{font-size:calc(var(--s)*66px);margin:4px 0 6px;white-space:nowrap;line-height:1.15}
+.pperg{font-size:calc(var(--s)*32px);font-weight:700;line-height:1.25}
+.pemoji{display:flex;justify-content:center;margin-top:12px}
 .capa-frase{position:absolute;right:10px;bottom:6px;width:540px;z-index:3;text-align:center;font-size:calc(var(--s)*56px);
   transform:rotate(-5deg);color:${NAVY}}
 .sublinhado{display:block;margin:6px auto 0;width:80%;height:10px;border-radius:5px;background:${LAR}}
@@ -104,7 +118,7 @@ b{font-weight:800}
   const AJUSTE = `<script>
 function ajustar(){
   const main=document.querySelector('.main');
-  document.querySelectorAll('.titulo div,.resp,.etapa .r').forEach(el=>{
+  document.querySelectorAll('.titulo div,.resp,.etapa .r,.qconta,.giz,.pconta').forEach(el=>{
     let s=parseFloat(getComputedStyle(el).fontSize);
     while(el.scrollWidth>el.clientWidth+1&&s>20){s-=2;el.style.fontSize=s+'px';}
   });
@@ -163,18 +177,37 @@ setTimeout(uma,20000);
     };
 
     const {capa: cp, regra: rg, exemplo: ex, resumo: rs} = c;
-    if (n === 1) return moldura(titulo(cp.linha1, cp.linha2, false), `
-  <p class="sub">${t(cp.subtitulo)}</p>
-  <div class="zona" style="min-height:calc(var(--s)*500px);margin-top:10px">
-    <img class="mascote" src="${pose(cp.pose, 'explicando')}" style="left:-30px;max-height:560px">
-    <div class="questao">
+    if (n === 1) {
+      // 3 modelos de capa (o Gemini escolhe e varia): cartão de questão, quadro-negro ou post-it.
+      // rótulo = assunto (ÁLGEBRA, FRAÇÕES...); "conta" = a conta/fórmula do exemplo, escrita à mão.
+      const conta = String(cp.conta ?? '').trim();
+      let cartao;
+      if (cp.estilo === 'quadro') cartao = `<div class="quadro">
+      <div class="qrot2">${t(cp.questao_rotulo)}</div>
+      <div class="giz mao">${t(conta || cp.questao_destaque)}</div><span class="gizlinha"></span>
+      ${conta ? `<div class="qperg">${t(cp.questao_destaque)}</div>` : ''}
+    </div>`;
+      else if (cp.estilo === 'postit') cartao = `<div class="postit"><i class="fita"></i>
+      <div class="prot">${t(cp.questao_rotulo)}</div>
+      ${conta ? `<div class="pconta mao">${t(conta)}</div>` : ''}
+      <div class="pperg">${t(cp.questao_destaque)}</div>
+      <div class="pemoji">${ilu(cp.questao_emoji, conta ? 90 : 130)}</div>
+    </div>`;
+      else cartao = `<div class="questao">
       <div class="qtopo"><span class="qrot">${t(cp.questao_rotulo)}</span><span class="qnum">Questão</span></div>
       <div class="qdest">${t(cp.questao_destaque)}</div>
-      <div class="qcorpo"><div class="linhas"><i></i><i style="width:90%"></i><i></i><i style="width:70%"></i></div>
-        <div class="qemoji">${ilu(cp.questao_emoji, 130)}</div></div>
-    </div>
+      <div class="qcorpo">${conta ? `<div class="qconta mao">${t(conta)}</div>`
+        : '<div class="linhas"><i></i><i style="width:90%"></i><i></i><i style="width:70%"></i></div>'}
+        <div class="qemoji">${ilu(cp.questao_emoji, conta ? 100 : 130)}</div></div>
+    </div>`;
+      return moldura(titulo(cp.linha1, cp.linha2, false), `
+  <p class="sub">${t(cp.subtitulo)}</p>
+  <div class="zona" style="min-height:calc(var(--s)*500px);margin-top:10px">
+    <img class="mascote" src="${pose(cp.estilo === 'quadro' && (cp.pose || 'explicando') === 'explicando' ? 'desafiando' : cp.pose, 'explicando')}" style="left:-30px;max-height:560px">
+    ${cartao}
     <div class="capa-frase mao">${t(cp.frase)}<span class="sublinhado"></span></div>
   </div>`);
+    }
 
     if (n === 2) {
       const tres = rg.itens.length >= 3;

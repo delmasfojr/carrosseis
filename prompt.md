@@ -40,9 +40,16 @@ O QUE VAI EM CADA CARD (respeite os tamanhos, a arte é pequena)
 1. capa: gancho forte.
    - linha1 (navy) e linha2 (laranja): o título, em CAIXA ALTA, cada linha com no máximo 16 caracteres.
    - subtitulo: 1 frase de até 90 caracteres que gera curiosidade.
-   - questao_rotulo: rótulo curto do "cartão de questão" da ilustração (ex.: "ENEM", "VESTIBULAR", "CONCURSO").
+   - estilo: o modelo da ilustração da capa: "questao" (cartão de prova), "quadro" (quadro-negro escrito a giz)
+     ou "postit" (bilhete amarelo colado). VARIE: carrosséis do mesmo vídeo não devem repetir o mesmo estilo seguido.
+   - questao_rotulo: o ASSUNTO da dica em 1 ou 2 palavras, CAIXA ALTA, até 16 caracteres
+     (ex.: "ÁLGEBRA", "FRAÇÕES", "PORCENTAGEM", "GEOMETRIA", "PROBABILIDADE", "INTERPRETAÇÃO").
+     Só escreva "ENEM", "VESTIBULAR" ou "CONCURSO" se a dica for sobre a prova em si (tempo, chute, leitura).
    - questao_destaque: a pergunta típica de prova ligada à dica (até 40 caracteres).
-   - questao_emoji: emoji que ilustra a questão.
+   - conta: a conta, equação ou fórmula que resume a dica, curta e escrita como no quadro (até 18 caracteres,
+     ex.: "2x + 3 = 11", "a² + b² = c²", "30% de 80", "1 − P(nenhum)"). Se a dica não tiver conta
+     (ex.: dica de leitura), deixe vazio "".
+   - questao_emoji: desenho que ilustra a questão (veja DESENHOS no fim).
    - frase: frase curta do mascote, estilo grito de guerra (até 22 caracteres, ex.: "COMANDO PRIMEIRO!").
 2. regra: a dica explicada.
    - linha1/linha2: título curto (ex.: "A" / "REGRA", "O" / "MACETE"), juntos até 14 caracteres.
