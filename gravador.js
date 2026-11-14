@@ -595,13 +595,36 @@ Se não houver fala, devolva a lista vazia.`;
     linhas.forEach((l, n) => ctx.fillText(l, W / 2, yc + (n - (linhas.length - 1) / 2) * tam * 1.15));
   }
   // o mascote balança enquanto a voz fala (pela legenda) e respira quando está em silêncio
-  function boneco(ctx, pose, x, base, h, falando, t) {
+  // Animação do mascote (feita com as poses, sem arquivo de animação):
+  //   entrada (pulo / desliza / gira) no começo do bloco; quica, inclina e estica enquanto a voz fala; respira nas pausas.
+  function boneco(ctx, pose, lado, base, h, falando, t, entrada = 'pulo') {
     const im = poses.get(pose) || poses.get('explicando');
     if (!im || !im.naturalWidth) return;
-    const pulo = falando ? Math.abs(Math.sin(t * 9)) * 14 : Math.sin(t * 2) * 4;
-    const w = im.naturalWidth * h / im.naturalHeight, inc = falando ? Math.sin(t * 4.5) * 0.025 : 0;
-    ctx.save(); ctx.translate(x + w / 2, base); ctx.rotate(inc); ctx.drawImage(im, -w / 2, -h - pulo, w, h); ctx.restore();
+    const w = im.naturalWidth * h / im.naturalHeight;
+    const x = lado === 'dir' ? W - w - 20 : 20;
+    const q = Math.min(1, t / 0.5), sai = 1 - q;  // 0 → 1 nos primeiros 0,5 s
+    const mola = q >= 1 ? 1 : 1 - Math.cos(q * Math.PI * 2.5) * Math.exp(-q * 5);  // passa um pouco e volta (efeito mola)
+    let dx = 0, dy = 0, rot = 0, esc = 1;
+    if (entrada === 'pulo') { esc = Math.max(0.01, mola); dy = sai * sai * h * 0.25; }
+    else if (entrada === 'desliza') dx = (lado === 'dir' ? 1 : -1) * (1 - mola) * (w + 40);
+    else if (entrada === 'gira') { esc = Math.max(0.01, mola); rot = sai * sai * Math.PI * 2 * (lado === 'dir' ? -1 : 1); }
+    const quique = falando ? Math.abs(Math.sin(t * 9)) * h * 0.022 : Math.sin(t * 2) * h * 0.006;
+    const inclina = falando ? Math.sin(t * 4.5) * 0.035 : Math.sin(t * 1.3) * 0.01;
+    const estica = falando ? 1 + Math.abs(Math.sin(t * 9)) * 0.025 : 1 + Math.sin(t * 2) * 0.008;
+    ctx.save();
+    ctx.translate(x + w / 2 + dx, base + dy); ctx.rotate(inclina + rot); ctx.scale(esc / Math.sqrt(estica), esc * estica);
+    ctx.drawImage(im, -w / 2, -h - quique, w, h);
+    ctx.restore();
   }
+  // troca de pose a cada frase (dá a sensação de gesto): começa na pose escolhida
+  function poseAgora(k, t) {
+    const e = est(k);
+    if (!e.trocaPose) return e.pose;
+    const roda = [e.pose, ...['explicando', 'ideia', 'resolvendo', 'joinha'].filter(x => x !== e.pose)].slice(0, 3);
+    const n = cortados(takes()[k]).filter(sg => sg[0] <= t + 0.05).length;
+    return roda[Math.max(0, n - 1) % roda.length];
+  }
+  const ALTURA_MASCOTE = 680;
   const falandoEm = (grupos, t) => grupos.some(gr => gr.some(p => p.a - 0.05 <= t && t <= p.b + 0.08));
   function circulo(ctx, v, cx, cy, r) {
     ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip(); cobrir(ctx, v, cx - r, cy - r, 2 * r, 2 * r); ctx.restore();
@@ -653,6 +676,11 @@ Se não houver fala, devolva a lista vazia.`;
     if (!e.posTitulo) e.posTitulo = 'alto';
     if (e.animTitulo == null) e.animTitulo = true;
     if (!e.pose) e.pose = 'explicando';
+    if (e.tamMascote == null) e.tamMascote = 1;
+    if (!e.ladoMascote) e.ladoMascote = 'esq';
+    if (!e.entradaMascote) e.entradaMascote = 'pulo';
+    if (e.trocaPose == null) e.trocaPose = true;
+    if (e.mascoteCanto == null) e.mascoteCanto = false;
     return e;
   }
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
@@ -685,11 +713,13 @@ Se não houver fala, devolva a lista vazia.`;
       circulo(ctx, v, W - 190, H * 0.56, 150);
     } else if (lay === 'mascote') {  // só o mascote apresentando, com a lousa; a voz é a sua
       ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
-      boneco(ctx, e.pose, 30, H * 0.97, 680, falandoEm(grupos, t), local);
+      boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.97, ALTURA_MASCOTE * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
     } else if (lay === 'mascote_fundo') {  // você ao fundo (escurecido) e o mascote na frente apresentando
       ctx.save(); ctx.filter = `${filtro === 'none' ? '' : filtro} blur(3px) brightness(.5)`; cobrir(ctx, v, -20, -20, W + 40, H + 40); ctx.restore();
       ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
-      boneco(ctx, e.pose, 30, H * 0.97, 680, falandoEm(grupos, t), local);
+      // no "alternar", a entrada acontece a cada vez que o mascote volta (conta o tempo desde o começo da frase)
+      const desde = est(k).layout === 'alternar' ? Math.max(0, (t - (cortados(c).filter(sg => sg[0] <= t + 0.05).pop() || [c.ini])[0]) / vel(c)) : local;
+      boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.97, ALTURA_MASCOTE * e.tamMascote, falandoEm(grupos, t), desde, e.entradaMascote);
     } else if (lay === 'inteira') {  // vídeo inteiro, com o fundo borrado
       ctx.save(); ctx.filter = 'blur(36px) brightness(.55)'; cobrir(ctx, v, -60, -60, W + 120, H + 120); ctx.restore();
       ctx.filter = filtro; caber(ctx, v);
@@ -710,11 +740,12 @@ Se não houver fala, devolva a lista vazia.`;
       caixa(ctx, b.texto_tela, y, fundo, TAM_TITULO[e.tamTitulo] || 80, corT);
       ctx.restore();
     }
+    const temMascote = COM_MASCOTE.includes(lay) || (e.layout === 'alternar' && lay === 'mascote_fundo');
+    if (!temMascote && e.mascoteCanto)  // mascote pequeno no canto, em qualquer layout
+      boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.95, 430 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
+    else if (!temMascote && k === blocos.length - 1 && opcoes().mascote)  // joinha no final do vídeo
+      boneco(ctx, 'joinha', e.ladoMascote, H * 0.95, 400 * e.tamMascote, falandoEm(grupos, t), local, 'pulo');
     legenda(ctx, grupos, t, H * 0.68);
-    if (k === blocos.length - 1 && opcoes().mascote && mascote && mascote.naturalWidth && !COM_MASCOTE.includes(est(k).layout)) {
-      const h = 380, w = mascote.naturalWidth * h / mascote.naturalHeight;  // abaixo da legenda
-      ctx.drawImage(mascote, 30, H * 0.92 - h, w, h);
-    }
   }
 
   /* ---------------------------------------------------------------- tocar os takes (prévia e exportação) */
@@ -883,7 +914,7 @@ Se não houver fala, devolva a lista vazia.`;
       if (v) soltar(v);
       v = await abrirVideo(c.blob); v.muted = true; v.dataset.blob = String(c.blob.size); quadros.set(k, v);
     }
-    const alvoT = t == null ? c.ini + 0.05 : t;
+    const alvoT = t == null ? c.ini + Math.min(0.8, (c.fim - c.ini) / 2) : t;  // depois da entrada animada
     await irAoTempo(v, alvoT);
     if (tocando) return;
     const dec = antes(k) + Math.max(0, alvoT - c.ini) / vel(c);
@@ -954,8 +985,14 @@ Se não houver fala, devolva a lista vazia.`;
       <div class="eaba" data-aba="visual">
       <label>Layout deste bloco</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(LAYOUTS).map(x => `<button data-l="${x}" style="flex:1 0 30%">${LAYOUTS[x]}</button>`).join('')}</div>
+      <label class="echeck"><input id="ecanto" type="checkbox" ${est(k).mascoteCanto ? 'checked' : ''}> 🦸 Mascote no canto (em qualquer layout)</label>
       <div id="eposew"><label>Pose do mascote</label>
-      <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div></div>
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div>
+      <label class="echeck"><input id="etroca" type="checkbox" ${est(k).trocaPose ? 'checked' : ''}> Trocar de pose a cada frase</label>
+      <label>Tamanho do mascote <b id="vtamm"></b></label><input id="etamm" type="range" min="0.5" max="1.4" step="0.05" value="${est(k).tamMascote}">
+      <div class="ebot"><button data-lm="esq">◀ Esquerda</button><button data-lm="dir">Direita ▶</button></div>
+      <label>Como o mascote entra</label>
+      <div class="ebot">${Object.entries({pulo: 'Pulando', desliza: 'Deslizando', gira: 'Girando', nenhuma: 'Parado'}).map(([x, n]) => `<button data-em="${x}">${n}</button>`).join('')}</div></div>
       <div id="econtaw"><label for="econta">Conta / texto grande (vai na lousa nos layouts do mascote)</label><input id="econta" type="text" value="${esc(b.quadro || '')}" placeholder="ex.: 8% de 25 = 25% de 8"></div>
       </div>
       <div class="eaba" data-aba="efeitos">
@@ -1017,8 +1054,18 @@ Se não houver fala, devolva a lista vazia.`;
         e[campo] = x.dataset[attr]; marcar(attr, e[campo]); guardar(); if (depois) depois(); mostrarQuadro(k);
       });
     };
-    const mostrarConta = () => { g('econtaw').hidden = !COM_TEXTO.includes(e.layout); g('eposew').hidden = !COM_MASCOTE.includes(e.layout); };
+    const mostrarConta = () => {
+      g('econtaw').hidden = !COM_TEXTO.includes(e.layout);
+      g('eposew').hidden = !(COM_MASCOTE.includes(e.layout) || e.mascoteCanto);
+    };
     opcao('tc', 'corTitulo'); opcao('tt', 'tamTitulo'); opcao('tp', 'posTitulo'); opcao('l', 'layout', mostrarConta); opcao('po', 'pose');
+    opcao('lm', 'ladoMascote'); opcao('em', 'entradaMascote', () => previa([k]));
+    g('ecanto').onchange = () => { e.mascoteCanto = g('ecanto').checked; guardar(); mostrarConta(); mostrarQuadro(k, c.ini + 0.8); };
+    g('etroca').onchange = () => { e.trocaPose = g('etroca').checked; guardar(); };
+    const mostrarTam = () => { g('vtamm').textContent = Math.round(e.tamMascote * 100) + '%'; };
+    mostrarTam();
+    g('etamm').oninput = () => { e.tamMascote = Number(g('etamm').value); mostrarTam(); mostrarQuadro(k, c.ini + 0.8); };
+    g('etamm').onchange = guardar;
     mostrarConta();
     g('eanim').onchange = () => { e.animTitulo = g('eanim').checked; guardar(); };
     g('econta').oninput = () => { setTexto(k, 'quadro', g('econta').value); mostrarQuadro(k); };
