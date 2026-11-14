@@ -57,6 +57,7 @@ b{font-weight:800}
 .qrot2{font-family:${IMP};font-size:42px;color:#FFD95A;letter-spacing:1px}
 .giz{font-size:calc(var(--s)*74px);color:#fff;margin:6px 0 0;white-space:nowrap;line-height:1.15}
 .gizlinha{display:block;margin:4px auto 14px;width:70%;height:6px;border-radius:3px;background:#FFFFFFAA}
+.giz.solta{white-space:normal;font-size:calc(var(--s)*58px);line-height:1.12;margin:10px 0 0}
 .qperg{font-size:calc(var(--s)*32px);font-weight:700;color:#E6F1FF;line-height:1.25}
 .postit{position:absolute;right:16px;top:6px;width:500px;z-index:2;background:#FFE066;padding:46px 30px 26px;
   transform:rotate(3deg);box-shadow:8px 12px 0 #D9DDE3;text-align:center;border-radius:4px 4px 30px 4px}
@@ -65,6 +66,39 @@ b{font-weight:800}
 .pconta{font-size:calc(var(--s)*66px);margin:4px 0 6px;white-space:nowrap;line-height:1.15}
 .pperg{font-size:calc(var(--s)*32px);font-weight:700;line-height:1.25}
 .pemoji{display:flex;justify-content:center;margin-top:12px}
+.celular{position:absolute;right:10px;top:8px;width:500px;z-index:2;background:${NAVY};border-radius:56px;padding:18px 16px 22px;
+  transform:rotate(3deg);box-shadow:10px 12px 0 #D9DDE3}
+.celular .tela{background:#F4F7FB;border-radius:38px;padding:46px 22px 18px;position:relative}
+.celular .notch{position:absolute;top:14px;left:50%;width:110px;height:22px;margin-left:-55px;border-radius:11px;background:${NAVY}}
+.celular .app{display:flex;align-items:center;gap:12px;font-family:${IMP};font-size:34px;color:${NAVY};letter-spacing:1px;
+  border-bottom:3px solid #D9DDE3;padding-bottom:12px;margin-bottom:18px}
+.celular .app i{width:44px;height:44px;border-radius:50%;background:${LAR};flex:none}
+.balao{background:#fff;border:4px solid ${NAVY};border-radius:30px 30px 30px 6px;padding:14px 18px;font-weight:800;
+  font-size:calc(var(--s)*44px);line-height:1.15;margin-right:20px}
+.balao.eu{background:#FFE9A8;border-color:${LAR};border-radius:30px 30px 6px 30px;margin:14px 0 0 50px;text-align:center;
+  font-size:calc(var(--s)*54px);white-space:nowrap}
+.celular .linha{display:flex;align-items:flex-end;gap:10px}
+.celular .linha .balao{flex:1;margin-right:0}
+.caderno{position:absolute;right:0;top:0;width:540px;z-index:2;border-radius:10px 24px 24px 10px;transform:rotate(-2deg);
+  box-shadow:10px 12px 0 #D9DDE3;padding:26px 28px 26px 92px;border:5px solid ${NAVY};
+  background:#fff repeating-linear-gradient(#fff 0 52px,#9CC3F0 52px 55px);background-position:0 22px}
+.caderno:before{content:'';position:absolute;left:62px;top:0;bottom:0;width:4px;background:#F08A8A}
+.caderno .espiral{position:absolute;left:14px;top:22px;bottom:22px;display:flex;flex-direction:column;justify-content:space-between}
+.caderno .espiral i{display:block;width:34px;height:16px;border-radius:8px;border:5px solid #8A94A3;background:#fff}
+.crot{font-family:${IMP};font-size:40px;color:${LAR};letter-spacing:1px;line-height:52px}
+.cperg{font-size:calc(var(--s)*54px);line-height:1.08;color:${NAVY}}
+.cconta{font-size:calc(var(--s)*62px);white-space:nowrap;line-height:1.15;color:${LAR}}
+.caderno .cemoji{position:absolute;right:20px;bottom:16px}
+.branco{position:absolute;right:0;top:0;width:560px;z-index:2;background:#fff;border:14px solid #B9C1CC;border-radius:18px;
+  padding:22px 28px 34px;transform:rotate(2deg);box-shadow:10px 12px 0 #D9DDE3;text-align:center}
+.branco .ima{position:absolute;top:-22px;width:38px;height:38px;border-radius:50%;box-shadow:0 4px 0 #0002}
+.branco .bandeja{position:absolute;left:40px;right:40px;bottom:-34px;height:20px;border-radius:6px;background:#9AA3AF}
+.branco .marcador{position:absolute;right:70px;bottom:-30px;width:120px;height:20px;border-radius:10px;background:${LAR}}
+.brot{font-family:${IMP};font-size:40px;color:${LAR};letter-spacing:1px}
+.bconta{font-size:calc(var(--s)*72px);white-space:nowrap;line-height:1.15;color:#2F7DE1;margin:6px 0}
+.bperg{font-size:calc(var(--s)*58px);line-height:1.1;color:${NAVY};margin:10px 0}
+.branco .bemoji{position:absolute;right:18px;bottom:14px}
+.branco .bperg{margin:10px 70px 0 30px}
 .capa-frase{position:absolute;right:10px;bottom:6px;width:540px;z-index:3;text-align:center;font-size:calc(var(--s)*56px);
   transform:rotate(-5deg);color:${NAVY}}
 .sublinhado{display:block;margin:6px auto 0;width:80%;height:10px;border-radius:5px;background:${LAR}}
@@ -120,7 +154,7 @@ b{font-weight:800}
   const AJUSTE = `<script>
 function ajustar(){
   const main=document.querySelector('.main');
-  document.querySelectorAll('.titulo div,.resp,.etapa .r,.qconta,.giz,.pconta').forEach(el=>{
+  document.querySelectorAll('.titulo div,.resp,.etapa .r,.qconta,.giz,.pconta,.cconta,.bconta,.balao.eu').forEach(el=>{
     let s=parseFloat(getComputedStyle(el).fontSize);
     while(el.scrollWidth>el.clientWidth+1&&s>20){s-=2;el.style.fontSize=s+'px';}
   });
@@ -172,12 +206,19 @@ setTimeout(uma,20000);
   // sempre a mesma se for redesenhado. No quadro-negro não vai "explicando" (ele já aponta para um quadro).
   const CAPA_POSES = ['capa', 'pensativo', 'confuso', 'desconfiado', 'cafe', 'desafiando', 'pensando',
     'confiante', 'estudando', 'ideia', 'explicando'];
-  function poseCapa(c) {
+  const sorteio = (c, sal) => {
     const cp = c.capa || {};
-    const lista = CAPA_POSES.filter(p => !(cp.estilo === 'quadro' && p === 'explicando'));
-    let h = 7;
+    let h = sal;
     for (const ch of `${c.tema}|${cp.linha1}|${cp.linha2}|${cp.questao_destaque}`) h = (h * 31 + ch.codePointAt(0)) >>> 0;
-    return lista[h % lista.length];
+    return h;
+  };
+  // modelo do quadrinho ao lado do mascote: também sorteado (o Gemini quase sempre pedia a folha de prova)
+  const CAPA_ESTILOS = ['questao', 'quadro', 'postit', 'celular', 'caderno', 'branco'];
+  const estiloCapa = c => CAPA_ESTILOS[sorteio(c, 13) % CAPA_ESTILOS.length];
+  function poseCapa(c) {
+    const quadro = ['quadro', 'branco'].includes(estiloCapa(c));
+    const lista = CAPA_POSES.filter(p => !(quadro && p === 'explicando'));
+    return lista[sorteio(c, 7) % lista.length];
   }
 
   const PLANOS = new WeakMap();
@@ -246,16 +287,37 @@ setTimeout(uma,20000);
 
     const {capa: cp, regra: rg, exemplo: ex, resumo: rs} = c;
     if (n === 1) {
-      // 3 modelos de capa (o Gemini escolhe e varia): cartão de questão, quadro-negro ou post-it.
+      // 6 modelos de capa, sorteados por carrossel: cartão de questão, quadro-negro, post-it, celular, caderno, quadro branco.
       // rótulo = assunto (ÁLGEBRA, FRAÇÕES...); "conta" = a conta/fórmula do exemplo, escrita à mão.
       const conta = String(cp.conta ?? '').trim();
+      const estilo = estiloCapa(c);
       let cartao;
-      if (cp.estilo === 'quadro') cartao = `<div class="quadro">
+      if (estilo === 'celular') cartao = `<div class="celular"><div class="tela"><i class="notch"></i>
+      <div class="app"><i></i>${t(cp.questao_rotulo)}</div>
+      <div class="linha"><div class="balao">${t(cp.questao_destaque)}</div>${ilu(P.capa, 100)}</div>
+      ${conta ? `<div class="balao eu mao">${t(conta)}</div>` : ''}
+    </div></div>`;
+      else if (estilo === 'caderno') cartao = `<div class="caderno"><div class="espiral">${'<i></i>'.repeat(6)}</div>
+      <div class="crot">${t(cp.questao_rotulo)}</div>
+      ${conta ? `<div class="cconta mao">${t(conta)}</div>` : ''}
+      <div class="cperg mao">${t(cp.questao_destaque)}</div>
+      <div style="height:${conta ? 90 : 120}px"></div>
+      <div class="cemoji">${ilu(P.capa, conta ? 90 : 120)}</div>
+    </div>`;
+      else if (estilo === 'branco') cartao = `<div class="branco">
+      <i class="ima" style="left:40px;background:${LAR}"></i><i class="ima" style="right:40px;background:#2F7DE1"></i>
+      <div class="brot">${t(cp.questao_rotulo)}</div>
+      ${conta ? `<div class="bconta mao">${t(conta)}</div>` : ''}
+      <div class="bperg mao">${t(cp.questao_destaque)}</div>
+      <div class="bemoji">${ilu(P.capa, 90)}</div>
+      <i class="bandeja"></i><i class="marcador"></i>
+    </div>`;
+      else if (estilo === 'quadro') cartao = `<div class="quadro">
       <div class="qrot2">${t(cp.questao_rotulo)}</div>
-      <div class="giz mao">${t(conta || cp.questao_destaque)}</div><span class="gizlinha"></span>
+      <div class="giz mao${conta ? "" : " solta"}">${t(conta || cp.questao_destaque)}</div><span class="gizlinha"></span>
       ${conta ? `<div class="qperg">${t(cp.questao_destaque)}</div>` : ''}
     </div>`;
-      else if (cp.estilo === 'postit') cartao = `<div class="postit"><i class="fita"></i>
+      else if (estilo === 'postit') cartao = `<div class="postit"><i class="fita"></i>
       <div class="prot">${t(cp.questao_rotulo)}</div>
       ${conta ? `<div class="pconta mao">${t(conta)}</div>` : ''}
       <div class="pperg">${t(cp.questao_destaque)}</div>
