@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0F1B2D">
+<title>Estúdio Delmão</title>
+<link rel="icon" href="icone-192.png">
+<style>
+@font-face{font-family:'Anton';src:url('fontes/Anton-Regular.ttf')}
+@font-face{font-family:'Open Sans';font-weight:300 900;src:url('fontes/OpenSans.ttf')}
+@font-face{font-family:'Kalam';src:url('fontes/Kalam-Bold.ttf')}
+:root{--navy:#0F1B2D;--lar:#FF7A00;--creme:#FFF6E6;--cinza:#D9DDE3;--azul:#E6F1FF;--fundo:#0B1422;--painel:#15243A;--linha:#24385A}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--fundo);color:#fff;font:14px/1.4 'Open Sans',system-ui,sans-serif;overflow:hidden}
+button,select,input{font:inherit}
+button{border:0;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:700;background:var(--linha);color:#fff}
+button:hover{filter:brightness(1.15)}
+button.on{background:var(--lar);color:#fff}
+button:disabled{opacity:.4;cursor:default}
+select,input[type=search]{width:100%;padding:7px 10px;border-radius:10px;border:1px solid var(--linha);background:var(--navy);color:#fff}
+input[type=range]{width:100%;accent-color:var(--lar)}
+label.ck{display:flex;gap:8px;align-items:center;margin:6px 0;cursor:pointer}
+label.ck input{accent-color:var(--lar);width:16px;height:16px}
+#app{display:grid;grid-template-columns:300px 1fr 300px;grid-template-rows:52px 1fr;height:100vh}
+header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--navy);border-bottom:1px solid var(--linha)}
+header .marca{font:24px 'Anton',Impact,sans-serif;letter-spacing:.5px}
+header .marca span{color:var(--lar)}
+header .aula{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+header a{color:#fff;opacity:.7;text-decoration:none}
+aside{background:var(--painel);overflow:auto;padding:12px}
+aside h3{font:16px 'Anton',Impact,sans-serif;letter-spacing:.5px;text-transform:uppercase;margin:16px 0 8px;color:var(--lar)}
+aside h3:first-child{margin-top:0}
+#esq{border-right:1px solid var(--linha)}
+#dir{border-left:1px solid var(--linha)}
+.grupo{margin-bottom:6px}
+.grupo>summary{cursor:pointer;font-weight:700;padding:6px 4px;border-radius:8px;list-style:none}
+.grupo>summary::before{content:'▸ ';color:var(--lar)}
+.grupo[open]>summary::before{content:'▾ '}
+.grupo>summary small{opacity:.6;font-weight:400}
+.aulaitem{padding:6px 8px 6px 14px;border-radius:8px;cursor:pointer;font-size:13px;line-height:1.3}
+.aulaitem:hover{background:var(--linha)}
+.aulaitem.atual{background:var(--lar)}
+.aulaitem .tipos{display:flex;gap:4px;margin-top:4px}
+.aulaitem .tipos button{padding:2px 7px;font-size:11px;border-radius:6px;background:var(--navy)}
+.aulaitem .tipos button.on{background:var(--lar)}
+.aulaitem.atual .tipos button.on{background:var(--navy)}
+#centro{display:flex;flex-direction:column;min-width:0;min-height:0}
+#palco{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:14px;position:relative}
+#tela{max-width:100%;max-height:100%;aspect-ratio:16/9;background:#000;border-radius:6px;box-shadow:0 0 0 1px var(--linha),0 10px 30px #0008;touch-action:none;cursor:crosshair}
+#tela.mover{cursor:move}
+#gravando{position:absolute;top:22px;left:50%;transform:translateX(-50%);background:#c00;color:#fff;font-weight:800;padding:4px 12px;border-radius:20px;display:none;align-items:center;gap:8px;pointer-events:none}
+#gravando.on{display:flex}
+#gravando.pausa{background:#a60}
+#gravando i{width:10px;height:10px;border-radius:50%;background:#fff;animation:pisca 1s infinite}
+@keyframes pisca{50%{opacity:.2}}
+#contagem{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font:180px 'Anton',Impact,sans-serif;color:var(--lar);text-shadow:0 6px 30px #000;pointer-events:none}
+#contagem.on{display:flex}
+#barra{display:flex;align-items:center;gap:8px;padding:8px 14px 12px;flex-wrap:wrap}
+#barra .sep{width:1px;height:28px;background:var(--linha);margin:0 4px}
+#barra .cor{width:28px;height:28px;padding:0;border-radius:50%;border:3px solid transparent}
+#barra .cor.on{border-color:#fff}
+#pagina{min-width:70px;text-align:center;opacity:.85}
+.cenas{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cenas button{padding:10px 6px;text-align:left}
+.cenas button small{display:block;opacity:.6;font-weight:400;font-size:11px}
+.cantos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+#gravar{width:100%;padding:14px;font-size:17px;background:#c00}
+#gravar.gravando{background:#555}
+.linha2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+#tempo{font:34px 'Anton',Impact,sans-serif;text-align:center;letter-spacing:1px;margin:6px 0 2px}
+#infogr{text-align:center;opacity:.7;font-size:12px;min-height:18px}
+#vu{height:8px;border-radius:4px;background:var(--navy);overflow:hidden;margin-top:6px}
+#vu i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3c3,#fc3 70%,#f33)}
+#cola{width:100%;border-radius:6px;display:block;background:#fff}
+.dica{background:var(--navy);border-radius:10px;padding:10px;font-size:12px;opacity:.9;margin-top:8px}
+.dica b{color:var(--lar)}
+kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
+#vazio{padding:8px 4px;opacity:.85}
+#vazio button{width:100%;margin-top:8px;background:var(--lar)}
+.hide{display:none!important}
+#modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:8}
+#modal .caixa{background:var(--navy);border:1px solid var(--linha);border-radius:18px;padding:24px 28px;max-width:440px;text-align:center;position:relative}
+#modal h2{font:30px 'Anton',Impact,sans-serif;margin:0 0 14px}
+#modal h2 span{color:var(--lar)}
+#modal #qr{background:#fff;border-radius:12px;padding:12px;width:280px;height:280px;margin:0 auto}
+#modal #qr svg{width:100%;height:100%}
+#modal .fechar{position:absolute;right:10px;top:10px;background:none;font-size:18px}
+#modal .link{font-size:12px;opacity:.8;word-break:break-all}
+#modal .peer{font-size:12px;color:var(--lar)}
+.aparelho{display:flex;align-items:center;gap:8px;background:var(--navy);border-radius:10px;padding:8px 10px;margin-top:6px;font-size:13px}
+.aparelho b{flex:1}
+.aparelho small{opacity:.7}
+#celular{display:none;position:fixed;inset:0;background:var(--navy);padding:30px;text-align:center;font-size:18px;z-index:9}
+@media (max-width:900px){#celular{display:block}}
+</style>
+</head>
+<body>
+<div id="celular"><p style="font:32px 'Anton',Impact,sans-serif">ESTÚDIO</p><p>O estúdio de gravação funciona no <b>computador</b> (Chrome ou Edge).<br>No celular, use o gravador de Reels do app.</p><p><a href="./" style="color:#FF7A00">← Voltar ao app</a></p></div>
+<div id="app">
+  <header>
+    <div class="marca">ESTÚDIO <span>DELMÃO</span></div>
+    <div class="aula" id="nomeaula">Escolha uma aula na lista ao lado</div>
+    <a href="./">← App</a>
+  </header>
+
+  <aside id="esq">
+    <h3>Aulas</h3>
+    <div id="vazio">
+      Aponte uma vez para a pasta <b>Gerador de Aulas\PDFs</b>. As aulas <b>não saem do seu computador</b>.
+      <button id="escolherpasta">📁 Escolher pasta das aulas</button>
+      <button id="reabrir" class="hide">🔓 Abrir as aulas de novo</button>
+      <input id="pastainput" type="file" webkitdirectory multiple class="hide">
+    </div>
+    <div id="busca" class="hide">
+      <input id="filtro" type="search" placeholder="Buscar aula (ex.: 05, equação, MB12)">
+      <div style="display:flex;gap:6px;margin-top:6px"><button id="trocarpasta" style="flex:1;font-size:12px">Trocar pasta</button><button id="avulso" style="flex:1;font-size:12px">PDF avulso</button></div>
+      <input id="avulsoinput" type="file" accept="application/pdf" class="hide">
+    </div>
+    <div id="lista" style="margin-top:10px"></div>
+  </aside>
+
+  <section id="centro">
+    <div id="palco">
+      <canvas id="tela" width="1920" height="1080"></canvas>
+      <div id="gravando"><i></i><span>GRAVANDO</span></div>
+      <div id="contagem">3</div>
+    </div>
+    <div id="barra">
+      <button id="ant" title="Slide anterior (←)">◀</button>
+      <span id="pagina">–</span>
+      <button id="prox" title="Próximo slide (→ ou espaço)">▶</button>
+      <span class="sep"></span>
+      <button data-ferr="caneta" class="on" title="Caneta (P)">✏️ Caneta</button>
+      <button data-ferr="marca" title="Marca-texto (M)">🖍️</button>
+      <button data-ferr="laser" title="Laser (L)">🔴 Laser</button>
+      <button data-ferr="borracha" title="Borracha (E)">🧽</button>
+      <span class="sep"></span>
+      <button class="cor on" data-cor="#FF7A00" style="background:#FF7A00" title="Laranja"></button>
+      <button class="cor" data-cor="#0F1B2D" style="background:#0F1B2D;outline:1px solid #456" title="Navy"></button>
+      <button class="cor" data-cor="#D62828" style="background:#D62828" title="Vermelho"></button>
+      <button class="cor" data-cor="#1E9E4A" style="background:#1E9E4A" title="Verde"></button>
+      <button class="cor" data-cor="#1F6FEB" style="background:#1F6FEB" title="Azul"></button>
+      <select id="espessura" style="width:auto" title="Espessura"><option value="4">fina</option><option value="7" selected>média</option><option value="12">grossa</option></select>
+      <span class="sep"></span>
+      <button id="desfazer" title="Desfazer (Ctrl+Z)">↶</button>
+      <button id="limpar" title="Limpar o slide (Delete)">🗑️</button>
+    </div>
+  </section>
+
+  <aside id="dir">
+    <h3>Gravação</h3>
+    <button id="gravar">⏺ Gravar</button>
+    <div class="linha2"><button id="pausar" disabled>⏸ Pausar</button><button id="parar" disabled>⏹ Parar</button></div>
+    <div id="tempo">00:00:00</div>
+    <div id="infogr"></div>
+    <div class="dica" id="pastarecbox">📁 Pasta das gravações: <b id="pastarecnome">pergunta a cada gravação</b>
+      <button id="pastarec" style="width:100%;margin-top:6px;font-size:12px">Escolher pasta das gravações</button></div>
+
+    <h3>Celular e tablet</h3>
+    <button id="conectar" style="width:100%;background:var(--lar)">📱 Conectar aparelho</button>
+    <div id="aparelhos"></div>
+    <div style="margin-top:8px">Atraso do som <b id="atrasoval">0 ms</b> <input id="atraso" type="range" min="0" max="400" step="10" value="0"></div>
+    <div class="dica">Usando o celular como câmera, a imagem chega um pouquinho depois. Se a boca ficar fora do som, aumente o atraso (em geral 100 a 200 ms).</div>
+
+    <h3>Cena</h3>
+    <div class="cenas">
+      <button data-cena="camera">🎥 Câmera <small>tecla 1</small></button>
+      <button data-cena="slide" class="on">📄 Slide <small>tecla 2</small></button>
+      <button data-cena="quadro">📝 Quadro <small>tecla 3</small></button>
+      <button data-cena="tela">🖥️ Tela <small>tecla 4</small></button>
+      <button data-cena="vinheta" style="grid-column:1/-1">⭐ Vinheta (abertura/fim) <small>tecla 5</small></button>
+    </div>
+
+    <h3>Câmera</h3>
+    <select id="selcam"></select>
+    <label class="ck"><input id="camvis" type="checkbox" checked> Mostrar câmera no canto <kbd>C</kbd></label>
+    <label class="ck"><input id="espelho" type="checkbox" checked> Espelhar</label>
+    <div style="display:flex;gap:6px">
+      <select id="formato"><option value="circulo">Círculo</option><option value="ret" selected>Retângulo</option></select>
+    </div>
+    <div style="margin-top:8px">Tamanho <input id="tamanho" type="range" min="12" max="45" value="24"></div>
+    <div class="cantos">
+      <button data-canto="se">↖ Canto</button><button data-canto="sd">Canto ↗</button>
+      <button data-canto="ie">↙ Canto</button><button data-canto="id" class="on">Canto ↘</button>
+    </div>
+    <div class="dica">Também dá para <b>arrastar a câmera</b> com o botão direito do mouse.</div>
+
+    <h3>Microfone</h3>
+    <select id="selmic"></select>
+    <div id="vu"><i></i></div>
+    <label class="ck"><input id="ruido" type="checkbox"> Reduzir ruído</label>
+    <label class="ck"><input id="voz" type="checkbox" checked> Melhorar voz</label>
+    <label class="ck"><input id="somtela" type="checkbox" checked> Gravar o som da tela compartilhada</label>
+
+    <h3>Vídeo</h3>
+    <label class="ck"><input id="marcadagua" type="checkbox" checked> @DELMAOSIMPLIFICA no canto</label>
+    <label class="ck"><input id="faixa" type="checkbox" checked> Faixa com o nome da aula na cena Câmera</label>
+    <select id="qualidade"><option value="1080">1080p (YouTube, recomendado)</option><option value="720">720p (arquivo menor)</option></select>
+
+    <h3 id="titcola">Cola do professor</h3>
+    <div id="colabox">
+      <canvas id="cola" width="640" height="360"></canvas>
+      <div class="dica" id="colainfo">Abra a versão <b>Aluno</b>: aqui aparece a resolução do mesmo slide, só para você. <b>Não entra no vídeo.</b></div>
+    </div>
+
+    <h3>Atalhos</h3>
+    <div class="dica" style="line-height:1.8">
+      <kbd>→</kbd> <kbd>espaço</kbd> próximo · <kbd>←</kbd> anterior<br>
+      <kbd>1</kbd>–<kbd>5</kbd> cenas · <kbd>C</kbd> câmera<br>
+      <kbd>P</kbd> caneta · <kbd>M</kbd> marca-texto · <kbd>L</kbd> laser · <kbd>E</kbd> borracha<br>
+      <kbd>Ctrl+Z</kbd> desfazer · <kbd>Delete</kbd> limpar slide<br>
+      <kbd>G</kbd> gravar / pausar
+    </div>
+  </aside>
+</div>
+<div id="modal" class="hide">
+  <div class="caixa">
+    <button id="fecharmodal" class="fechar">✕</button>
+    <h2>CONECTAR <span>APARELHO</span></h2>
+    <div id="qr"></div>
+    <p>Aponte a câmera do <b>celular</b> ou do <b>tablet</b> para o código.<br>Os dois precisam estar no <b>mesmo Wi-Fi</b>.</p>
+    <p class="link">ou abra: <code id="linkaparelho"></code></p>
+    <p id="estadopeer" class="peer"></p>
+  </div>
+</div>
+<script src="vendor/peerjs.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script type="module" src="estudio.js"></script>
+</body>
+</html>

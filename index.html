@@ -18,6 +18,8 @@
 body{margin:0;background:var(--creme);color:var(--navy);font:16px/1.4 'Open Sans',system-ui,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 header{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;font:26px 'Anton',Impact,sans-serif;letter-spacing:.5px}
 header span{color:var(--lar)}
+#linkestudio{display:none;float:right;font:700 15px 'Open Sans',sans-serif;color:#fff;background:var(--lar);padding:6px 12px;border-radius:10px;text-decoration:none;margin-top:2px}
+@media (min-width:900px) and (pointer:fine){#linkestudio{display:inline-block}}
 main{padding:16px;max-width:640px;margin:0 auto}
 h2{font:30px 'Anton',Impact,sans-serif;text-transform:uppercase;margin:6px 0 12px}
 h2 span{color:var(--lar)}
@@ -104,7 +106,7 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
 </style>
 </head>
 <body>
-<header>@DELMAO<span>SIMPLIFICA</span></header>
+<header>@DELMAO<span>SIMPLIFICA</span><a id="linkestudio" href="estudio.html">🎬 Estúdio de gravação</a></header>
 <main>
   <div id="status" hidden></div>
 

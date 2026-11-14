@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0F1B2D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Estúdio · Aparelho</title>
+<link rel="icon" href="icone-192.png">
+<style>
+@font-face{font-family:'Anton';src:url('fontes/Anton-Regular.ttf')}
+@font-face{font-family:'Open Sans';font-weight:300 900;src:url('fontes/OpenSans.ttf')}
+:root{--navy:#0F1B2D;--lar:#FF7A00;--fundo:#0B1422;--linha:#24385A}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+body{background:var(--fundo);color:#fff;font:16px/1.4 'Open Sans',system-ui,sans-serif;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:10px 14px;background:var(--linha);color:#fff;cursor:pointer;touch-action:manipulation}
+button.on{background:var(--lar)}
+button:disabled{opacity:.4}
+.tela{position:fixed;inset:0;display:flex;flex-direction:column}
+.hide{display:none!important}
+/* início */
+#inicio{align-items:center;justify-content:center;padding:24px;text-align:center;gap:14px}
+#inicio h1{font:34px 'Anton',Impact,sans-serif;margin:0;letter-spacing:.5px}
+#inicio h1 span{color:var(--lar)}
+#inicio .modo{width:min(420px,100%);padding:18px;font-size:19px;text-align:left;display:flex;gap:14px;align-items:center}
+#inicio .modo small{display:block;font-weight:400;font-size:13px;opacity:.75}
+#inicio .modo i{font-style:normal;font-size:34px}
+#status{font-size:14px;opacity:.85;min-height:20px}
+#status.erro{color:#ff8f8f;opacity:1}
+/* câmera */
+#cam{background:#000}
+#cam video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
+#cam .barra{display:flex;gap:8px;padding:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom));flex-wrap:wrap;justify-content:center;background:var(--navy)}
+#camaviso{position:absolute;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#000a;padding:6px 14px;border-radius:20px;font-size:14px;white-space:nowrap}
+#cam.escuro video{opacity:0}
+/* mesa */
+#mesa .topo,#mesa .base{display:flex;gap:6px;align-items:center;padding:6px 8px;background:var(--navy);flex-wrap:wrap}
+#mesa .topo{padding-top:calc(6px + env(safe-area-inset-top))}
+#mesa .base{padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+#mesa .esp{flex:1}
+#mesa .palco{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+#quadro{background:#fff;touch-action:none;border-radius:4px}
+#mesa .cor{width:34px;height:34px;padding:0;border-radius:50%;border:3px solid transparent}
+#mesa .cor.on{border-color:#fff}
+#mesa .tempo{font:22px 'Anton',Impact,sans-serif;letter-spacing:1px;min-width:92px;text-align:center}
+#mesa .rec{background:#c00}
+#mesa .rec.on{background:#555}
+#pg{min-width:64px;text-align:center;font-size:14px;opacity:.85}
+#msg{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--lar);color:#fff;padding:8px 14px;border-radius:12px;font-weight:700;max-width:90%;text-align:center;pointer-events:none}
+#contagem{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:160px 'Anton',Impact,sans-serif;color:var(--lar);text-shadow:0 6px 30px #000;pointer-events:none}
+#cenas{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;background:var(--navy);padding:8px;border-radius:12px;box-shadow:0 6px 20px #0008;z-index:3}
+#desconectado{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-weight:700;z-index:4}
+</style>
+</head>
+<body>
+<section id="inicio" class="tela">
+  <h1>ESTÚDIO <span>DELMÃO</span></h1>
+  <div id="status">Conectando ao PC…</div>
+  <button class="modo" id="modocam"><i>📷</i><span>Usar como câmera<small>O celular vira a webcam do vídeo. Deite o celular (horizontal).</small></span></button>
+  <button class="modo" id="modomesa"><i>✍️</i><span>Usar como mesa de escrever<small>Escreva no slide com a caneta do tablet, passe os slides e grave daqui.</small></span></button>
+</section>
+
+<section id="cam" class="tela hide">
+  <video id="camvideo" autoplay playsinline muted></video>
+  <div id="camaviso">Conectando…</div>
+  <div class="barra">
+    <button id="trocacam">🔄 Trocar câmera</button>
+    <button id="qualcam">1080p</button>
+    <button id="escurecer">🌙 Apagar prévia</button>
+    <button id="sairdocam">✕ Sair</button>
+  </div>
+</section>
+
+<section id="mesa" class="tela hide">
+  <div class="topo">
+    <button id="mant">◀</button><span id="pg">–</span><button id="mprox">▶</button>
+    <span class="esp" id="mtitulo" style="font-size:13px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
+    <button id="mcenas">🎬 Cena</button>
+    <button id="mcamvis">🎥</button>
+    <span class="tempo" id="mtempo">00:00:00</span>
+    <button id="mgravar" class="rec">⏺</button>
+    <button id="mpausar" disabled>⏸</button>
+    <button id="mparar" disabled>⏹</button>
+  </div>
+  <div class="palco">
+    <canvas id="quadro"></canvas>
+    <div id="cenas" class="hide">
+      <button data-cena="camera">🎥 Câmera</button>
+      <button data-cena="slide">📄 Slide</button>
+      <button data-cena="quadro">📝 Quadro</button>
+      <button data-cena="tela">🖥️ Tela</button>
+      <button data-cena="vinheta">⭐ Vinheta</button>
+    </div>
+    <div id="msg" class="hide"></div>
+    <div id="contagem" class="hide"></div>
+    <div id="desconectado" class="hide">Conexão com o PC caiu. Tentando de novo…</div>
+  </div>
+  <div class="base">
+    <button data-f="caneta" class="on">✏️</button>
+    <button data-f="marca">🖍️</button>
+    <button data-f="laser">🔴</button>
+    <button data-f="borracha">🧽</button>
+    <button class="cor on" data-cor="#FF7A00" style="background:#FF7A00"></button>
+    <button class="cor" data-cor="#0F1B2D" style="background:#0F1B2D;outline:1px solid #456"></button>
+    <button class="cor" data-cor="#D62828" style="background:#D62828"></button>
+    <button class="cor" data-cor="#1E9E4A" style="background:#1E9E4A"></button>
+    <button class="cor" data-cor="#1F6FEB" style="background:#1F6FEB"></button>
+    <button id="mesp">média</button>
+    <span class="esp"></span>
+    <button id="mdedo" title="Escrever com o dedo">☝️ Dedo</button>
+    <button id="mdesfazer">↶</button>
+    <button id="mlimpar">🗑️</button>
+  </div>
+</section>
+<script src="vendor/peerjs.min.js"></script>
+<script src="aparelho.js"></script>
+</body>
+</html>

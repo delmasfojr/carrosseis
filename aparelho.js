@@ -1,0 +1,345 @@
+/* Aparelho do Estúdio: celular como câmera ou tablet como mesa de escrever.
+   Abre por aparelho.html#código (QR code mostrado no PC). */
+(() => {
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const W = 1920, H = 1080;
+const codigo = (location.hash.slice(1) || '').replace(/[^a-z0-9]/g, '');
+const pcId = 'delmao-estudio-' + codigo;
+
+const ua = navigator.userAgent;
+const ehIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+const nome = ehIpad ? 'iPad' : /iPhone/.test(ua) ? 'iPhone'
+  : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Celular Android' : 'Tablet Android') : 'Aparelho';
+
+let peer = null, conn = null, modo = null, chamada = null;
+
+function status(t, erro) { const s = $('#status'); s.textContent = t; s.classList.toggle('erro', !!erro); }
+function mostrar(id) { $$('.tela').forEach(t => t.classList.toggle('hide', t.id !== id)); }
+
+/* tela sempre acesa enquanto usa */
+let trava = null;
+async function manterAcesa() { try { trava = await navigator.wakeLock?.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && modo) manterAcesa(); });
+
+function ligarPeer() {
+  return new Promise(ok => {
+    if (peer && !peer.destroyed && peer.open) return ok(true);
+    peer = new Peer({debug: 0});
+    peer.on('open', () => ok(true));
+    peer.on('error', e => {
+      if (e.type === 'peer-unavailable') status('O Estúdio não está aberto no PC (ou o código mudou). Abra o Estúdio e leia o QR code de novo.', true);
+      else status('Erro de conexão: ' + e.type, true);
+      ok(false);
+    });
+    peer.on('disconnected', () => setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 1500));
+  });
+}
+
+function conectar(tipo) {
+  return new Promise(ok => {
+    conn = peer.connect(pcId, {metadata: {tipo, nome}, reliable: true});
+    let feito = false;
+    conn.on('open', () => { feito = true; ok(true); });
+    conn.on('data', receber);
+    conn.on('close', () => caiu());
+    conn.on('error', () => caiu());
+    setTimeout(() => { if (!feito) ok(false); }, 12000);
+  });
+}
+
+let religando = false;
+async function caiu() {
+  if (religando || !modo) return;
+  religando = true;
+  $('#desconectado').classList.remove('hide');
+  $('#camaviso').textContent = 'Conexão caiu. Tentando de novo…';
+  while (modo) {
+    await new Promise(r => setTimeout(r, 2500));
+    if (!(await ligarPeer())) continue;
+    if (await conectar(modo)) {
+      if (modo === 'camera') ligarChamada();
+      break;
+    }
+  }
+  $('#desconectado').classList.add('hide');
+  religando = false;
+}
+
+/* =====================================================================
+   CÂMERA
+   ===================================================================== */
+let camStream = null, frente = false, alta = true;
+async function abrirCamera() {
+  const novo = await navigator.mediaDevices.getUserMedia({audio: false, video: {
+    facingMode: frente ? 'user' : 'environment',
+    width: {ideal: alta ? 1920 : 1280}, height: {ideal: alta ? 1080 : 720}, frameRate: {ideal: 30}}});
+  const velho = camStream;
+  camStream = novo;
+  $('#camvideo').srcObject = novo;
+  $('#camvideo').style.transform = frente ? 'scaleX(-1)' : '';
+  const t = novo.getVideoTracks()[0];
+  t.contentHint = 'motion';
+  const sender = chamada?.peerConnection?.getSenders().find(s => s.track && s.track.kind === 'video');
+  if (sender) { await sender.replaceTrack(t); qualidade(); }
+  velho?.getTracks().forEach(x => x.stop());
+  const s = t.getSettings();
+  $('#qualcam').textContent = (s.height ? Math.min(s.width, s.height) : (alta ? 1080 : 720)) + 'p';
+}
+function ligarChamada() {
+  chamada = peer.call(pcId, camStream, {metadata: {nome}});
+  $('#camaviso').textContent = 'Conectando a câmera…';
+  const pc = chamada.peerConnection;
+  pc.addEventListener('connectionstatechange', () => {
+    if (pc.connectionState === 'connected') { $('#camaviso').textContent = '✅ Câmera ligada no PC'; qualidade(); }
+    if (pc.connectionState === 'failed') { $('#camaviso').textContent = 'Não conectou. O celular e o PC estão no mesmo Wi-Fi?'; }
+  });
+  chamada.on('close', () => caiu());
+}
+async function qualidade() { // bitrate alto: no Wi-Fi de casa dá para mandar a imagem quase sem perda
+  const s = chamada?.peerConnection?.getSenders().find(x => x.track && x.track.kind === 'video');
+  if (!s) return;
+  try {
+    const p = s.getParameters();
+    if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+    p.encodings[0].maxBitrate = alta ? 8e6 : 4e6;
+    p.encodings[0].maxFramerate = 30;
+    p.degradationPreference = 'maintain-resolution';
+    await s.setParameters(p);
+  } catch (e) { console.warn(e); }
+}
+$('#modocam').onclick = async () => {
+  modo = 'camera';
+  status('Abrindo a câmera…');
+  try { await abrirCamera(); } catch (e) { status('A câmera não abriu: ' + e.message, true); modo = null; return; }
+  mostrar('cam');
+  manterAcesa();
+  if (!(await ligarPeer()) || !(await conectar('camera'))) { $('#camaviso').textContent = 'Não achei o Estúdio no PC.'; caiu(); return; }
+  ligarChamada();
+};
+$('#trocacam').onclick = () => { frente = !frente; abrirCamera().catch(e => alert(e.message)); };
+$('#qualcam').onclick = () => { alta = !alta; abrirCamera().catch(e => alert(e.message)); };
+$('#escurecer').onclick = () => $('#cam').classList.toggle('escuro');
+$('#sairdocam').onclick = () => { modo = null; chamada?.close(); conn?.close(); camStream?.getTracks().forEach(t => t.stop()); trava?.release?.(); mostrar('inicio'); };
+
+/* =====================================================================
+   MESA DE ESCREVER
+   ===================================================================== */
+const cv = $('#quadro'), cx = cv.getContext('2d');
+let est = {cena: 'slide', pagina: 0, nPag: 0, gravando: false, pausado: false, tempo: 0, camvis: true, chave: ''};
+let tempoBase = 0, tempoEm = 0;
+let fundo = null, fundoChave = '', listaPC = [], listaChave = '';
+const minhas = new Map(); // traços meus ainda não confirmados pelo PC
+let ferr = 'caneta', cor = '#FF7A00', esp = 7, penViu = false, dedo = false;
+let atual = null, laser = [];
+let sujo = true;
+
+function receber(d) {
+  if (!d || typeof d !== 'object') return;
+  if (d.t === 'estado') {
+    const antes = est.chave;
+    est = {...est, ...d};
+    tempoBase = d.tempo || 0; tempoEm = performance.now();
+    if (est.chave !== antes) minhas.clear();
+    if (d.contagem) { const c = $('#contagem'); c.textContent = d.contagem; c.classList.remove('hide'); clearTimeout(c._t); c._t = setTimeout(() => c.classList.add('hide'), 900); }
+    atualizarTopo();
+    sujo = true;
+  } else if (d.t === 'fundo') {
+    fundoChave = d.chave;
+    if (!d.img) { fundo = null; sujo = true; return; }
+    createImageBitmap(new Blob([d.img], {type: 'image/jpeg'})).then(b => {
+      if (fundoChave !== d.chave) return;
+      fundo?.close?.(); fundo = b; sujo = true;
+    });
+  } else if (d.t === 'tracos') {
+    listaPC = d.lista || []; listaChave = d.chave;
+    const ids = new Set(listaPC.map(t => t.id));
+    for (const id of [...minhas.keys()]) if (ids.has(id) && minhas.get(id) !== atual) minhas.delete(id);
+    sujo = true;
+  } else if (d.t === 'msg') {
+    const m = $('#msg'); m.textContent = d.texto; m.classList.remove('hide');
+    clearTimeout(m._t); m._t = setTimeout(() => m.classList.add('hide'), 5000);
+    const a = $('#camaviso'); if (a) a.textContent = d.texto;
+  }
+}
+const fmt = ms => { const s = Math.floor(ms / 1000); return [s / 3600, s / 60 % 60, s % 60].map(v => String(Math.floor(v)).padStart(2, '0')).join(':'); };
+function atualizarTopo() {
+  $('#pg').textContent = est.cena === 'quadro' ? `Quadro ${est.qPag || 1}` : est.nPag ? `${est.pagina} / ${est.nPag}` : '–';
+  $('#mtitulo').textContent = est.aula || '';
+  $('#mgravar').disabled = est.gravando;
+  $('#mgravar').classList.toggle('on', est.gravando);
+  $('#mpausar').disabled = !est.gravando; $('#mparar').disabled = !est.gravando;
+  $('#mpausar').textContent = est.pausado ? '▶' : '⏸';
+  $('#mcamvis').classList.toggle('on', !!est.camvis);
+  $$('#cenas [data-cena]').forEach(b => b.classList.toggle('on', b.dataset.cena === est.cena));
+  if (!est.gravando) $('#mtempo').textContent = '00:00:00';
+}
+setInterval(() => {
+  if (est.gravando) $('#mtempo').textContent = fmt(tempoBase + (est.pausado ? 0 : performance.now() - tempoEm));
+}, 250);
+
+function ajustar() {
+  const p = $('#mesa .palco');
+  const w = p.clientWidth - 8, h = p.clientHeight - 8;
+  const e = Math.max(1, Math.min(w / 16, h / 9));
+  const cw = Math.round(16 * e), ch = Math.round(9 * e), dpr = Math.min(2, devicePixelRatio || 1);
+  cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
+  cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+  sujo = true;
+}
+window.addEventListener('resize', ajustar);
+
+const grade = (() => {
+  const c = document.createElement('canvas'); c.width = 960; c.height = 540;
+  const g = c.getContext('2d');
+  g.fillStyle = '#FFF6E6'; g.fillRect(0, 0, 960, 540);
+  g.strokeStyle = '#EADCC3'; g.lineWidth = 1;
+  for (let x = 0; x <= 960; x += 30) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 540); g.stroke(); }
+  for (let y = 0; y <= 540; y += 30) { g.beginPath(); g.moveTo(0, y); g.lineTo(960, y); g.stroke(); }
+  return c;
+})();
+
+function tracar(t) {
+  const p = t.pts;
+  if (!p.length) return;
+  cx.save();
+  cx.lineCap = cx.lineJoin = 'round';
+  cx.strokeStyle = cx.fillStyle = t.cor;
+  cx.lineWidth = t.esp;
+  if (t.tipo === 'marca') { cx.globalAlpha = .35; cx.lineCap = 'square'; }
+  if (p.length === 1) { cx.beginPath(); cx.arc(p[0][0], p[0][1], t.esp / 2, 0, 7); cx.fill(); }
+  else {
+    cx.beginPath(); cx.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length - 1; i++) cx.quadraticCurveTo(p[i][0], p[i][1], (p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2);
+    cx.lineTo(p[p.length - 1][0], p[p.length - 1][1]);
+    cx.stroke();
+  }
+  cx.restore();
+}
+function desenhar() {
+  requestAnimationFrame(desenhar);
+  if (modo !== 'mesa') return;
+  if (!sujo && !laser.length) return;
+  sujo = false;
+  cx.setTransform(1, 0, 0, 1, 0, 0);
+  const e = cv.width / W;
+  cx.fillStyle = '#0F1B2D'; cx.fillRect(0, 0, cv.width, cv.height);
+  const podeRiscar = ['slide', 'quadro', 'tela'].includes(est.cena);
+  if (est.cena === 'quadro') cx.drawImage(grade, 0, 0, cv.width, cv.height);
+  else if ((est.cena === 'slide' || est.cena === 'tela') && fundo) cx.drawImage(fundo, 0, 0, cv.width, cv.height);
+  else {
+    cx.fillStyle = '#fff'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.font = `${Math.round(cv.height / 12)}px Anton, Impact, sans-serif`;
+    const t = {camera: 'CENA: CÂMERA', vinheta: 'CENA: VINHETA', slide: est.nPag ? 'CARREGANDO…' : 'ABRA UMA AULA NO PC', tela: 'CARREGANDO A TELA…'}[est.cena] || '';
+    cx.fillText(t, cv.width / 2, cv.height / 2);
+    cx.font = `${Math.round(cv.height / 28)}px "Open Sans", sans-serif`; cx.fillStyle = '#FF7A00';
+    if (!podeRiscar) cx.fillText('Toque em 🎬 Cena para voltar ao slide ou ao quadro', cv.width / 2, cv.height / 2 + cv.height / 10);
+  }
+  if (podeRiscar) {
+    cx.setTransform(e, 0, 0, e, 0, 0);
+    if (listaChave === est.chave) for (const t of listaPC) tracar(t);
+    for (const t of minhas.values()) tracar(t);
+    // laser
+    const agora = performance.now();
+    laser = laser.filter(p => agora - p[2] < 700);
+    if (laser.length) {
+      cx.lineCap = 'round';
+      for (let i = 1; i < laser.length; i++) {
+        const a = laser[i - 1], b = laser[i];
+        const v = 1 - (agora - b[2]) / 700;
+        cx.strokeStyle = `rgba(255,40,40,${v * .8})`; cx.lineWidth = 6 + 10 * v;
+        cx.beginPath(); cx.moveTo(a[0], a[1]); cx.lineTo(b[0], b[1]); cx.stroke();
+      }
+      const u = laser[laser.length - 1];
+      cx.fillStyle = '#ff3030'; cx.beginPath(); cx.arc(u[0], u[1], 14, 0, 7); cx.fill();
+    }
+  }
+}
+requestAnimationFrame(desenhar);
+
+function ponto(ev) {
+  const r = cv.getBoundingClientRect();
+  return [Math.round((ev.clientX - r.left) / r.width * W), Math.round((ev.clientY - r.top) / r.height * H)];
+}
+const enviar = d => { if (conn && conn.open) conn.send(d); };
+let nTraco = 0;
+cv.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'pen') penViu = true;
+  if (e.pointerType === 'touch' && penViu && !dedo) return; // com caneta, a mão encostada não risca
+  if (!['slide', 'quadro', 'tela'].includes(est.cena)) return;
+  e.preventDefault();
+  cv.setPointerCapture(e.pointerId);
+  const p = ponto(e);
+  const f = (e.buttons & 32) ? 'borracha' : ferr;
+  if (f === 'borracha') { atual = {borracha: true}; enviar({t: 'apaga', pts: [p]}); return; }
+  if (f === 'laser') { atual = {laser: true}; laser.push([...p, performance.now()]); enviar({t: 'laser', pts: [p]}); return; }
+  const id = Math.random().toString(36).slice(2, 8) + (nTraco++);
+  atual = {id, tipo: f, cor, esp: f === 'marca' ? esp * 4 : esp, pts: [p], pid: e.pointerId};
+  minhas.set(id, atual);
+  enviar({t: 'ini', id, tipo: f, cor, esp, p});
+  sujo = true;
+});
+cv.addEventListener('pointermove', e => {
+  if (!atual) return;
+  e.preventDefault();
+  const novos = [];
+  for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) {
+    const p = ponto(ev);
+    if (atual.laser) { laser.push([...p, performance.now()]); novos.push(p); continue; }
+    if (atual.borracha) { novos.push(p); continue; }
+    const u = atual.pts[atual.pts.length - 1];
+    if (Math.hypot(p[0] - u[0], p[1] - u[1]) < 2) continue;
+    if (atual.tipo === 'marca' && atual.pts.length > 1) atual.pts[1] = p; else atual.pts.push(p);
+    novos.push(p);
+  }
+  if (!novos.length) return;
+  if (atual.laser) enviar({t: 'laser', pts: novos});
+  else if (atual.borracha) enviar({t: 'apaga', pts: novos});
+  else enviar({t: 'pts', id: atual.id, pts: novos});
+  sujo = true;
+});
+const soltar = () => { if (atual && atual.id) enviar({t: 'fim', id: atual.id}); atual = null; };
+cv.addEventListener('pointerup', soltar);
+cv.addEventListener('pointercancel', soltar);
+document.addEventListener('touchmove', e => e.preventDefault(), {passive: false}); // sem rolar/zoom sem querer
+
+const cmd = (c, v) => enviar({t: 'cmd', c, v});
+$('#mant').onclick = () => cmd('ant');
+$('#mprox').onclick = () => cmd('prox');
+$('#mdesfazer').onclick = () => cmd('desfazer');
+$('#mlimpar').onclick = () => cmd('limpar');
+$('#mcamvis').onclick = () => cmd('camvis');
+$('#mgravar').onclick = () => cmd('gravar');
+$('#mpausar').onclick = () => cmd('pausar');
+$('#mparar').onclick = () => { if (confirm('Parar a gravação?')) cmd('parar'); };
+$('#mcenas').onclick = () => $('#cenas').classList.toggle('hide');
+$$('#cenas [data-cena]').forEach(b => b.onclick = () => { cmd('cena', b.dataset.cena); $('#cenas').classList.add('hide'); });
+$$('[data-f]').forEach(b => b.onclick = () => { ferr = b.dataset.f; $$('[data-f]').forEach(x => x.classList.toggle('on', x === b)); });
+$$('#mesa .cor').forEach(b => b.onclick = () => {
+  cor = b.dataset.cor; $$('#mesa .cor').forEach(x => x.classList.toggle('on', x === b));
+  if (ferr === 'laser' || ferr === 'borracha') $('[data-f=caneta]').click();
+});
+const ESP = [[4, 'fina'], [7, 'média'], [12, 'grossa']];
+$('#mesp').onclick = () => { const i = (ESP.findIndex(x => x[0] === esp) + 1) % ESP.length; esp = ESP[i][0]; $('#mesp').textContent = ESP[i][1]; };
+$('#mdedo').onclick = () => { dedo = !dedo; $('#mdedo').classList.toggle('on', dedo); };
+
+$('#modomesa').onclick = async () => {
+  modo = 'mesa';
+  status('Conectando…');
+  if (!(await ligarPeer()) || !(await conectar('mesa'))) { modo = null; if (!$('#status').classList.contains('erro')) status('Não achei o Estúdio no PC. Ele está aberto?', true); return; }
+  mostrar('mesa');
+  ajustar();
+  manterAcesa();
+  try { await document.documentElement.requestFullscreen?.(); } catch (e) {}
+  setTimeout(ajustar, 300);
+};
+
+/* início */
+if (!codigo) {
+  status('Abra esta página pelo QR code do Estúdio, no PC.', true);
+  $('#modocam').disabled = $('#modomesa').disabled = true;
+} else {
+  ligarPeer().then(ok => { if (ok) status(`Pronto para conectar (${nome}). Escolha:`); });
+}
+window.aparelho = {get est() { return est; }, get modo() { return modo; }, get conn() { return conn; }};
+})();
