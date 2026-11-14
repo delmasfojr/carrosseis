@@ -50,6 +50,7 @@ button:disabled{opacity:.4}
 #msg{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--lar);color:#fff;padding:8px 14px;border-radius:12px;font-weight:700;max-width:90%;text-align:center;pointer-events:none}
 #contagem{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:160px 'Anton',Impact,sans-serif;color:var(--lar);text-shadow:0 6px 30px #000;pointer-events:none}
 #cenas{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;background:var(--navy);padding:8px;border-radius:12px;box-shadow:0 6px 20px #0008;z-index:3}
+#formas{position:absolute;left:8px;bottom:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--navy);padding:8px;border-radius:12px;box-shadow:0 6px 20px #0008;z-index:3}
 #desconectado{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-weight:700;z-index:4}
 </style>
 </head>
@@ -92,6 +93,12 @@ button:disabled{opacity:.4}
       <button data-cena="tela">🖥️ Tela</button>
       <button data-cena="vinheta">⭐ Vinheta</button>
     </div>
+    <div id="formas" class="hide">
+      <button data-forma="reta" class="on">／ Reta</button><button data-forma="seta">➜ Seta</button>
+      <button data-forma="circulo">◯ Círculo</button><button data-forma="elipse">⬭ Elipse</button>
+      <button data-forma="ret">▭ Retângulo</button><button data-forma="tri">△ Triângulo</button>
+      <button data-forma="eixos">✛ Eixos</button>
+    </div>
     <div id="msg" class="hide"></div>
     <div id="contagem" class="hide"></div>
     <div id="desconectado" class="hide">Conexão com o PC caiu. Tentando de novo…</div>
@@ -101,6 +108,7 @@ button:disabled{opacity:.4}
     <button data-f="marca">🖍️</button>
     <button data-f="laser">🔴</button>
     <button data-f="borracha">🧽</button>
+    <button data-f="forma">📐</button>
     <button class="cor on" data-cor="#FF7A00" style="background:#FF7A00"></button>
     <button class="cor" data-cor="#0F1B2D" style="background:#0F1B2D;outline:1px solid #456"></button>
     <button class="cor" data-cor="#D62828" style="background:#D62828"></button>
@@ -114,6 +122,6 @@ button:disabled{opacity:.4}
   </div>
 </section>
 <script src="vendor/peerjs.min.js"></script>
-<script src="aparelho.js"></script>
+<script type="module" src="aparelho.js"></script>
 </body>
 </html>

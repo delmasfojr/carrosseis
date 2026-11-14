@@ -2,6 +2,7 @@
    Slides do PDF (lidos da pasta do professor, sem sair do computador) + caneta + câmera no canto
    + compartilhar tela, tudo montado num canvas 1920×1080 que é gravado com o MediaRecorder. */
 import * as pdfjs from './vendor/pdfjs/pdf.min.mjs';
+import {desenharTraco, contorno, reconhecer, formaArrasto, novoId, limparCache} from './tinta.js';
 pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
 
 const W = 1920, H = 1080;
@@ -12,7 +13,7 @@ const tela = $('#tela'), ctx = tela.getContext('2d');
 
 /* ---------- preferências (só neste computador) ---------- */
 const PREF_PADRAO = {cor: LAR, esp: 7, formato: 'ret', tam: 24, canto: 'id', pos: null, espelho: true, camvis: true,
-  marcadagua: true, voz: true, ruido: false, somtela: true, qualidade: '1080', cam: '', mic: '', faixa: true};
+  marcadagua: true, forma: 'reta', contorno: true, lembrar: false, voz: true, ruido: false, somtela: true, qualidade: '1080', cam: '', mic: '', faixa: true};
 let pref = {...PREF_PADRAO};
 try { Object.assign(pref, JSON.parse(localStorage.getItem('estudio-pref') || '{}')); } catch (e) {}
 const salvarPref = () => { try { localStorage.setItem('estudio-pref', JSON.stringify(pref)); } catch (e) {} };
@@ -162,6 +163,7 @@ function mostrarLista() {
 async function iniciarPasta() {
   if (!('showDirectoryPicker' in window)) return; // navegador sem acesso a pastas: usa o input
   try {
+    if (!pref.lembrar) { await kv('pasta', null); return; }
     const h = await kv('pasta');
     if (!h) return;
     if (await h.queryPermission({mode: 'read'}) === 'granted') await lerPasta(h);
@@ -173,7 +175,8 @@ $('#escolherpasta').onclick = $('#trocarpasta').onclick = async () => {
   if (!('showDirectoryPicker' in window)) return $('#pastainput').click();
   try {
     const h = await window.showDirectoryPicker({id: 'estudio-aulas', mode: 'read'});
-    await kv('pasta', h);
+    await kv('pasta', pref.lembrar ? h : null);
+    pastaAtual = h;
     $('#reabrir').classList.add('hide');
     await lerPasta(h);
   } catch (e) { if (e.name !== 'AbortError') alert('Não consegui abrir a pasta: ' + e.message); }
@@ -183,6 +186,29 @@ $('#reabrir').onclick = async () => {
   if (h && await h.requestPermission({mode: 'read'}) === 'granted') { $('#reabrir').classList.add('hide'); lerPasta(h); }
 };
 $('#pastainput').onchange = e => lerArquivosSoltos([...e.target.files]);
+let pastaAtual = null;
+$('#lembrar').onchange = async e => {
+  pref.lembrar = e.target.checked; salvarPref();
+  await kv('pasta', pref.lembrar ? pastaAtual : null).catch(() => {});
+  if (!pref.lembrar) { try { localStorage.removeItem('estudio-ultima'); localStorage.removeItem('estudio-pag'); } catch (er) {} }
+};
+/* fecha tudo: some a lista, o slide e o que estava riscado; o navegador esquece a pasta */
+$('#fecharaulas').onclick = async () => {
+  if (gravador) return alert('Pare a gravação antes de fechar as aulas.');
+  grupos = new Map(); aula = null; tipoAberto = null; pastaAtual = null;
+  if (doc) { doc.destroy(); doc = null; }
+  if (docCola) { docCola.destroy(); docCola = null; }
+  for (const b of cache.values()) b.close?.();
+  cache.clear(); anot.clear(); hist.clear(); nPag = 0; pagina = 1;
+  pref.lembrar = false; salvarPref(); $('#lembrar').checked = false;
+  await kv('pasta', null).catch(() => {});
+  try { localStorage.removeItem('estudio-ultima'); localStorage.removeItem('estudio-pag'); } catch (er) {}
+  $('#lista').innerHTML = ''; $('#filtro').value = '';
+  $('#busca').classList.add('hide'); $('#vazio').classList.remove('hide'); $('#reabrir').classList.add('hide');
+  $('#nomeaula').textContent = 'Aulas fechadas. Escolha a pasta para abrir de novo.';
+  const c = $('#cola'); c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  atualizarPagina(); sujar(); enviarFundo();
+};
 $('#filtro').oninput = mostrarLista;
 $('#avulso').onclick = () => $('#avulsoinput').click();
 $('#avulsoinput').onchange = e => {
@@ -215,7 +241,7 @@ async function abrirAula(a, tipo) {
     mostrarLista();
     if (cena !== 'slide' && cena !== 'quadro') trocarCena('slide');
     irPara(pagina);
-    try { localStorage.setItem('estudio-ultima', JSON.stringify({grupo: a.grupo, base: a.base, tipo})); } catch (e) {}
+    if (pref.lembrar) try { localStorage.setItem('estudio-ultima', JSON.stringify({grupo: a.grupo, base: a.base, tipo})); } catch (e) {}
   } catch (e) {
     console.error(e);
     $('#nomeaula').textContent = 'Não consegui abrir: ' + a.base;
@@ -281,7 +307,7 @@ function irPara(n) {
   enviarFundo();
   desenharCola().catch(e => console.warn(e));
   sujar();
-  try {
+  if (pref.lembrar) try {
     const m = JSON.parse(localStorage.getItem('estudio-pag') || '{}');
     m[chaveAula()] = pagina;
     localStorage.setItem('estudio-pag', JSON.stringify(m));
@@ -312,31 +338,10 @@ let suja = true;
 const sujar = () => { suja = true; tracosMudou = true; };
 let tracosMudou = false;
 
-function tracar(cx, t) {
-  const p = t.pts;
-  if (!p.length) return;
-  cx.save();
-  cx.lineCap = cx.lineJoin = 'round';
-  cx.strokeStyle = cx.fillStyle = t.cor;
-  cx.lineWidth = t.esp;
-  if (t.tipo === 'marca') { cx.globalAlpha = .35; cx.lineCap = 'square'; }
-  if (p.length === 1) {
-    cx.beginPath(); cx.arc(p[0][0], p[0][1], t.esp / 2, 0, 7); cx.fill();
-  } else {
-    cx.beginPath(); cx.moveTo(p[0][0], p[0][1]);
-    for (let i = 1; i < p.length - 1; i++) {
-      const mx = (p[i][0] + p[i + 1][0]) / 2, my = (p[i][1] + p[i + 1][1]) / 2;
-      cx.quadraticCurveTo(p[i][0], p[i][1], mx, my);
-    }
-    const u = p[p.length - 1];
-    cx.lineTo(u[0], u[1]);
-    cx.stroke();
-  }
-  cx.restore();
-}
 function redesenharCamada() {
   ccx.clearRect(0, 0, W, H);
-  for (const t of tracos()) tracar(ccx, t);
+  for (const t of tracos()) desenharTraco(ccx, t);
+  limparCache();
   suja = false;
 }
 
@@ -353,11 +358,26 @@ function distSeg(px, py, a, b) {
 function apagarEm(x, y) {
   const ts = tracos();
   for (let i = ts.length - 1; i >= 0; i--) {
-    const p = ts[i].pts, raio = 18 + ts[i].esp / 2;
+    const p = contorno(ts[i]), raio = 18 + ts[i].esp / 2;
     const toca = p.length === 1 ? Math.hypot(x - p[0][0], y - p[0][1]) < raio
       : p.some((q, j) => j > 0 && distSeg(x, y, p[j - 1], q) < raio);
     if (toca) { historico().push({del: ts[i], i}); ts.splice(i, 1); sujar(); }
   }
+}
+
+/* segurar a caneta parada no fim do traço vira forma (reta, círculo, retângulo, triângulo, seta) */
+let seguraTimer = null;
+function armarForma(t) {
+  clearTimeout(seguraTimer);
+  if (!t || t.tipo === 'forma' || t.formado) return;
+  seguraTimer = setTimeout(() => {
+    if (atual !== t) return;
+    const f = reconhecer(t.pts);
+    if (!f) return;
+    t.tipo = 'forma'; t.f = f; t.formado = true;
+    if (t.esp > pref.esp * 2) t.esp = pref.esp * 2; // marca-texto vira forma de traço normal
+    sujar();
+  }, 550);
 }
 
 let atual = null, arrasto = null;
@@ -375,7 +395,13 @@ tela.addEventListener('pointerdown', e => {
   const f = (e.buttons & 32) ? 'borracha' : ferr; // ponta de borracha da caneta da mesa
   if (f === 'borracha') { atual = {borracha: true}; apagarEm(x, y); return; }
   if (f === 'laser') { atual = {laser: true}; laser.push([x, y, performance.now()]); return; }
-  atual = {tipo: f, cor: pref.cor, esp: f === 'marca' ? pref.esp * 4 : pref.esp, pts: [[x, y]]};
+  const pr = e.pointerType === 'pen';
+  if (f === 'forma') {
+    atual = {id: novoId(), tipo: 'forma', cor: pref.cor, esp: pref.esp, pts: [[x, y]], ini: [x, y], f: formaArrasto(pref.forma, [x, y], [x + 1, y + 1])};
+  } else {
+    atual = {id: novoId(), tipo: f, cor: pref.cor, esp: f === 'marca' ? pref.esp * 4 : pref.esp, pr, pts: [[x, y, pr ? e.pressure : .5]]};
+    armarForma(atual);
+  }
   tracos().push(atual);
   historico().push({add: atual});
   sujar();
@@ -392,17 +418,23 @@ tela.addEventListener('pointermove', e => {
     const [x, y] = pontoNaTela(ev);
     if (atual.borracha) apagarEm(x, y);
     else if (atual.laser) laser.push([x, y, performance.now()]);
+    else if (atual.ini) atual.f = formaArrasto(pref.forma, atual.ini, [x, y], ev.shiftKey);
+    else if (atual.formado) { if (atual.f.k === 'reta') atual.f = formaArrasto('reta', atual.f.a, [x, y], true); }
     else {
       const u = atual.pts[atual.pts.length - 1];
       if (Math.hypot(x - u[0], y - u[1]) < 1.5) continue;
-      if (atual.tipo === 'marca' && atual.pts.length > 1) { // marca-texto anda reto: só guarda o último ponto
-        atual.pts[1] = [x, y];
-      } else atual.pts.push([x, y]);
+      atual.pts.push([x, y, atual.pr ? ev.pressure : .5]);
+      if (Math.hypot(x - u[0], y - u[1]) > 3) armarForma(atual);
     }
   }
   sujar();
 });
-const soltar = () => { if (arrasto) { arrasto = null; tela.classList.remove('mover'); salvarPref(); } atual = null; };
+const soltar = () => {
+  if (arrasto) { arrasto = null; tela.classList.remove('mover'); salvarPref(); }
+  clearTimeout(seguraTimer);
+  if (atual && atual.pts) { atual.fim = true; delete atual.ini; sujar(); }
+  atual = null;
+};
 tela.addEventListener('pointerup', soltar);
 tela.addEventListener('pointercancel', soltar);
 
@@ -429,6 +461,7 @@ function escolherFerr(f) {
   $$('[data-ferr]').forEach(b => b.classList.toggle('on', b.dataset.ferr === f));
 }
 $$('[data-ferr]').forEach(b => b.onclick = () => escolherFerr(b.dataset.ferr));
+$('#forma').onchange = e => { pref.forma = e.target.value; salvarPref(); escolherFerr('forma'); };
 $$('.cor').forEach(b => b.onclick = () => {
   pref.cor = b.dataset.cor; salvarPref();
   $$('.cor').forEach(c => c.classList.toggle('on', c === b));
@@ -472,13 +505,15 @@ async function abrirTela() {
 /* ---------- câmera no canto ---------- */
 function retCam() {
   if (!pref.camvis || !camFonte || !camFonte.w || !['slide', 'quadro', 'tela'].includes(cena)) return null;
-  const w = W * pref.tam / 100;
-  const h = pref.formato === 'circulo' ? w : w * 9 / 16;
+  const rec = usandoRecorte();
+  const w = W * pref.tam / 100 * (rec ? 1.3 : 1);
+  const h = pref.formato === 'circulo' ? w : rec ? w * recorte.height / recorte.width : w * 9 / 16;
   const m = 36;
   let cx, cy;
   if (pref.canto) {
     cx = pref.canto[1] === 'e' ? m + w / 2 : W - m - w / 2;
-    cy = pref.canto[0] === 's' ? m + h / 2 : H - m - h / 2;
+    // o recorte fica encostado na borda de baixo, como o mascote
+    cy = pref.canto[0] === 's' ? m + h / 2 : rec ? H - h / 2 : H - m - h / 2;
   } else { cx = pref.pos.x; cy = pref.pos.y; }
   cx = Math.min(Math.max(cx, w / 2), W - w / 2);
   cy = Math.min(Math.max(cy, h / 2), H - h / 2);
@@ -496,9 +531,96 @@ function desenharCover(cx, f, x, y, w, h, espelho) {
   else cx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
   cx.restore();
 }
+/* ---------- recorte: só a pessoa, sem o cenário (MediaPipe, roda no próprio PC) ---------- */
+let segmentador = null, carregandoSeg = false, segFalhou = false, recortePronto = false, ultimoSeg = 0, mascaraAnt = null;
+const corCam = document.createElement('canvas'), ctxCor = corCam.getContext('2d', {willReadFrequently: false});
+const recorte = document.createElement('canvas'), ctxRecorte = recorte.getContext('2d');
+const branco = document.createElement('canvas'), ctxBranco = branco.getContext('2d');
+const mascara = document.createElement('canvas'), ctxMascara = mascara.getContext('2d');
+recorte.width = 16; recorte.height = 9;
+const usandoRecorte = () => pref.formato === 'recorte' && recortePronto && !segFalhou;
+function recorteInfo(t) { $('#recorteinfo').textContent = t; $('#recorteinfo').classList.toggle('hide', !t); }
+async function carregarSeg() {
+  if (segmentador || carregandoSeg || segFalhou) return;
+  carregandoSeg = true;
+  recorteInfo('Carregando o recorte (só na primeira vez demora um pouco)…');
+  try {
+    const {FilesetResolver, ImageSegmenter} = await import('./vendor/mediapipe/vision_bundle.mjs');
+    const fs = await FilesetResolver.forVisionTasks(new URL('vendor/mediapipe/wasm', location.href).href);
+    const criar = delegate => ImageSegmenter.createFromOptions(fs, {
+      baseOptions: {modelAssetPath: new URL('vendor/mediapipe/selfie_segmenter_landscape.tflite', location.href).href, delegate},
+      runningMode: 'VIDEO', outputCategoryMask: false, outputConfidenceMasks: true});
+    segmentador = await criar('GPU').catch(() => criar('CPU'));
+    recorteInfo('');
+  } catch (e) {
+    console.error(e);
+    segFalhou = true;
+    recorteInfo('O recorte não funcionou neste computador (' + e.message + '). Usando a câmera normal.');
+  }
+  carregandoSeg = false;
+}
+function atualizarRecorte() {
+  if (pref.formato !== 'recorte' || !camFonte || !camFonte.img || !camFonte.w) return;
+  const precisa = cena === 'camera' || (pref.camvis && ['slide', 'quadro', 'tela'].includes(cena));
+  if (!precisa) return;
+  if (!segmentador) { carregarSeg(); return; }
+  const agora = performance.now();
+  if (agora - ultimoSeg < 30) return;
+  ultimoSeg = agora;
+  const cw = Math.min(1280, camFonte.w), ch = Math.round(cw * camFonte.h / camFonte.w);
+  if (corCam.width !== cw || corCam.height !== ch) { corCam.width = recorte.width = branco.width = cw; corCam.height = recorte.height = branco.height = ch; }
+  ctxCor.drawImage(camFonte.img, 0, 0, cw, ch);
+  try {
+    segmentador.segmentForVideo(corCam, agora, r => {
+      const m = r.confidenceMasks && r.confidenceMasks[0];
+      if (!m) return;
+      const arr = m.getAsFloat32Array(), mw = m.width, mh = m.height;
+      if (mascara.width !== mw || mascara.height !== mh) { mascara.width = mw; mascara.height = mh; mascaraAnt = null; }
+      const img = ctxMascara.createImageData(mw, mh), d = img.data;
+      if (!mascaraAnt || mascaraAnt.length !== arr.length) mascaraAnt = new Float32Array(arr.length);
+      for (let i = 0; i < arr.length; i++) {
+        const v = mascaraAnt[i] = mascaraAnt[i] * .35 + arr[i] * .65; // suaviza o tremido entre quadros
+        const a = Math.max(0, Math.min(1, (v - .3) / .4));
+        d[i * 4 + 3] = a * 255;
+      }
+      ctxMascara.putImageData(img, 0, 0);
+    });
+  } catch (e) { console.warn(e); return; }
+  ctxRecorte.globalCompositeOperation = 'copy';
+  ctxRecorte.drawImage(corCam, 0, 0);
+  ctxRecorte.globalCompositeOperation = 'destination-in';
+  ctxRecorte.filter = 'blur(2px)';
+  ctxRecorte.drawImage(mascara, 0, 0, cw, ch);
+  ctxRecorte.filter = 'none';
+  ctxRecorte.globalCompositeOperation = 'source-over';
+  if (pref.contorno) { // silhueta branca para o contorno "adesivo"
+    ctxBranco.globalCompositeOperation = 'copy';
+    ctxBranco.drawImage(recorte, 0, 0);
+    ctxBranco.globalCompositeOperation = 'source-in';
+    ctxBranco.fillStyle = '#fff'; ctxBranco.fillRect(0, 0, cw, ch);
+    ctxBranco.globalCompositeOperation = 'source-over';
+  }
+  recortePronto = true;
+}
+function desenharRecorte(x, y, w, h) {
+  ctx.save();
+  if (pref.espelho) { ctx.translate(x + w, y); ctx.scale(-1, 1); x = 0; y = 0; }
+  if (pref.contorno) {
+    const r = Math.max(4, w / 110);
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2;
+      ctx.drawImage(branco, x + Math.cos(a) * r, y + Math.sin(a) * r, w, h);
+    }
+  }
+  ctx.shadowColor = '#0006'; ctx.shadowBlur = pref.contorno ? 0 : 18;
+  ctx.drawImage(recorte, x, y, w, h);
+  ctx.restore();
+}
+
 function desenharPip() {
   const r = retCam();
   if (!r) return;
+  if (usandoRecorte()) { desenharRecorte(r.x, r.y, r.w, r.h); return; }
   ctx.save();
   ctx.beginPath();
   if (pref.formato === 'circulo') ctx.arc(r.x + r.w / 2, r.y + r.h / 2, r.w / 2, 0, 7);
@@ -518,6 +640,7 @@ $$('[data-canto]').forEach(b => b.onclick = () => { pref.canto = b.dataset.canto
 $('#tamanho').oninput = e => { pref.tam = +e.target.value; salvarPref(); };
 $('#formato').onchange = e => { pref.formato = e.target.value; salvarPref(); };
 $('#espelho').onchange = e => { pref.espelho = e.target.checked; salvarPref(); };
+$('#contornocam').onchange = e => { pref.contorno = e.target.checked; salvarPref(); };
 $('#camvis').onchange = e => { pref.camvis = e.target.checked; salvarPref(); };
 $('#marcadagua').onchange = e => { pref.marcadagua = e.target.checked; salvarPref(); };
 $('#faixa').onchange = e => { pref.faixa = e.target.checked; salvarPref(); };
@@ -628,6 +751,7 @@ function textoCentro(t, sub) {
 }
 
 function desenhar() {
+  try { atualizarRecorte(); } catch (e) { console.warn(e); }
   ctx.save();
   if (cena === 'slide') {
     const b = doc && cache.get(pagina);
@@ -643,7 +767,12 @@ function desenhar() {
       ctx.drawImage(f.img, (W - w) / 2, (H - h) / 2, w, h);
     }
   } else if (cena === 'camera') {
-    if (camFonte && camFonte.img) desenharCover(ctx, camFonte, 0, 0, W, H, pref.espelho);
+    if (camFonte && camFonte.img && usandoRecorte()) { // fundo da marca + só o professor
+      ctx.drawImage(quadriculado, 0, 0);
+      ctx.fillStyle = LAR; ctx.fillRect(0, H - 34, W, 34);
+      const h = H * .96, w = h * recorte.width / recorte.height;
+      desenharRecorte((W - w) / 2, H - h, w, h);
+    } else if (camFonte && camFonte.img) desenharCover(ctx, camFonte, 0, 0, W, H, pref.espelho);
     else textoCentro('CÂMERA DESLIGADA', 'confira a câmera no painel à direita');
     desenharFaixa();
   } else if (cena === 'vinheta') desenharVinheta();
@@ -935,6 +1064,7 @@ document.addEventListener('keydown', e => {
   else if (k.toLowerCase() === 'c') { pref.camvis = !pref.camvis; $('#camvis').checked = pref.camvis; salvarPref(); }
   else if (k.toLowerCase() === 'p') escolherFerr('caneta');
   else if (k.toLowerCase() === 'm') escolherFerr('marca');
+  else if (k.toLowerCase() === 'f') escolherFerr('forma');
   else if (k.toLowerCase() === 'l') escolherFerr('laser');
   else if (k.toLowerCase() === 'e') escolherFerr('borracha');
   else if (k === 'Delete' || k === 'Backspace') limparSlide();
@@ -954,6 +1084,9 @@ new ResizeObserver(ajustar).observe($('#palco'));
 
 function aplicarPref() {
   $('#espessura').value = pref.esp;
+  $('#forma').value = pref.forma;
+  $('#lembrar').checked = pref.lembrar;
+  $('#contornocam').checked = pref.contorno;
   $$('.cor').forEach(c => c.classList.toggle('on', c.dataset.cor === pref.cor));
   $('#formato').value = pref.formato; $('#tamanho').value = pref.tam;
   $('#espelho').checked = pref.espelho; $('#camvis').checked = pref.camvis;

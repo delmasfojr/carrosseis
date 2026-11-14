@@ -1,5 +1,6 @@
 /* Aparelho do Estúdio: celular como câmera ou tablet como mesa de escrever.
    Abre por aparelho.html#código (QR code mostrado no PC). */
+import {desenharTraco, reconhecer, formaArrasto, novoId} from './tinta.js';
 (() => {
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -70,10 +71,34 @@ async function caiu() {
    CÂMERA
    ===================================================================== */
 let camStream = null, frente = false, alta = true;
+function explicarErro(e) {
+  const n = e && e.name;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+    return 'Este navegador não deixa usar a câmera. Se abriu pelo leitor de QR code, toque nos três pontinhos e escolha "Abrir no Chrome" (ou no Safari, no iPhone).';
+  if (n === 'NotAllowedError' || n === 'SecurityError')
+    return 'A câmera foi bloqueada. Toque no cadeado ao lado do endereço → Permissões → Câmera → Permitir, e tente de novo. Se abriu pelo leitor de QR code, abra no Chrome (ou Safari).';
+  if (n === 'NotReadableError' || n === 'AbortError' || n === 'TrackStartError')
+    return 'A câmera está ocupada por outro app (por exemplo, o app da câmera que leu o QR code). Feche os outros apps e tente de novo.';
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'Não encontrei essa câmera. Toque em "Trocar câmera".';
+  return 'A câmera não abriu: ' + (e && e.message || n || 'erro desconhecido');
+}
+async function pedirCamera() {
+  // do mais exigente ao mais simples: alguns celulares recusam 1080p ou a câmera de trás com resolução fixa
+  const tentativas = [
+    {facingMode: frente ? 'user' : 'environment', width: {ideal: alta ? 1920 : 1280}, height: {ideal: alta ? 1080 : 720}, frameRate: {ideal: 30}},
+    {facingMode: frente ? 'user' : 'environment'},
+    true,
+  ];
+  let ultimo = null;
+  for (const v of tentativas) {
+    try { return await navigator.mediaDevices.getUserMedia({audio: false, video: v}); }
+    catch (e) { ultimo = e; if (e.name === 'NotAllowedError' || e.name === 'SecurityError') break; }
+  }
+  throw ultimo;
+}
 async function abrirCamera() {
-  const novo = await navigator.mediaDevices.getUserMedia({audio: false, video: {
-    facingMode: frente ? 'user' : 'environment',
-    width: {ideal: alta ? 1920 : 1280}, height: {ideal: alta ? 1080 : 720}, frameRate: {ideal: 30}}});
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('sem câmera');
+  const novo = await pedirCamera();
   const velho = camStream;
   camStream = novo;
   $('#camvideo').srcObject = novo;
@@ -111,14 +136,15 @@ async function qualidade() { // bitrate alto: no Wi-Fi de casa dá para mandar a
 $('#modocam').onclick = async () => {
   modo = 'camera';
   status('Abrindo a câmera…');
-  try { await abrirCamera(); } catch (e) { status('A câmera não abriu: ' + e.message, true); modo = null; return; }
+  try { await abrirCamera(); }
+  catch (e) { status(explicarErro(e), true); modo = null; $('#modocam').querySelector('small').textContent = 'Toque aqui para tentar de novo.'; return; }
   mostrar('cam');
   manterAcesa();
   if (!(await ligarPeer()) || !(await conectar('camera'))) { $('#camaviso').textContent = 'Não achei o Estúdio no PC.'; caiu(); return; }
   ligarChamada();
 };
-$('#trocacam').onclick = () => { frente = !frente; abrirCamera().catch(e => alert(e.message)); };
-$('#qualcam').onclick = () => { alta = !alta; abrirCamera().catch(e => alert(e.message)); };
+$('#trocacam').onclick = () => { frente = !frente; abrirCamera().catch(e => alert(explicarErro(e))); };
+$('#qualcam').onclick = () => { alta = !alta; abrirCamera().catch(e => alert(explicarErro(e))); };
 $('#escurecer').onclick = () => $('#cam').classList.toggle('escuro');
 $('#sairdocam').onclick = () => { modo = null; chamada?.close(); conn?.close(); camStream?.getTracks().forEach(t => t.stop()); trava?.release?.(); mostrar('inicio'); };
 
@@ -199,23 +225,6 @@ const grade = (() => {
   return c;
 })();
 
-function tracar(t) {
-  const p = t.pts;
-  if (!p.length) return;
-  cx.save();
-  cx.lineCap = cx.lineJoin = 'round';
-  cx.strokeStyle = cx.fillStyle = t.cor;
-  cx.lineWidth = t.esp;
-  if (t.tipo === 'marca') { cx.globalAlpha = .35; cx.lineCap = 'square'; }
-  if (p.length === 1) { cx.beginPath(); cx.arc(p[0][0], p[0][1], t.esp / 2, 0, 7); cx.fill(); }
-  else {
-    cx.beginPath(); cx.moveTo(p[0][0], p[0][1]);
-    for (let i = 1; i < p.length - 1; i++) cx.quadraticCurveTo(p[i][0], p[i][1], (p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2);
-    cx.lineTo(p[p.length - 1][0], p[p.length - 1][1]);
-    cx.stroke();
-  }
-  cx.restore();
-}
 function desenhar() {
   requestAnimationFrame(desenhar);
   if (modo !== 'mesa') return;
@@ -237,8 +246,8 @@ function desenhar() {
   }
   if (podeRiscar) {
     cx.setTransform(e, 0, 0, e, 0, 0);
-    if (listaChave === est.chave) for (const t of listaPC) tracar(t);
-    for (const t of minhas.values()) tracar(t);
+    if (listaChave === est.chave) for (const t of listaPC) desenharTraco(cx, t);
+    for (const t of minhas.values()) desenharTraco(cx, t);
     // laser
     const agora = performance.now();
     laser = laser.filter(p => agora - p[2] < 700);
@@ -259,10 +268,26 @@ requestAnimationFrame(desenhar);
 
 function ponto(ev) {
   const r = cv.getBoundingClientRect();
-  return [Math.round((ev.clientX - r.left) / r.width * W), Math.round((ev.clientY - r.top) / r.height * H)];
+  return [Math.round((ev.clientX - r.left) / r.width * W), Math.round((ev.clientY - r.top) / r.height * H),
+    ev.pointerType === 'pen' ? Math.round((ev.pressure || .5) * 100) / 100 : .5];
+}
+/* segurar parado no fim do traço vira forma */
+let seguraTimer = null, formaSel = 'reta';
+function armarForma(t) {
+  clearTimeout(seguraTimer);
+  if (!t || t.tipo === 'forma') return;
+  seguraTimer = setTimeout(() => {
+    if (atual !== t) return;
+    const f = reconhecer(t.pts);
+    if (!f) return;
+    t.tipo = 'forma'; t.f = f; t.formado = true;
+    if (t.esp > 40) t.esp = Math.round(t.esp / 4);
+    enviar({t: 'forma', id: t.id, f});
+    if (navigator.vibrate) navigator.vibrate(15);
+    sujo = true;
+  }, 550);
 }
 const enviar = d => { if (conn && conn.open) conn.send(d); };
-let nTraco = 0;
 cv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'pen') penViu = true;
   if (e.pointerType === 'touch' && penViu && !dedo) return; // com caneta, a mão encostada não risca
@@ -273,10 +298,16 @@ cv.addEventListener('pointerdown', e => {
   const f = (e.buttons & 32) ? 'borracha' : ferr;
   if (f === 'borracha') { atual = {borracha: true}; enviar({t: 'apaga', pts: [p]}); return; }
   if (f === 'laser') { atual = {laser: true}; laser.push([...p, performance.now()]); enviar({t: 'laser', pts: [p]}); return; }
-  const id = Math.random().toString(36).slice(2, 8) + (nTraco++);
-  atual = {id, tipo: f, cor, esp: f === 'marca' ? esp * 4 : esp, pts: [p], pid: e.pointerId};
+  const id = novoId();
+  const pr = e.pointerType === 'pen';
+  if (f === 'forma') {
+    atual = {id, tipo: 'forma', cor, esp, pts: [p], ini: p, f: formaArrasto(formaSel, p, [p[0] + 1, p[1] + 1])};
+  } else {
+    atual = {id, tipo: f, cor, esp: f === 'marca' ? esp * 4 : esp, pr, pts: [p]};
+    armarForma(atual);
+  }
   minhas.set(id, atual);
-  enviar({t: 'ini', id, tipo: f, cor, esp, p});
+  enviar({t: 'ini', id, tipo: f, cor, esp, pr, p, f: atual.f || null});
   sujo = true;
 });
 cv.addEventListener('pointermove', e => {
@@ -287,18 +318,26 @@ cv.addEventListener('pointermove', e => {
     const p = ponto(ev);
     if (atual.laser) { laser.push([...p, performance.now()]); novos.push(p); continue; }
     if (atual.borracha) { novos.push(p); continue; }
+    if (atual.ini) { atual.f = formaArrasto(formaSel, atual.ini, p); continue; }
+    if (atual.formado) { if (atual.f.k === 'reta') atual.f = formaArrasto('reta', atual.f.a, p, true); continue; }
     const u = atual.pts[atual.pts.length - 1];
     if (Math.hypot(p[0] - u[0], p[1] - u[1]) < 2) continue;
-    if (atual.tipo === 'marca' && atual.pts.length > 1) atual.pts[1] = p; else atual.pts.push(p);
+    atual.pts.push(p);
+    if (Math.hypot(p[0] - u[0], p[1] - u[1]) > 3) armarForma(atual);
     novos.push(p);
   }
+  if (atual.ini || atual.formado) { enviar({t: 'forma', id: atual.id, f: atual.f}); sujo = true; return; }
   if (!novos.length) return;
   if (atual.laser) enviar({t: 'laser', pts: novos});
   else if (atual.borracha) enviar({t: 'apaga', pts: novos});
   else enviar({t: 'pts', id: atual.id, pts: novos});
   sujo = true;
 });
-const soltar = () => { if (atual && atual.id) enviar({t: 'fim', id: atual.id}); atual = null; };
+const soltar = () => {
+  clearTimeout(seguraTimer);
+  if (atual && atual.id) { atual.fim = true; delete atual.ini; enviar({t: 'fim', id: atual.id}); sujo = true; }
+  atual = null;
+};
 cv.addEventListener('pointerup', soltar);
 cv.addEventListener('pointercancel', soltar);
 document.addEventListener('touchmove', e => e.preventDefault(), {passive: false}); // sem rolar/zoom sem querer
@@ -314,7 +353,15 @@ $('#mpausar').onclick = () => cmd('pausar');
 $('#mparar').onclick = () => { if (confirm('Parar a gravação?')) cmd('parar'); };
 $('#mcenas').onclick = () => $('#cenas').classList.toggle('hide');
 $$('#cenas [data-cena]').forEach(b => b.onclick = () => { cmd('cena', b.dataset.cena); $('#cenas').classList.add('hide'); });
-$$('[data-f]').forEach(b => b.onclick = () => { ferr = b.dataset.f; $$('[data-f]').forEach(x => x.classList.toggle('on', x === b)); });
+$$('[data-f]').forEach(b => b.onclick = () => {
+  ferr = b.dataset.f; $$('[data-f]').forEach(x => x.classList.toggle('on', x === b));
+  $('#formas').classList.toggle('hide', ferr !== 'forma');
+});
+$$('#formas [data-forma]').forEach(b => b.onclick = () => {
+  formaSel = b.dataset.forma;
+  $$('#formas [data-forma]').forEach(x => x.classList.toggle('on', x === b));
+  $('#formas').classList.add('hide');
+});
 $$('#mesa .cor').forEach(b => b.onclick = () => {
   cor = b.dataset.cor; $$('#mesa .cor').forEach(x => x.classList.toggle('on', x === b));
   if (ferr === 'laser' || ferr === 'borracha') $('[data-f=caneta]').click();

@@ -113,9 +113,12 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
       <button id="reabrir" class="hide">🔓 Abrir as aulas de novo</button>
       <input id="pastainput" type="file" webkitdirectory multiple class="hide">
     </div>
+    <label class="ck" style="font-size:12px;margin-top:8px"><input id="lembrar" type="checkbox"> Lembrar a pasta neste computador</label>
+    <div class="dica" style="margin-top:4px">🔒 As aulas <b>nunca vão para a internet</b>: só este navegador, neste computador, lê a pasta. Sem “lembrar”, ao fechar a aba o Estúdio esquece tudo.</div>
     <div id="busca" class="hide">
       <input id="filtro" type="search" placeholder="Buscar aula (ex.: 05, equação, MB12)">
       <div style="display:flex;gap:6px;margin-top:6px"><button id="trocarpasta" style="flex:1;font-size:12px">Trocar pasta</button><button id="avulso" style="flex:1;font-size:12px">PDF avulso</button></div>
+      <button id="fecharaulas" style="width:100%;margin-top:6px;font-size:12px">🔒 Fechar aulas (ao sair)</button>
       <input id="avulsoinput" type="file" accept="application/pdf" class="hide">
     </div>
     <div id="lista" style="margin-top:10px"></div>
@@ -136,6 +139,11 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
       <button data-ferr="marca" title="Marca-texto (M)">🖍️</button>
       <button data-ferr="laser" title="Laser (L)">🔴 Laser</button>
       <button data-ferr="borracha" title="Borracha (E)">🧽</button>
+      <button data-ferr="forma" title="Formas (F). Dica: com a caneta, segure parado no fim do traço e ele vira forma">📐</button>
+      <select id="forma" style="width:auto" title="Qual forma">
+        <option value="reta">Reta</option><option value="seta">Seta</option><option value="circulo">Círculo</option>
+        <option value="elipse">Elipse</option><option value="ret">Retângulo</option><option value="tri">Triângulo</option><option value="eixos">Eixos x e y</option>
+      </select>
       <span class="sep"></span>
       <button class="cor on" data-cor="#FF7A00" style="background:#FF7A00" title="Laranja"></button>
       <button class="cor" data-cor="#0F1B2D" style="background:#0F1B2D;outline:1px solid #456" title="Navy"></button>
@@ -177,8 +185,10 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
     <select id="selcam"></select>
     <label class="ck"><input id="camvis" type="checkbox" checked> Mostrar câmera no canto <kbd>C</kbd></label>
     <label class="ck"><input id="espelho" type="checkbox" checked> Espelhar</label>
+    <label class="ck" id="contornobox"><input id="contornocam" type="checkbox" checked> Contorno branco no recorte</label>
+    <div id="recorteinfo" class="dica hide"></div>
     <div style="display:flex;gap:6px">
-      <select id="formato"><option value="circulo">Círculo</option><option value="ret" selected>Retângulo</option></select>
+      <select id="formato"><option value="circulo">Círculo</option><option value="ret" selected>Retângulo</option><option value="recorte">Recorte (só você, sem o cenário)</option></select>
     </div>
     <div style="margin-top:8px">Tamanho <input id="tamanho" type="range" min="12" max="45" value="24"></div>
     <div class="cantos">

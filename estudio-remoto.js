@@ -142,8 +142,8 @@ function tracos(forcar) {
   const agora = performance.now();
   if (!forcar && agora - ultimosTracos < 70) return false;
   ultimosTracos = agora;
-  const lista = E.podeRiscar() ? E.tracos().map(t => ({id: t.id, tipo: t.tipo, cor: t.cor, esp: t.esp,
-    pts: t.pts.map(p => [Math.round(p[0]), Math.round(p[1])])})) : [];
+  const lista = E.podeRiscar() ? E.tracos().map(t => ({id: t.id, tipo: t.tipo, cor: t.cor, esp: t.esp, pr: !!t.pr, fim: !!t.fim,
+    f: t.f || null, pts: t.tipo === 'forma' ? [] : t.pts.map(p => [Math.round(p[0]), Math.round(p[1]), Math.round((p[2] ?? .5) * 100) / 100])})) : [];
   enviar({t: 'tracos', chave: E.chaveRisco(), lista});
   return true;
 }
@@ -155,8 +155,9 @@ function receber(conn, d) {
   switch (d.t) {
     case 'ini': {
       if (!E.podeRiscar()) return;
-      const t = {id: String(d.id), tipo: d.tipo === 'marca' ? 'marca' : 'caneta', cor: String(d.cor).slice(0, 9),
-        esp: Math.min(60, +d.esp || 7) * (d.tipo === 'marca' ? 4 : 1), pts: [[+d.p[0], +d.p[1]]]};
+      const tipo = ['marca', 'forma'].includes(d.tipo) ? d.tipo : 'caneta';
+      const t = {id: String(d.id), tipo, cor: String(d.cor).slice(0, 9), pr: !!d.pr,
+        esp: Math.min(60, +d.esp || 7) * (tipo === 'marca' ? 4 : 1), pts: [[+d.p[0], +d.p[1], +(d.p[2] ?? .5)]], f: forma(d.f)};
       E.tracos().push(t); E.historico().push({add: t});
       emCurso.set(t.id, t); E.sujar();
       break;
@@ -164,18 +165,39 @@ function receber(conn, d) {
     case 'pts': {
       const t = emCurso.get(String(d.id));
       if (!t || !Array.isArray(d.pts)) return;
-      for (const p of d.pts) {
-        if (t.tipo === 'marca' && t.pts.length > 1) t.pts[1] = [+p[0], +p[1]];
-        else t.pts.push([+p[0], +p[1]]);
-      }
+      for (const p of d.pts) t.pts.push([+p[0], +p[1], +(p[2] ?? .5)]);
       E.sujar();
       break;
     }
-    case 'fim': emCurso.delete(String(d.id)); tracos(true); break;
+    case 'forma': { // virou forma (segurou parado) ou a forma está sendo arrastada
+      const t = emCurso.get(String(d.id));
+      if (!t) return;
+      const f = forma(d.f);
+      if (!f) return;
+      t.tipo = 'forma'; t.f = f;
+      if (t.esp > 40) t.esp = Math.round(t.esp / 4);
+      E.sujar();
+      break;
+    }
+    case 'fim': {
+      const t = emCurso.get(String(d.id));
+      if (t) t.fim = true;
+      emCurso.delete(String(d.id)); E.sujar(); tracos(true); break;
+    }
     case 'laser': if (Array.isArray(d.pts)) for (const p of d.pts) E.laser([+p[0], +p[1], performance.now()]); break;
     case 'apaga': if (Array.isArray(d.pts)) for (const p of d.pts) E.apagarEm(+p[0], +p[1]); break;
     case 'cmd': comando(d.c, d.v); break;
   }
+}
+/* forma vinda do tablet: só números, só os tipos conhecidos */
+function forma(f) {
+  if (!f || typeof f !== 'object') return null;
+  const n = v => Number.isFinite(+v) ? +v : 0, pt = q => [n(q && q[0]), n(q && q[1])];
+  if (f.k === 'reta' || f.k === 'seta') return {k: f.k, a: pt(f.a), b: pt(f.b)};
+  if (f.k === 'elipse') return {k: 'elipse', cx: n(f.cx), cy: n(f.cy), rx: n(f.rx), ry: n(f.ry)};
+  if (f.k === 'ret' || f.k === 'eixos') return {k: f.k, x: n(f.x), y: n(f.y), w: n(f.w), h: n(f.h)};
+  if (f.k === 'poli' && Array.isArray(f.p)) return {k: 'poli', p: f.p.slice(0, 12).map(pt)};
+  return null;
 }
 function comando(c, v) {
   if (c === 'prox') E.proximo();
