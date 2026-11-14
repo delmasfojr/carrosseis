@@ -16,7 +16,7 @@ const Gravador = (() => {
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
-  const PADRAO = {legenda: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false};
+  const PADRAO = {legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false};
   const opcoes = () => {  // completa o que faltar SEM trocar o objeto (quem já tem a referência continua valendo)
     const op = item.edicao || (item.edicao = {});
     for (const [k, v] of Object.entries(PADRAO)) if (!(k in op)) op[k] = v;
@@ -286,6 +286,7 @@ const Gravador = (() => {
       await analisar(c);
       takes()[i] = c;
       try { await salvar(item); } catch (e) { alert('Não consegui guardar o take: ' + e.message); }
+      transcreverFundo(i);  // legenda pela voz real, sem travar a gravação
       const proximo = blocos.findIndex((_, k) => k > i && !takes()[k]);
       if (proximo > 0) await irPara(proximo);
       else if (blocos.every((_, k) => takes()[k])) abrirEditor(i);  // gravou tudo: vai para a edição
@@ -382,10 +383,10 @@ const Gravador = (() => {
     const s = (c.segs || []).map(([a, b]) => [Math.max(a, c.ini), Math.min(b, c.fim)]).filter(([a, b]) => b - a > 0.05);
     return s.length ? s : [[c.ini, c.fim]];
   };
-  function distribuir(texto, segs) {
-    // o professor leu o roteiro: espalha as palavras pelos trechos com voz, proporcional ao tamanho de cada palavra
-    const pal = String(texto).split(/\s+/).filter(Boolean);
-    const peso = pal.map(w => w.length + 2 + (/[.,!?…:;]$/.test(w) ? 4 : 0));
+  function distribuir(texto, segs, pesos) {
+    // espalha as palavras pelos trechos com voz, proporcional ao tamanho de cada palavra (ou aos pesos dados)
+    const pal = Array.isArray(texto) ? texto : String(texto).split(/\s+/).filter(Boolean);
+    const peso = pesos || pal.map(w => w.length + 2 + (/[.,!?…:;]$/.test(w) ? 4 : 0));
     const total = peso.reduce((a, b) => a + b, 0) || 1, voz = segs.reduce((a, s) => a + s[1] - s[0], 0);
     const tempo = x => {
       let resta = x * voz;
@@ -405,7 +406,121 @@ const Gravador = (() => {
     if (atual.length) grupos.push(atual);
     return grupos;
   }
-  const gruposDe = k => opcoes().legenda ? agrupar(distribuir(blocos[k].fala, cortados(takes()[k]))) : [];
+  const gruposDe = k => {
+    const c = takes()[k], op = opcoes();
+    if (!op.legenda) return [];
+    if (op.legendaVoz && c.transcricao && c.transcricao.length)
+      return agrupar(c.transcricao.filter(p => p.b > c.ini - 0.05 && p.a < c.fim));
+    const pal = String(blocos[k].fala).split(/\s+/).filter(Boolean);  // pelo roteiro: mesmo encaixe por frases
+    return agrupar(alinhar(pal, pal.map(w => w.length + 2), cortados(c)));
+  };
+
+  /* ---------------------------------------------------------------- legenda pela voz real (Gemini) */
+  // o áudio vai leve: mono, 16 kHz, WAV (10 s ≈ 320 KB)
+  async function wav16k(blob) {
+    const buf = await ac().decodeAudioData(await blob.arrayBuffer());
+    const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * 16000)), 16000);
+    const fonte = off.createBufferSource(); fonte.buffer = buf; fonte.connect(off.destination); fonte.start();
+    const d = (await off.startRendering()).getChannelData(0);
+    const out = new DataView(new ArrayBuffer(44 + d.length * 2));
+    const txt = (o, t) => [...t].forEach((ch, n) => out.setUint8(o + n, ch.charCodeAt(0)));
+    txt(0, 'RIFF'); out.setUint32(4, 36 + d.length * 2, true); txt(8, 'WAVE'); txt(12, 'fmt ');
+    out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true); out.setUint32(24, 16000, true);
+    out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); txt(36, 'data'); out.setUint32(40, d.length * 2, true);
+    for (let n = 0; n < d.length; n++) out.setInt16(44 + n * 2, Math.max(-1, Math.min(1, d[n])) * 32767, true);
+    return out.buffer;
+  }
+  function base64(buf) {
+    const b = new Uint8Array(buf); let t = '';
+    for (let n = 0; n < b.length; n += 0x8000) t += String.fromCharCode.apply(null, b.subarray(n, n + 0x8000));
+    return btoa(t);
+  }
+  const ESQ_T = {type: 'OBJECT', properties: {palavras: {type: 'ARRAY', items: {type: 'OBJECT',
+    properties: {palavra: {type: 'STRING'}, inicio: {type: 'NUMBER'}, fim: {type: 'NUMBER'}}, required: ['palavra', 'inicio', 'fim']}}},
+    required: ['palavras']};
+  const PROMPT_T = `Transcreva este áudio em português do Brasil, PALAVRA POR PALAVRA, exatamente como foi falado
+(inclusive repetições), com pontuação correta e todos os acentos. Para cada palavra, dê o instante em que ela começa
+e termina, em segundos (com duas casas decimais) contados do início do áudio.
+Números, porcentagens e contas: escreva como aparecem numa legenda de vídeo de matemática (ex.: "25%", "8", "1/4", "x²").
+Se não houver fala, devolva a lista vazia.`;
+  async function transcrever(k) {
+    const c = takes()[k];
+    const dados = base64(await wav16k(c.blob));
+    const corpo = JSON.stringify({
+      contents: [{parts: [{inlineData: {mimeType: 'audio/wav', data: dados}},
+        {text: PROMPT_T + `\n\nTexto que a pessoa pretendia ler (só como referência para a grafia de termos e números; ` +
+          `transcreva o que foi DE FATO falado): "${blocos[k].fala}"`}]}],
+      generationConfig: {responseMimeType: 'application/json', responseSchema: ESQ_T, temperature: 0},
+    });
+    const r = await chamarGemini(corpo, () => {});
+    c.transcricao = ajustarTempos((r.palavras || []).map(x => ({w: String(x.palavra || '').trim(), a: Number(x.inicio), b: Number(x.fim)})), c);
+    if (!c.corteManual && c.transcricao.length) {  // a transcrição sabe melhor onde a fala começa e termina
+      c.ini = Math.max(0, c.transcricao[0].a - 0.15);
+      c.fim = Math.min(c.dur, c.transcricao[c.transcricao.length - 1].b + 0.35);
+    }
+    await salvar(item);
+  }
+  // O Gemini acerta as PALAVRAS, mas o relógio dele costuma vir comprimido ou deslocado. Então: as palavras são dele,
+  // a duração relativa de cada uma também, e o tempo real vem dos trechos com voz medidos no próprio áudio
+  // (as pausas da fala ficam nos silêncios de verdade).
+  function ajustarTempos(pal, c) {
+    pal = pal.filter(p => p.w);
+    if (!pal.length) return [];
+    const voz = c.segs && c.segs.length ? c.segs : [[0, c.dur]];
+    const bons = pal.every(p => isFinite(p.a) && isFinite(p.b) && p.b > p.a);
+    const pesos = pal.map(p => bons ? Math.max(0.06, p.b - p.a) : p.w.length + 2);
+    const pausas = pal.map((p, n) => bons && n > 0 && p.a - pal[n - 1].b > 0.1 ? 1 : 0);
+    return alinhar(pal.map(p => p.w), pesos, voz, pausas);
+  }
+  /* Encaixa as frases nos trechos de voz: cada trecho entre pausas recebe um grupo de palavras seguidas.
+     Escolhe os pontos de quebra (de preferência em vírgula, ponto ou pausa) para que o tamanho de cada grupo
+     combine com a duração do trecho; dentro do trecho, as palavras se espalham pelos pesos. */
+  function alinhar(pal, pesos, segs, pausas) {
+    const n = pal.length, m = segs.length;
+    if (!n) return [];
+    if (m === 1) return distribuir(pal, segs, pesos);
+    const D = segs.map(s => s[1] - s[0]), pre = [0];
+    pesos.forEach(p => pre.push(pre[pre.length - 1] + p));
+    const escala = D.reduce((a, b) => a + b, 0) / pre[n];
+    const bonus = h => (/[.,!?…:;]$/.test(pal[h - 1]) ? 0.8 : 0) + (pausas && pausas[h] ? 0.5 : 0);
+    const custo = (h, i, j) => 2 * Math.log((escala * (pre[i] - pre[h]) + 0.15) / (D[j] + 0.15)) ** 2;
+    const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(Infinity)), de = dp.map(l => l.map(() => -1));
+    dp[0][0] = 0;
+    for (let j = 1; j <= m; j++) for (let i = 0; i <= n; i++) {
+      dp[j][i] = dp[j - 1][i] + 1.2; de[j][i] = i;  // trecho sem fala (barulho): pula
+      for (let h = 0; h < i; h++) {
+        const v = dp[j - 1][h] + custo(h, i, j - 1) - (h > 0 ? bonus(h) : 0);
+        if (v < dp[j][i]) { dp[j][i] = v; de[j][i] = h; }
+      }
+    }
+    const out = [];
+    for (let j = m, i = n; j > 0; j--) {
+      const h = de[j][i];
+      if (h < i) out.unshift(...distribuir(pal.slice(h, i), [segs[j - 1]], pesos.slice(h, i)));
+      i = h;
+    }
+    return out;
+  }
+  const transcrevendo = new Set();
+  async function transcreverFundo(k) {
+    if (!chave() || !opcoes().legendaVoz || transcrevendo.has(k)) return;
+    const c = takes()[k];
+    transcrevendo.add(k);
+    try { await transcrever(k); } catch (e) { c.erroTranscricao = e.message; }
+    finally {
+      transcrevendo.delete(k);
+      if (takes()[k] === c && !g('gedit').hidden) { desenharTimeline(); if (sel === k) selecionar(k); }
+    }
+  }
+  // texto da legenda corrigido à mão: mantém os tempos (mesmo nº de palavras) ou redistribui no mesmo trecho
+  function retemporizar(c, texto) {
+    const velhas = c.transcricao, novas = texto.split(/\s+/).filter(Boolean);
+    if (!novas.length) return [];
+    if (novas.length === velhas.length) return velhas.map((p, n) => ({...p, w: novas[n]}));
+    const a = velhas[0].a, b = velhas[velhas.length - 1].b;
+    const trechos = (c.segs || []).map(([x, y]) => [Math.max(x, a), Math.min(y, b)]).filter(([x, y]) => y - x > 0.05);
+    return distribuir(novas.join(' '), trechos.length ? trechos : [[a, b]]);
+  }
 
   /* ---------------------------------------------------------------- desenho de cada quadro */
   function cobrir(ctx, v, x, y, w, h) {
@@ -629,7 +744,7 @@ const Gravador = (() => {
     g('etl').innerHTML = blocos.map((b, k) => {
       const c = takes()[k];
       return `<button data-k="${k}" class="${k === sel ? 'at' : ''} ${c ? '' : 'falta'}" style="width:${Math.max(58, Math.round((c ? tamanho(k) : alvo(b)) * 16))}px">
-        <b>${k + 1}</b> ${b.gancho ? 'gancho' : esc(b.cena)}<br>${c ? seg(tamanho(k)) : 'falta'}</button>`;
+        <b>${k + 1}</b> ${b.gancho ? 'gancho' : esc(b.cena)}<br>${c ? seg(tamanho(k)) + (transcrevendo.has(k) ? ' ⏳' : c.transcricao ? ' 💬' : '') : 'falta'}</button>`;
     }).join('');
     g('etl').querySelectorAll('button').forEach(bt => bt.onclick = () => selecionar(Number(bt.dataset.k)));
   }
@@ -658,7 +773,9 @@ const Gravador = (() => {
       <label>✂️ Termina em <b id="vfim"></b> <small>(take de ${seg(c.dur)})</small></label><input id="rfim" type="range" min="0" max="${c.dur}" step="0.05" value="${c.fim}">
       <div class="ebot"><button id="etrecho">▶ Ver este bloco</button><button id="eregravar">🎥 Regravar</button></div>
       <label for="etexto">Texto na tela</label><input id="etexto" type="text" value="${esc(b.texto_tela)}">
-      <label for="efala">Legenda (o que você falou)</label><textarea id="efala">${esc(b.fala)}</textarea>
+      <label for="efala">Legenda <small id="eslg"></small></label>
+      <textarea id="efala">${esc(c.transcricao && c.transcricao.length ? c.transcricao.map(p => p.w).join(' ') : b.fala)}</textarea>
+      <div class="ebot"><button id="etransc"></button></div>
       ${b.cena === 'tela' ? '' : `<label>Enquadramento</label>
       <div class="ebot"><button data-e="preencher">Preencher a tela</button><button data-e="inteiro">Vídeo inteiro</button></div>`}
       <label>Velocidade deste bloco</label>
@@ -666,6 +783,7 @@ const Gravador = (() => {
       <label style="margin-top:20px;font:20px Anton,Impact,sans-serif">VÍDEO TODO</label>
       <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (mais clara e mais alta)</label>
       <label class="echeck"><input id="eleg" type="checkbox" ${op.legenda ? 'checked' : ''}> Legenda automática (palavra por palavra)</label>
+      <label class="echeck"><input id="elvoz" type="checkbox" ${op.legendaVoz ? 'checked' : ''}> Legenda pela minha voz (senão, usa o texto do roteiro)</label>
       <label class="echeck"><input id="ezoom" type="checkbox" ${op.zoomCorte ? 'checked' : ''}> Zoom de impacto em cada corte</label>
       <label class="echeck"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final</label>
       <label>Filtro de cor</label>
@@ -678,13 +796,31 @@ const Gravador = (() => {
     const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
     mostrarCorte();
     const guardar = () => salvar(item).catch(() => {});
-    g('rini').oninput = () => { c.ini = Math.min(Number(g('rini').value), c.fim - 0.3); g('rini').value = c.ini; mostrarCorte(); mostrarQuadro(k, c.ini); };
-    g('rfim').oninput = () => { c.fim = Math.max(Number(g('rfim').value), c.ini + 0.3); g('rfim').value = c.fim; mostrarCorte(); mostrarQuadro(k, c.fim - 0.05); };
+    g('rini').oninput = () => { c.corteManual = true; c.ini = Math.min(Number(g('rini').value), c.fim - 0.3); g('rini').value = c.ini; mostrarCorte(); mostrarQuadro(k, c.ini); };
+    g('rfim').oninput = () => { c.corteManual = true; c.fim = Math.max(Number(g('rfim').value), c.ini + 0.3); g('rfim').value = c.fim; mostrarCorte(); mostrarQuadro(k, c.fim - 0.05); };
     g('rini').onchange = g('rfim').onchange = () => { desenharTimeline(); guardar(); };
     g('etrecho').onclick = () => previa([k]);
     g('eregravar').onclick = () => irGravar(k);
     g('etexto').oninput = () => { setTexto(k, 'texto_tela', g('etexto').value); mostrarQuadro(k); };
-    g('efala').oninput = () => { setTexto(k, 'fala', g('efala').value); mostrarQuadro(k); };
+    g('efala').oninput = () => {
+      if (c.transcricao && c.transcricao.length) c.transcricao = retemporizar(c, g('efala').value);
+      else setTexto(k, 'fala', g('efala').value);
+      mostrarQuadro(k);
+    };
+    const estado = () => {
+      const tem = c.transcricao && c.transcricao.length;
+      g('eslg').textContent = transcrevendo.has(k) ? '(ouvindo a sua voz…)' : tem ? '(feita pela sua voz ✓ — corrija se precisar)' :
+        c.erroTranscricao ? '(pelo roteiro: não deu para ouvir a voz)' : '(pelo roteiro)';
+      g('etransc').textContent = transcrevendo.has(k) ? '⏳ Ouvindo a sua voz…' : tem ? '🎙 Refazer legenda pela voz' : '🎙 Fazer legenda pela minha voz';
+      g('etransc').disabled = transcrevendo.has(k);
+    };
+    estado();
+    g('etransc').onclick = async () => {
+      if (!chave()) return alert('Para a legenda pela voz, cole a chave do Gemini em "Chaves".');
+      delete c.erroTranscricao;
+      const p = transcreverFundo(k); estado(); desenharTimeline(); await p;
+      if (c.erroTranscricao && sel === k) alert('Não consegui ouvir a voz agora: ' + c.erroTranscricao);
+    };
     g('etexto').onchange = g('efala').onchange = guardar;
     ui.querySelectorAll('[data-e]').forEach(bt => {
       bt.classList.toggle('on', (c.enquadre || 'auto') === bt.dataset.e);
@@ -693,6 +829,7 @@ const Gravador = (() => {
     g('eleg').onchange = () => { op.legenda = g('eleg').checked; guardar(); mostrarQuadro(k); };
     g('emasc').onchange = () => { op.mascote = g('emasc').checked; guardar(); mostrarQuadro(k); };
     g('evoz').onchange = () => { op.voz = g('evoz').checked; guardar(); };
+    g('elvoz').onchange = () => { op.legendaVoz = g('elvoz').checked; guardar(); mostrarQuadro(k); };
     g('ezoom').onchange = () => { op.zoomCorte = g('ezoom').checked; guardar(); };
     ui.querySelectorAll('[data-v]').forEach(bt => {
       bt.classList.toggle('on', vel(c) === Number(bt.dataset.v));
@@ -747,6 +884,14 @@ const Gravador = (() => {
       return alert(`Falta gravar o bloco ${k + 1}.`);
     }
     pararPrevia(); ocupado = true;
+    if (opcoes().legenda && opcoes().legendaVoz && chave()) {
+      const faltam = blocos.map((_, k) => k).filter(k => !takes()[k].transcricao);
+      for (const [n, k] of faltam.entries()) {
+        aviso(`Fazendo a legenda pela sua voz… (${n + 1} de ${faltam.length})`);
+        if (transcrevendo.has(k)) while (transcrevendo.has(k)) await espera(300);
+        else await transcreverFundo(k);
+      }
+    }
     aviso('Montando o vídeo…\nDeixe o app aberto nesta tela.');
     await carregarMascote();
     const a = ac(), dest = a.createMediaStreamDestination();
