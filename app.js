@@ -10,14 +10,14 @@ let DESENHOS = new Map(), DESCRICOES = {}, PROMPT = '', PROMPT_DESENHOS = '';
 
 /* ---------------------------------------------------------------- guardar no aparelho */
 const banco = new Promise((ok, erro) => {
-  const r = indexedDB.open('carrosseis', 1);
-  r.onupgradeneeded = () => r.result.createObjectStore('c', {keyPath: 'id'});
+  const r = indexedDB.open('carrosseis', 2);  // 'c' = carrosséis, 'r' = roteiros de Reels
+  r.onupgradeneeded = () => { for (const n of ['c', 'r']) if (!r.result.objectStoreNames.contains(n)) r.result.createObjectStore(n, {keyPath: 'id'}); };
   r.onsuccess = () => ok(r.result); r.onerror = () => erro(r.error);
 });
-async function tx(modo, f) {
+async function tx(modo, f, loja = 'c') {
   const db = await banco;
   return new Promise((ok, erro) => {
-    const t = db.transaction('c', modo), st = t.objectStore('c'), r = f(st);
+    const t = db.transaction(loja, modo), st = t.objectStore(loja), r = f(st);
     t.oncomplete = () => ok(r && r.result); t.onerror = () => erro(t.error);
   });
 }
@@ -61,6 +61,12 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
     generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.6,
       ...(inicio != null ? {mediaResolution: 'MEDIA_RESOLUTION_LOW'} : {})},
   });
+  return (await chamarGemini(corpo, aviso, inicio != null)).carrosseis;
+}
+
+/* Manda o pedido ao Gemini, trocando de modelo quando um está ocupado. Devolve o JSON da resposta.
+   Usado pelos carrosséis e pelos roteiros (roteiro.js). */
+async function chamarGemini(corpo, aviso, trecho = false) {
   let ultimo = '';
   for (let rodada = 0; rodada < 2; rodada++) {
     for (const modelo of MODELOS) {
@@ -75,9 +81,9 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
         ultimo = e.name === 'AbortError' ? `${modelo}: demorou demais` : `${modelo}: falha de conexão (${e.message})`;
         continue;
       } finally { clearTimeout(relogio); }
-      if (r.ok) return JSON.parse(JSON.parse(texto).candidates[0].content.parts[0].text).carrosseis;
+      if (r.ok) return JSON.parse(JSON.parse(texto).candidates[0].content.parts[0].text);
       ultimo = `${modelo} (${r.status}): ${texto.slice(0, 300)}`;
-      if (r.status === 400 && inicio != null) {  // o trecho começa depois do fim do vídeo
+      if (r.status === 400 && trecho) {  // o trecho começa depois do fim do vídeo
         const e = new Error('O vídeo é mais curto que o trecho pedido.'); e.trecho = true; throw e;
       }
       if (![404, 429, 500, 503].includes(r.status)) throw new Error(ultimo);  // ex.: chave errada
@@ -161,6 +167,7 @@ function tela(id) {
   document.querySelectorAll('.tela').forEach(t => t.hidden = t.id !== id);
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tela === id));
   if (id === 'lista') mostrarLista();
+  if (id === 'roteiros' && typeof Roteiro !== 'undefined') Roteiro.mostrarLista();
   window.scrollTo(0, 0);
 }
 const aviso = txt => { $('#status').textContent = txt; $('#status').hidden = !txt; };
@@ -259,10 +266,16 @@ async function iniciar() {
       .then(([d, g]) => { DESCRICOES = d; return new Map(Object.keys(d).map(n => [n, g[n] || []])); }),
   ]);
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => tela(b.dataset.tela));
-  $('#gerar').onclick = () => {
+  const modo = () => (document.querySelector('input[name=modo]:checked') || {}).value || 'carrossel';
+  const textoBotao = () => { $('#gerar').textContent = {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()]; };
+  document.querySelectorAll('input[name=modo]').forEach(r => r.onchange = textoBotao); textoBotao();
+  $('#gerar').onclick = async () => {
     const link = linkPadrao($('#link').value);
     if (!link) return alert('Cole um link do YouTube.');
-    gerar(link, Math.max(0, Number($('#minuto').value || 0)) * 60, $('#longo').checked);
+    const inicio = Math.max(0, Number($('#minuto').value || 0)) * 60, longo = $('#longo').checked;
+    if (modo() === 'roteiro') return Roteiro.gerar(link, inicio, longo);
+    await gerar(link, inicio, longo);
+    if (modo() === 'dois') await Roteiro.gerar(link, inicio, longo);
   };
   const mostrarMinuto = () => { $('#blocominuto').hidden = !$('#longo').checked; };
   $('#longo').onchange = mostrarMinuto; mostrarMinuto();
@@ -305,6 +318,7 @@ async function iniciar() {
     if (confirm('Excluir este carrossel do celular? (não dá para desfazer)')) { await apagar(atual.id); tela('lista'); }
   };
   mostrarFila();
+  await Roteiro.iniciar();
   tela(chave() ? 'lista' : 'config');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }

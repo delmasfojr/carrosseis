@@ -168,6 +168,18 @@ setTimeout(uma,20000);
   // quanto o adesivo combina com o texto: tamanho da maior palavra-gatilho encontrada (0 = não combina)
   const nota = (gatilhos, texto) => Math.max(0, ...(gatilhos || []).filter(g => regex(g).test(texto)).map(g => g.replace('*', '').length));
 
+  // A pose da capa é sorteada pelo próprio carrossel (tema + título): cada carrossel sai com uma,
+  // sempre a mesma se for redesenhado. No quadro-negro não vai "explicando" (ele já aponta para um quadro).
+  const CAPA_POSES = ['capa', 'pensativo', 'confuso', 'desconfiado', 'cafe', 'desafiando', 'pensando',
+    'confiante', 'estudando', 'ideia', 'explicando'];
+  function poseCapa(c) {
+    const cp = c.capa || {};
+    const lista = CAPA_POSES.filter(p => !(cp.estilo === 'quadro' && p === 'explicando'));
+    let h = 7;
+    for (const ch of `${c.tema}|${cp.linha1}|${cp.linha2}|${cp.questao_destaque}`) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    return lista[h % lista.length];
+  }
+
   const PLANOS = new WeakMap();
   function plano(c, desenhos) {  // escolhe os adesivos do carrossel inteiro de uma vez (sem repetir)
     if (PLANOS.has(c)) return PLANOS.get(c);
@@ -259,7 +271,7 @@ setTimeout(uma,20000);
       return moldura(titulo(cp.linha1, cp.linha2, false), `
   <p class="sub">${t(cp.subtitulo)}</p>
   <div class="zona" style="min-height:calc(var(--s)*500px);margin-top:10px">
-    <img class="mascote" src="${pose(cp.estilo === 'quadro' && (cp.pose || 'explicando') === 'explicando' ? 'desafiando' : cp.pose, 'explicando')}" style="left:-30px;max-height:560px">
+    <img class="mascote" src="${base}mascote/${poseCapa(c)}.webp" style="left:-30px;max-height:560px">
     ${cartao}
     <div class="capa-frase mao">${t(cp.frase)}<span class="sublinhado"></span></div>
   </div>`);

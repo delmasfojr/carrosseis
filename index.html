@@ -55,6 +55,51 @@ button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:13px 16p
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--navy);padding-bottom:env(safe-area-inset-bottom)}
 nav button{flex:1;background:none;color:#fff;border-radius:0;padding:14px 4px;font-size:14px;opacity:.7}
 nav button.on{opacity:1;color:var(--lar)}
+nav button{font-size:13px;padding:14px 2px}
+.modos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
+.modos label{margin:0;font-weight:700;font-size:14px;text-align:center;background:#fff;border:2px solid var(--cinza);border-radius:12px;padding:10px 4px;cursor:pointer}
+.modos input{display:none}
+.modos label:has(input:checked){border-color:var(--lar);color:var(--lar)}
+select{width:100%;font:inherit;padding:12px 14px;border:2px solid var(--cinza);border-radius:12px;background:#fff;color:var(--navy)}
+#termos{min-height:150px}
+.viral{display:flex;gap:10px;background:#fff;border-radius:12px;padding:10px;margin-top:10px}
+.viral>a{position:relative;flex:none;width:38%}
+.viral img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block}
+.viral .dur{position:absolute;right:4px;bottom:4px;background:#000c;color:#fff;font-size:11px;padding:1px 5px;border-radius:4px}
+.viral>div{flex:1;min-width:0}
+.viral b{display:block;font-size:14px;line-height:1.25}
+.viral small{display:block;color:#667;font-size:12px;margin-top:3px}
+.viral .vez{color:var(--lar);font-weight:700}
+.viral.usado{opacity:.55}
+.vacoes{display:flex;gap:6px;margin-top:8px}
+.vacoes button{margin:0;padding:8px 10px;font-size:14px;width:auto;flex:1}
+.rcartao{display:block;width:100%;text-align:left;background:#fff;border:2px solid transparent;margin-bottom:10px;font-weight:400}
+.rcartao b{display:block;font-size:16px;margin:2px 0}
+.rcartao small{display:block;color:#667}
+.rcartao.postado{opacity:.6}
+.nota{color:var(--lar);font-weight:700;font-size:14px}
+.rnota{background:#fff;border-radius:12px;padding:12px 14px}
+.rnota small{color:#667}
+.rcapa{background:var(--navy);color:#fff;border-radius:12px;padding:10px 14px}
+.rcapa b{color:var(--lar);font-family:'Anton',Impact,sans-serif;font-weight:400;letter-spacing:.5px;font-size:18px}
+h3 small{font:13px 'Open Sans',sans-serif;color:#667}
+.gancho{display:flex;gap:10px;align-items:flex-start;font-weight:400;background:#fff;border:2px solid var(--cinza);border-radius:12px;padding:10px 12px;margin:8px 0}
+.gancho:has(input:checked){border-color:var(--lar)}
+.gancho input{accent-color:var(--lar);width:20px;height:20px;margin-top:2px;flex:none}
+.bloco{background:#fff;border-radius:12px;padding:10px 14px;margin:8px 0}
+.btopo{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+.tempo{color:var(--lar)}
+.fala{font-size:17px;margin:6px 0}
+.bq{font-size:14px;margin:4px 0;color:#334}
+#tp{position:fixed;inset:0;z-index:50;background:#000;color:#fff;overflow-y:auto;scrollbar-width:none}
+#tptexto{padding:33vh 22px 70vh;font-weight:700;line-height:1.35;text-align:center}
+#tptexto p{margin:0 0 1.1em}
+#tptexto span{display:block;font-size:.45em;color:var(--lar);letter-spacing:1px}
+#tptexto .fim{color:#666}
+#tpbarra{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;background:#111e;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+#tpbarra button{background:#333;color:#fff;padding:10px 12px;min-width:44px}
+#tpbarra #tpplay{background:var(--lar);min-width:64px;font-size:20px}
+#tpinfo{color:#aaa;font-size:12px;width:100%;text-align:center}
 </style>
 </head>
 <body>
@@ -63,7 +108,13 @@ nav button.on{opacity:1;color:var(--lar)}
   <div id="status" hidden></div>
 
   <section class="tela" id="novo" hidden>
-    <h2>Novo <span>carrossel</span></h2>
+    <h2>Novo <span>conteúdo</span></h2>
+    <label>O que gerar</label>
+    <div class="modos">
+      <label><input type="radio" name="modo" value="carrossel" checked>Carrossel</label>
+      <label><input type="radio" name="modo" value="roteiro">Roteiro de Reels</label>
+      <label><input type="radio" name="modo" value="dois">Os dois</label>
+    </div>
     <label for="link">Link do vídeo do YouTube</label>
     <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
     <label class="check"><input id="longo" type="checkbox"> <span>Vídeo longo (mais de 40 min): ler em partes de 30 min</span></label>
@@ -72,7 +123,7 @@ nav button.on{opacity:1;color:var(--lar)}
       <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
     </div>
     <button id="gerar" class="principal">Gerar carrosséis</button>
-    <p class="dica">O app cria <b>um carrossel para cada ideia</b> do vídeo, com legenda. Demora de 1 a 5 minutos: deixe o app aberto na tela até terminar.</p>
+    <p class="dica">O app cria <b>um carrossel (ou roteiro) para cada ideia</b> do vídeo, com legenda. Sem link? Veja a aba <b>🔥 Virais</b>. Demora de 1 a 5 minutos: deixe o app aberto na tela até terminar.</p>
     <div id="fila"></div>
   </section>
 
@@ -102,6 +153,40 @@ nav button.on{opacity:1;color:var(--lar)}
     <button id="excluir" class="perigo">Excluir este carrossel</button>
   </section>
 
+  <section class="tela" id="virais" hidden>
+    <h2>Vídeos <span>virais</span></h2>
+    <label for="termos">O que buscar no YouTube (um termo por linha)</label>
+    <textarea id="termos" spellcheck="false"></textarea>
+    <label for="periodo">Publicados nos últimos</label>
+    <select id="periodo"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="365">1 ano</option></select>
+    <label class="check"><input id="soshorts" type="checkbox" checked> <span>Só vídeos curtos (até 4 min, inclui Shorts)</span></label>
+    <button id="buscar" class="principal">🔥 Buscar virais</button>
+    <p class="dica">Cada termo gasta 1% da cota grátis do dia (dá ~90 termos por dia). Toque em <b>Roteiro</b> num vídeo para gerar o roteiro na hora.</p>
+    <div id="virais"></div>
+  </section>
+
+  <section class="tela" id="roteiros" hidden>
+    <h2>Meus <span>roteiros</span></h2>
+    <p id="rvazio" class="dica" hidden>Nenhum roteiro ainda. Em <b>Novo</b>, escolha “Roteiro de Reels”, ou toque em <b>Roteiro</b> num vídeo da aba <b>🔥 Virais</b>.</p>
+    <div id="ritens"></div>
+  </section>
+
+  <section class="tela" id="verroteiro" hidden>
+    <button id="rvoltar" class="sec">← Voltar</button>
+    <h2 id="rtitulo" style="margin-top:14px"></h2>
+    <button id="rtp" class="principal" style="margin-top:0">🎬 Abrir teleprompter</button>
+    <div id="rcorpo"></div>
+    <label for="rlegenda">Legenda (pode editar)</label>
+    <textarea id="rlegenda" style="min-height:180px"></textarea>
+    <div class="acoes">
+      <button id="rcopiar" class="sec">Copiar roteiro</button>
+      <button id="rcopiarleg" class="sec">Copiar legenda</button>
+      <button id="rmarcar" class="sec" style="grid-column:1/-1"></button>
+    </div>
+    <p><a id="rvideo" target="_blank" rel="noopener">Ver o vídeo de origem</a></p>
+    <button id="rexcluir" class="perigo">Excluir este roteiro</button>
+  </section>
+
   <section class="tela" id="config" hidden>
     <h2>Chave do <span>Gemini</span></h2>
     <p>O app usa a sua chave gratuita do Gemini. Ela fica guardada <b>só neste celular</b> e só é enviada ao Google.</p>
@@ -109,14 +194,35 @@ nav button.on{opacity:1;color:var(--lar)}
     <input id="chave" type="password" autocomplete="off" spellcheck="false">
     <div class="acoes"><button id="testar" class="sec">Testar</button><button id="salvarchave" class="principal" style="grid-column:auto">Salvar</button></div>
     <p class="dica">Para pegar a chave: abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> no celular, entre com a mesma conta Google e copie a chave (ou crie uma). Não mande a chave para ninguém.</p>
+    <h2 style="margin-top:28px">Chave do <span>YouTube</span></h2>
+    <p>Usada só na aba <b>🔥 Virais</b>, para buscar vídeos. Também fica só neste celular.</p>
+    <label for="chaveyt">Cole a chave aqui</label>
+    <input id="chaveyt" type="password" autocomplete="off" spellcheck="false">
+    <div class="acoes"><button id="testaryt" class="sec">Testar</button><button id="salvaryt" class="principal" style="grid-column:auto">Salvar</button></div>
+    <p class="dica">É a chave que você criou em <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">console.cloud.google.com</a> (projeto “delmao-roteiros” → Credenciais).</p>
   </section>
 </main>
+<div id="tp" hidden>
+  <div id="tptexto"></div>
+  <div id="tpbarra">
+    <button id="tpvolta" title="Voltar ao início">⏮</button>
+    <button id="tpmenos" title="Mais devagar">🐢</button>
+    <button id="tpplay">▶</button>
+    <button id="tpmais" title="Mais rápido">🐇</button>
+    <button id="tpamenos">A−</button><button id="tpamais">A+</button>
+    <button id="tpfechar">✕</button>
+    <span id="tpinfo"></span>
+  </div>
+</div>
 <nav>
   <button data-tela="novo">＋ Novo</button>
-  <button data-tela="lista">Meus carrosséis</button>
-  <button data-tela="config">Chave</button>
+  <button data-tela="virais">🔥 Virais</button>
+  <button data-tela="lista">Carrosséis</button>
+  <button data-tela="roteiros">Roteiros</button>
+  <button data-tela="config">Chaves</button>
 </nav>
 <script src="cards.js"></script>
 <script src="app.js"></script>
+<script src="roteiro.js"></script>
 </body>
 </html>

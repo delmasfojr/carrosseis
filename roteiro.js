@@ -1,0 +1,260 @@
+/* Roteiros de Reels (vídeos de 20–45 s com teor viral) e busca de vídeos virais no YouTube.
+   Usa as funções do app.js ($, esc, tx, chave, tela, aviso, chamarGemini, linkPadrao, BLOCO, mmss).
+   A chave do YouTube, como a do Gemini, fica só no aparelho (localStorage). */
+const Roteiro = (() => {
+  let PROMPT_R = '';
+  const salvarR = i => tx('readwrite', s => s.put(i), 'r');
+  const apagarR = id => tx('readwrite', s => s.delete(id), 'r');
+  const todosR = () => tx('readonly', s => s.getAll(), 'r');
+  const umR = id => tx('readonly', s => s.get(id), 'r');
+  const chaveYT = () => localStorage.getItem('youtube') || '';
+  const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
+  const gravar = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  /* ---------------------------------------------------------------- gerar roteiro com o Gemini */
+  const S = {type: 'STRING'};
+  const obj = p => ({type: 'OBJECT', properties: p, required: Object.keys(p)});
+  const lista = i => ({type: 'ARRAY', items: i});
+  const ESQUEMA = obj({roteiros: lista(obj({
+    tema: S, nota_viral: {type: 'INTEGER'}, por_que: S, ganchos: lista(S), texto_capa: S,
+    blocos: lista(obj({tempo: S, cena: {type: 'STRING', enum: ['camera', 'quadro', 'tela']}, fala: S, quadro: S, texto_tela: S})),
+    comentario_fixado: S, duracao: S, legenda: S,
+  }))});
+
+  async function pedir(link, inicio, fim) {
+    const video = {fileData: {fileUri: link}};
+    let prompt = PROMPT_R;
+    if (inicio != null) {
+      video.videoMetadata = {startOffset: `${inicio}s`, endOffset: `${fim}s`};
+      prompt += `\n\nATENÇÃO: você recebeu só um TRECHO de um vídeo longo (de ${mmss(inicio)} até ${mmss(fim)}). Use apenas este trecho.`;
+    }
+    const corpo = JSON.stringify({
+      contents: [{parts: [video, {text: prompt}]}],
+      generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.8,
+        ...(inicio != null ? {mediaResolution: 'MEDIA_RESOLUTION_LOW'} : {})},
+    });
+    return (await chamarGemini(corpo, aviso, inicio != null)).roteiros;
+  }
+
+  async function gerar(link, inicio = 0, longo = false) {
+    if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
+    $('#gerar').disabled = true;
+    try {
+      let roteiros;
+      try { roteiros = await pedir(link, longo ? inicio : null, longo ? inicio + BLOCO : null); }
+      catch (e) { if (!e.trecho) throw e; roteiros = await pedir(link, null, null); }
+      const agora = Date.now();
+      for (const [k, conteudo] of roteiros.entries())
+        await salvarR({id: `${agora}-${k}`, criado: new Date().toISOString(), link, conteudo, gancho: 0});
+      marcarUsado(link);
+      aviso('');
+      alert(`Pronto! ${roteiros.length} roteiro(s) novo(s).`);
+      tela('roteiros');
+    } catch (e) {
+      aviso('');
+      alert('Deu erro: ' + e.message);
+    } finally { $('#gerar').disabled = false; }
+  }
+
+  /* ---------------------------------------------------------------- lista e tela do roteiro */
+  const fogo = n => n >= 8 ? '🔥🔥🔥' : n >= 6 ? '🔥🔥' : '🔥';
+  async function mostrarLista() {
+    const itens = (await todosR()).sort((a, b) => b.id.localeCompare(a.id));
+    $('#rvazio').hidden = itens.length > 0;
+    $('#ritens').innerHTML = itens.map(i => `<button class="rcartao ${i.gravado ? 'postado' : ''}" data-id="${i.id}">
+      <span class="nota">${fogo(i.conteudo.nota_viral)} ${i.conteudo.nota_viral}/10</span>
+      <b>${esc(i.conteudo.tema)}</b>
+      <small>${esc(i.conteudo.ganchos[i.gancho] || '')}</small>
+      <small>${esc(i.conteudo.duracao)} · ${new Date(i.criado).toLocaleDateString('pt-BR')}${i.gravado ? ' · gravado ✓' : ''}</small></button>`).join('');
+    $('#ritens').querySelectorAll('.rcartao').forEach(b => b.onclick = () => abrir(b.dataset.id));
+  }
+
+  const CENA = {camera: '🎥 CÂMERA', quadro: '🧑‍🏫 QUADRO', tela: '📱 TELA'};
+  let atual = null;
+  async function abrir(id) {
+    atual = await umR(id);
+    const c = atual.conteudo;
+    tela('verroteiro');
+    $('#rtitulo').textContent = c.tema;
+    $('#rcorpo').innerHTML = `
+      <p class="rnota">${fogo(c.nota_viral)} <b>${c.nota_viral}/10</b> · ${esc(c.duracao)}<br><small>${esc(c.por_que)}</small></p>
+      <p class="rcapa">Capa do Reels: <b>${esc(c.texto_capa)}</b></p>
+      <h3>Gancho (0–3 s) <small>escolha um</small></h3>
+      ${c.ganchos.map((g, k) => `<label class="gancho"><input type="radio" name="gancho" value="${k}" ${k === atual.gancho ? 'checked' : ''}> <span>${esc(g)}</span></label>`).join('')}
+      <h3>Roteiro</h3>
+      ${c.blocos.map(b => `<div class="bloco">
+        <div class="btopo"><span class="tempo">${esc(b.tempo)}</span><span class="cena">${CENA[b.cena] || esc(b.cena)}</span></div>
+        <p class="fala">“${esc(b.fala)}”</p>
+        ${b.quadro ? `<p class="bq"><b>No quadro/tela:</b> ${esc(b.quadro)}</p>` : ''}
+        ${b.texto_tela ? `<p class="bq"><b>Texto na tela:</b> ${esc(b.texto_tela)}</p>` : ''}
+      </div>`).join('')}
+      <h3>Comentário para fixar</h3><p class="bloco">${esc(c.comentario_fixado)}</p>`;
+    $('#rcorpo').querySelectorAll('input[name=gancho]').forEach(r => r.onchange = async () => { atual.gancho = Number(r.value); await salvarR(atual); });
+    $('#rlegenda').value = (c.legenda || '').replace(/\\n/g, '\n');
+    $('#rmarcar').textContent = atual.gravado ? 'Desmarcar gravado' : 'Marcar como gravado';
+    $('#rvideo').href = atual.link;
+  }
+
+  function textoRoteiro() {
+    const c = atual.conteudo;
+    return [`${c.tema} (${c.duracao})`, `CAPA: ${c.texto_capa}`, '', `0–3 s [CÂMERA] ${c.ganchos[atual.gancho]}`,
+      ...c.blocos.map(b => `${b.tempo} [${(CENA[b.cena] || b.cena).replace(/^\S+ /, '')}] ${b.fala}` +
+        (b.quadro ? `\n   quadro: ${b.quadro}` : '') + (b.texto_tela ? `\n   tela: ${b.texto_tela}` : '')),
+      '', `COMENTÁRIO FIXADO: ${c.comentario_fixado}`, '', 'LEGENDA:', $('#rlegenda').value].join('\n');
+  }
+  const copiar = async t => { try { await navigator.clipboard.writeText(t); return true; } catch { return false; } };
+
+  /* ---------------------------------------------------------------- teleprompter */
+  let rolando = false, vel = Number(localStorage.getItem('tpvel') || 40), fonte = Number(localStorage.getItem('tpfonte') || 40);
+  let trava = null, ultimoT = 0, resto = 0;
+  function abrirTP() {
+    const c = atual.conteudo;
+    $('#tptexto').innerHTML = [`<p>${esc(c.ganchos[atual.gancho])}</p>`,
+      ...c.blocos.map(b => `<p><span>${CENA[b.cena] || ''}</span>${esc(b.fala)}</p>`)].join('') + '<p class="fim">— FIM —</p>';
+    $('#tp').hidden = false; $('#tp').scrollTop = 0;
+    aplicarTP(); rolando = false; $('#tpplay').textContent = '▶';
+    if (navigator.wakeLock) navigator.wakeLock.request('screen').then(t => { trava = t; }).catch(() => {});
+  }
+  function fecharTP() { rolando = false; $('#tp').hidden = true; if (trava) { trava.release().catch(() => {}); trava = null; } }
+  function aplicarTP() {
+    $('#tptexto').style.fontSize = fonte + 'px';
+    $('#tpinfo').textContent = `vel. ${vel} · letra ${fonte}`;
+    localStorage.setItem('tpvel', vel); localStorage.setItem('tpfonte', fonte);
+  }
+  function passo(t) {
+    if (!rolando) return;
+    const dt = ultimoT ? (t - ultimoT) / 1000 : 0; ultimoT = t;
+    resto += vel * dt;  // vel = pixels por segundo
+    const px = Math.floor(resto); resto -= px;
+    const el = $('#tp');
+    el.scrollTop += px;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 2) { rolando = false; $('#tpplay').textContent = '▶'; return; }
+    requestAnimationFrame(passo);
+  }
+  function playTP() {
+    rolando = !rolando; $('#tpplay').textContent = rolando ? '⏸' : '▶';
+    if (rolando) { ultimoT = 0; requestAnimationFrame(passo); }
+  }
+
+  /* ---------------------------------------------------------------- busca de vídeos virais */
+  const TERMOS = ['macete matemática enem', 'truque de matemática', 'matemática básica dica', 'porcentagem macete',
+    'questão enem matemática', 'raciocínio lógico concurso'];
+  const termos = () => ler('termos', TERMOS);
+  const usados = () => new Set(ler('usados', []));
+  function marcarUsado(link) {
+    const id = (link.match(/v=([\w-]{11})/) || [])[1];
+    if (id) gravar('usados', [...usados(), id].slice(-500));
+  }
+  const compacto = n => new Intl.NumberFormat('pt-BR', {notation: 'compact', maximumFractionDigits: 1}).format(n);
+  function duracao(iso) {
+    const m = String(iso).match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/) || [];
+    const s = (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
+    return s >= 3600 ? `${Math.floor(s / 3600)}h${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  async function yt(caminho, params) {
+    const u = new URL('https://www.googleapis.com/youtube/v3/' + caminho);
+    for (const [k, v] of Object.entries({...params, key: chaveYT()})) u.searchParams.set(k, v);
+    const r = await fetch(u);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const motivo = j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason;
+      if (motivo === 'quotaExceeded') throw new Error('A cota grátis de hoje do YouTube acabou. Amanhã ela volta (zera às 5h, horário de Brasília).');
+      if (r.status === 400 || r.status === 403) throw new Error('A chave do YouTube não funcionou. Confira em "Chaves". (' + (j.error && j.error.message || r.status) + ')');
+      throw new Error(`YouTube respondeu ${r.status}.`);
+    }
+    return j;
+  }
+  const emPartes = (a, n) => Array.from({length: Math.ceil(a.length / n)}, (_, i) => a.slice(i * n, i * n + n));
+
+  async function buscar() {
+    if (!chaveYT()) { tela('config'); return alert('Primeiro cole a sua chave do YouTube (em "Chaves").'); }
+    const lista_ = $('#termos').value.split('\n').map(t => t.trim()).filter(Boolean);
+    if (!lista_.length) return alert('Escreva pelo menos um termo de busca.');
+    gravar('termos', lista_);
+    const dias = Number($('#periodo').value), curtos = $('#soshorts').checked;
+    const depois = new Date(Date.now() - dias * 864e5).toISOString();
+    $('#buscar').disabled = true;
+    try {
+      const ids = new Set();
+      for (const [k, q] of lista_.entries()) {
+        aviso(`Buscando no YouTube: “${q}” (${k + 1} de ${lista_.length})…`);
+        const r = await yt('search', {part: 'id', type: 'video', q, order: 'viewCount', publishedAfter: depois, regionCode: 'BR',
+          relevanceLanguage: 'pt', maxResults: 25, ...(curtos ? {videoDuration: 'short'} : {})});
+        r.items.forEach(i => ids.add(i.id.videoId));
+      }
+      aviso('Calculando quais viralizaram…');
+      const videos = [];
+      for (const parte of emPartes([...ids], 50))
+        videos.push(...(await yt('videos', {part: 'snippet,statistics,contentDetails', id: parte.join(',')})).items);
+      const inscritos = new Map();
+      for (const parte of emPartes([...new Set(videos.map(v => v.snippet.channelId))], 50))
+        (await yt('channels', {part: 'statistics', id: parte.join(',')})).items
+          .forEach(c => inscritos.set(c.id, Number(c.statistics.subscriberCount || 0)));
+      const res = videos.map(v => {
+        const views = Number(v.statistics.viewCount || 0), subs = inscritos.get(v.snippet.channelId) || 0;
+        const idade = Math.max(1, (Date.now() - new Date(v.snippet.publishedAt)) / 864e5);
+        return {id: v.id, titulo: v.snippet.title, canal: v.snippet.channelTitle, thumb: (v.snippet.thumbnails.medium || v.snippet.thumbnails.default).url,
+          views, subs, dias: Math.round(idade), dur: duracao(v.contentDetails.duration),
+          // viralizou = muito mais views que o tamanho do canal (piso de 1 000 para canal minúsculo não distorcer)
+          vezes: views / Math.max(subs, 1000), comentarios: Number(v.statistics.commentCount || 0)};
+      }).filter(v => v.views >= 5000).sort((a, b) => b.vezes - a.vezes).slice(0, 40);
+      gravar('virais', {quando: new Date().toISOString(), res});
+      mostrarVirais();
+      aviso('');
+      if (!res.length) alert('Não achei vídeos com bastante visualização nesse período. Tente um período maior ou outros termos.');
+    } catch (e) { aviso(''); alert(e.message); }
+    finally { $('#buscar').disabled = false; }
+  }
+
+  function mostrarVirais() {
+    const v = ler('virais', null), u = usados();
+    if (!v) { $('#virais').innerHTML = ''; return; }
+    const quando = new Date(v.quando);
+    $('#virais').innerHTML = `<p class="dica">Busca de ${quando.toLocaleDateString('pt-BR')} às ${quando.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}. ` +
+      `<b>“× o canal”</b> = visualizações divididas pelos inscritos: quanto maior, mais o vídeo furou a bolha.</p>` +
+      v.res.map(x => `<div class="viral ${u.has(x.id) ? 'usado' : ''}">
+        <a href="https://www.youtube.com/watch?v=${x.id}" target="_blank" rel="noopener"><img src="${esc(x.thumb)}" alt="" loading="lazy"><span class="dur">${x.dur}</span></a>
+        <div><b>${esc(x.titulo)}</b>
+        <small>${esc(x.canal)} · ${compacto(x.subs)} inscritos</small>
+        <small><span class="vez">${x.vezes >= 20 ? '🔥🔥🔥' : x.vezes >= 5 ? '🔥🔥' : '🔥'} ${compacto(x.vezes)}× o canal</span> · ${compacto(x.views)} views · há ${x.dias} d${u.has(x.id) ? ' · já usado ✓' : ''}</small>
+        <div class="vacoes"><button class="principal" data-r="${x.id}">Roteiro</button><button class="sec" data-c="${x.id}">Carrossel</button></div></div>
+      </div>`).join('');
+    $('#virais').querySelectorAll('[data-r]').forEach(b => b.onclick = () => gerar(`https://www.youtube.com/watch?v=${b.dataset.r}`));
+    $('#virais').querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+      const link = `https://www.youtube.com/watch?v=${b.dataset.c}`; marcarUsado(link); gerar_carrossel(link);
+    });
+  }
+  // gerar() do app.js (carrossel) tem o mesmo nome do gerar daqui: guardo a referência antes
+  const gerar_carrossel = link => window.gerar(link, 0, false);
+
+  /* ---------------------------------------------------------------- início */
+  async function iniciar() {
+    PROMPT_R = await fetch(BASE + 'prompt-roteiro.md').then(r => r.text());
+    $('#termos').value = termos().join('\n');
+    $('#buscar').onclick = buscar;
+    mostrarVirais();
+    $('#rvoltar').onclick = () => tela('roteiros');
+    $('#rtp').onclick = abrirTP;
+    $('#rcopiar').onclick = async () => alert(await copiar(textoRoteiro()) ? 'Roteiro copiado!' : 'Não consegui copiar.');
+    $('#rcopiarleg').onclick = async () => alert(await copiar($('#rlegenda').value) ? 'Legenda copiada!' : 'Selecione e copie à mão.');
+    $('#rlegenda').onchange = async () => { atual.conteudo.legenda = $('#rlegenda').value; await salvarR(atual); };
+    $('#rmarcar').onclick = async () => { atual.gravado = !atual.gravado; await salvarR(atual); abrir(atual.id); };
+    $('#rexcluir').onclick = async () => { if (confirm('Excluir este roteiro do celular? (não dá para desfazer)')) { await apagarR(atual.id); tela('roteiros'); } };
+    $('#tpplay').onclick = playTP;
+    $('#tptexto').onclick = playTP;
+    $('#tpfechar').onclick = fecharTP;
+    $('#tpmenos').onclick = () => { vel = Math.max(10, vel - 10); aplicarTP(); };
+    $('#tpmais').onclick = () => { vel = Math.min(200, vel + 10); aplicarTP(); };
+    $('#tpamenos').onclick = () => { fonte = Math.max(24, fonte - 4); aplicarTP(); };
+    $('#tpamais').onclick = () => { fonte = Math.min(80, fonte + 4); aplicarTP(); };
+    $('#tpvolta').onclick = () => { $('#tp').scrollTop = 0; };
+    $('#chaveyt').value = chaveYT();
+    $('#salvaryt').onclick = () => { localStorage.setItem('youtube', $('#chaveyt').value.trim()); alert('Chave do YouTube salva só neste celular.'); };
+    $('#testaryt').onclick = async () => {
+      const r = await fetch(`https://www.googleapis.com/youtube/v3/videoCategories?part=id&regionCode=BR&key=${encodeURIComponent($('#chaveyt').value.trim())}`);
+      alert(r.ok ? 'A chave do YouTube funciona! ✅' : `A chave não funcionou (${r.status}).`);
+    };
+  }
+  return {iniciar, gerar, mostrarLista};
+})();
