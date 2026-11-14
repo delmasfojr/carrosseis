@@ -33,12 +33,12 @@ const Gravador = (() => {
   }
   function montarBlocos(it) {
     const c = it.conteudo;
-    return [{tempo: '0–3 s', cena: 'camera', fala: c.ganchos[it.gancho || 0], quadro: '', texto_tela: c.texto_capa, gancho: true}, ...c.blocos];
+    return [{tempo: '0–3 s', cena: 'camera', fala: c.ganchos[it.gancho || 0], quadro: c.gancho_quadro || '', texto_tela: c.texto_capa, gancho: true}, ...c.blocos];
   }
   // edição de texto vai direto para o roteiro (o gancho mora em ganchos[] e texto_capa)
   function setTexto(k, campo, valor) {
     const c = item.conteudo;
-    if (k === 0) { if (campo === 'fala') c.ganchos[item.gancho || 0] = valor; else c.texto_capa = valor; }
+    if (k === 0) { if (campo === 'fala') c.ganchos[item.gancho || 0] = valor; else if (campo === 'quadro') c.gancho_quadro = valor; else c.texto_capa = valor; }
     else c.blocos[k - 1][campo] = valor;
     blocos = montarBlocos(item);
   }
@@ -154,7 +154,7 @@ const Gravador = (() => {
     g('egravar').onclick = () => irGravar(sel);
     g('eexportar').onclick = () => exportar().catch(e => { aviso(''); ocupado = false; alert('Não consegui exportar: ' + e.message); });
   }
-  const conta = (t, peq) => { g('gconta').textContent = t; g('gconta').classList.toggle('peq', !!peq); };
+  const contador = (t, peq) => { g('gconta').textContent = t; g('gconta').classList.toggle('peq', !!peq); };
 
   /* ---------------------------------------------------------------- modo GRAVAR */
   function atualizarGravar() {
@@ -272,8 +272,8 @@ const Gravador = (() => {
     }
     ac();  // libera o áudio no toque (iPhone)
     g('grec').disabled = true;
-    for (const n of [3, 2, 1]) { conta(n); await espera(650); }
-    conta('');
+    for (const n of [3, 2, 1]) { contador(n); await espera(650); }
+    contador('');
     const mt = tipo(), partes = [], a = alvo(blocos[i]);
     rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6, audioBitsPerSecond: 192000});
     rec.ondataavailable = e => { if (e.data.size) partes.push(e.data); };
@@ -282,6 +282,10 @@ const Gravador = (() => {
       const blob = new Blob(partes, {type: (rec.mimeType || mt || 'video/webm').split(';')[0]});
       const c = {blob, dur: (Date.now() - t0) / 1000, facing};
       gravando = false;
+      if (blob.size < 2000) {  // a câmera não entregou imagem: não guarda um take vazio
+        atualizarGravar();
+        return alert('Esse take não gravou (a câmera não mandou imagem). Toque em 🔄 ou saia e entre de novo, e grave este bloco outra vez.');
+      }
       g('ginfo').textContent = 'Guardando o take…';
       await analisar(c);
       takes()[i] = c;
@@ -339,7 +343,7 @@ const Gravador = (() => {
     if (ocupado) return;
     parar(); if (revendo) voltarCamera(); pararPrevia(); pararCamera();
     g('gprev').srcObject = null;
-    for (const v of quadros.values()) { URL.revokeObjectURL(v.src); v.removeAttribute('src'); }
+    for (const v of quadros.values()) soltar(v);
     quadros.clear();
     ui.hidden = true; document.documentElement.style.overflow = '';
     if (trava) { trava.release().catch(() => {}); trava = null; }
@@ -544,14 +548,57 @@ Se não houver fala, devolva a lista vazia.`;
     return linhas;
   }
   function retangulo(ctx, x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
-  function caixa(ctx, txt, yc, fundo, tam) {
+  function caixa(ctx, txt, yc, fundo, tam, corTexto = '#fff') {
     ctx.font = `${tam}px Anton, Impact, sans-serif`;
     const linhas = quebrar(ctx, String(txt).toUpperCase(), W - 220), alt = tam * 1.12;
     const larg = Math.max(...linhas.map(l => ctx.measureText(l).width)) + 70, h = linhas.length * alt + 44;
-    ctx.save(); ctx.shadowColor = '#0006'; ctx.shadowBlur = 24;
-    ctx.fillStyle = fundo; retangulo(ctx, (W - larg) / 2, yc - h / 2, larg, h, 26); ctx.fill(); ctx.restore();
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (fundo) {
+      ctx.save(); ctx.shadowColor = '#0006'; ctx.shadowBlur = 24;
+      ctx.fillStyle = fundo; retangulo(ctx, (W - larg) / 2, yc - h / 2, larg, h, 26); ctx.fill(); ctx.restore();
+    } else {  // sem caixa: letra branca com contorno, como legenda
+      ctx.lineJoin = 'round'; ctx.lineWidth = tam * 0.17; ctx.strokeStyle = NAVY;
+      linhas.forEach((l, k) => ctx.strokeText(l, W / 2, yc - h / 2 + 22 + alt * (k + 0.5)));
+    }
+    ctx.fillStyle = corTexto;
     linhas.forEach((l, k) => ctx.fillText(l, W / 2, yc - h / 2 + 22 + alt * (k + 0.5)));
+  }
+  function conta(ctx, txt, yc, larg, maxTam) {  // texto grande da conta (layouts com fundo creme)
+    if (!txt) return;
+    let tam = maxTam; ctx.font = `${tam}px Anton, Impact, sans-serif`;
+    let linhas = quebrar(ctx, txt, larg);
+    while ((linhas.length > 3 || Math.max(...linhas.map(l => ctx.measureText(l).width)) > larg) && tam > 56) {
+      tam -= 8; ctx.font = `${tam}px Anton, Impact, sans-serif`; linhas = quebrar(ctx, txt, larg);
+    }
+    ctx.fillStyle = NAVY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    linhas.forEach((l, n) => ctx.fillText(l, W / 2, yc + (n - (linhas.length - 1) / 2) * tam * 1.15));
+  }
+  function lousa(ctx, txt, yc) {  // quadro-negro com a conta escrita a giz
+    if (!txt) return;
+    let tam = 110; ctx.font = `${tam}px Anton, Impact, sans-serif`;
+    let linhas = quebrar(ctx, txt, W - 220);
+    while ((linhas.length > 3 || Math.max(...linhas.map(l => ctx.measureText(l).width)) > W - 220) && tam > 54) {
+      tam -= 8; ctx.font = `${tam}px Anton, Impact, sans-serif`; linhas = quebrar(ctx, txt, W - 220);
+    }
+    const h = linhas.length * tam * 1.15 + 90;
+    ctx.save(); ctx.shadowColor = '#0007'; ctx.shadowBlur = 30;
+    ctx.fillStyle = '#1E3A2F'; retangulo(ctx, 60, yc - h / 2, W - 120, h, 28); ctx.fill(); ctx.restore();
+    ctx.lineWidth = 14; ctx.strokeStyle = '#8B5A2B'; retangulo(ctx, 60, yc - h / 2, W - 120, h, 28); ctx.stroke();
+    ctx.fillStyle = '#F4F1E8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    linhas.forEach((l, n) => ctx.fillText(l, W / 2, yc + (n - (linhas.length - 1) / 2) * tam * 1.15));
+  }
+  // o mascote balança enquanto a voz fala (pela legenda) e respira quando está em silêncio
+  function boneco(ctx, pose, x, base, h, falando, t) {
+    const im = poses.get(pose) || poses.get('explicando');
+    if (!im || !im.naturalWidth) return;
+    const pulo = falando ? Math.abs(Math.sin(t * 9)) * 14 : Math.sin(t * 2) * 4;
+    const w = im.naturalWidth * h / im.naturalHeight, inc = falando ? Math.sin(t * 4.5) * 0.025 : 0;
+    ctx.save(); ctx.translate(x + w / 2, base); ctx.rotate(inc); ctx.drawImage(im, -w / 2, -h - pulo, w, h); ctx.restore();
+  }
+  const falandoEm = (grupos, t) => grupos.some(gr => gr.some(p => p.a - 0.05 <= t && t <= p.b + 0.08));
+  function circulo(ctx, v, cx, cy, r) {
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip(); cobrir(ctx, v, cx - r, cy - r, 2 * r, 2 * r); ctx.restore();
+    ctx.save(); ctx.filter = 'none'; ctx.lineWidth = 12; ctx.strokeStyle = LAR; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.stroke(); ctx.restore();
   }
   function legenda(ctx, grupos, t, yc) {
     let gr = null;
@@ -577,29 +624,66 @@ Se não houver fala, devolva a lista vazia.`;
     claro: 'brightness(1.13) contrast(1.05)', frio: 'saturate(1.1) hue-rotate(-8deg) brightness(1.03)', pb: 'grayscale(1) contrast(1.15)'};
   const NOMES_FILTRO = {nenhum: 'Normal', vivo: 'Vivo', quente: 'Quente', claro: 'Claro', frio: 'Frio', pb: 'P&B'};
   const vel = c => c.vel || 1;
+  const LAYOUTS = {auto: 'Automático', cheia: 'Câmera cheia', inteira: 'Câmera inteira', circulo: 'Conta + círculo',
+    dividida: 'Tela dividida', canto: 'Conta + rosto no canto', mascote: 'Mascote + lousa',
+    mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote'};
+  const POSES = {explicando: 'Explicando', ideia: 'Ideia', resolvendo: 'Resolvendo', pensando: 'Pensando',
+    desafiando: 'Desafiando', confiante: 'Confiante', estudando: 'Estudando', joinha: 'Joinha'};
+  const COM_TEXTO = ['circulo', 'dividida', 'canto', 'mascote', 'mascote_fundo', 'alternar'];
+  const COM_MASCOTE = ['mascote', 'mascote_fundo', 'alternar'];
+  const TRANSICOES = {nenhuma: 'Corte seco', zoom: 'Zoom', esmaecer: 'Esmaecer', deslizar: 'Deslizar', subir: 'Subir', flash: 'Flash', desfoque: 'Desfoque'};
+  const CORES_TITULO = {laranja: [LAR, '#fff'], navy: [NAVY, '#fff'], branco: ['#fff', NAVY], amarelo: ['#FFD21F', NAVY], sem: [null, '#fff']};
+  const TAM_TITULO = {P: 62, M: 80, G: 104};
+  const POS_TITULO = {alto: 0.17, centro: 0.42, baixo: 0.8};
+  function est(k) {  // estilo do bloco k, com os padrões
+    const todos = item.estilo || (item.estilo = []);
+    const e = todos[k] || (todos[k] = {});
+    const b = blocos[k], c = takes()[k], op = opcoes();
+    if (!e.layout) e.layout = b.cena === 'tela' ? 'circulo' : c && c.enquadre === 'inteiro' ? 'inteira' : c && c.enquadre === 'preencher' ? 'cheia' : 'auto';
+    if (!e.transicao) e.transicao = k === 0 || op.zoomCorte === false ? 'nenhuma' : 'zoom';
+    if (!e.corTitulo) e.corTitulo = b.gancho ? 'laranja' : 'navy';
+    if (!e.tamTitulo) e.tamTitulo = b.gancho ? 'G' : 'M';
+    if (!e.posTitulo) e.posTitulo = 'alto';
+    if (e.animTitulo == null) e.animTitulo = true;
+    if (!e.pose) e.pose = 'explicando';
+    return e;
+  }
+  const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
   function desenhar(ctx, v, k, grupos, t, decorrido, total) {
-    const c = takes()[k], b = blocos[k], op = opcoes();
+    const c = takes()[k], b = blocos[k], op = opcoes(), e = est(k);
+    let lay = layoutDe(k, v);
     const local = Math.max(0, (t - c.ini) / vel(c));  // segundos desde o começo deste bloco no vídeo final
+    if (lay === 'alternar') {  // a cada frase (trecho de voz) troca: eu, mascote, eu, mascote...
+      const n = cortados(c).filter(sg => sg[0] <= t + 0.05).length;
+      lay = n % 2 === 1 || n === 0 ? (v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia') : 'mascote_fundo';
+    }
+    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote';
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const filtro = FILTROS[op.filtro] || 'none';
-    // "zoom de impacto" no começo de cada corte (como nos Reels): 8% de zoom que volta ao normal em 0,35 s
-    const z = op.zoomCorte && k > 0 && b.cena !== 'tela' && local < 0.35 ? 1 + 0.08 * Math.pow(1 - local / 0.35, 2) : 1;
+    // transição "zoom": 8% de zoom que volta ao normal em 0,35 s (as outras transições são feitas em tocar())
+    const z = e.transicao === 'zoom' && k > 0 && local < 0.35 ? 1 + 0.08 * Math.pow(1 - local / 0.35, 2) : 1;
     ctx.save();
     if (z !== 1) { ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2); }
+    if (creme) { ctx.fillStyle = CREME; ctx.fillRect(0, 0, W, H); }
     ctx.filter = filtro;
-    if (b.cena === 'tela') {  // fundo creme com a conta grande e o professor num círculo
-      ctx.fillStyle = CREME; ctx.fillRect(0, 0, W, H);
-      if (b.quadro) {
-        let tam = 120; ctx.font = `${tam}px Anton, Impact, sans-serif`;
-        let linhas = quebrar(ctx, b.quadro, W - 160);
-        while (linhas.length > 3 && tam > 70) { tam -= 10; ctx.font = `${tam}px Anton, Impact, sans-serif`; linhas = quebrar(ctx, b.quadro, W - 160); }
-        ctx.fillStyle = NAVY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        linhas.forEach((l, n) => ctx.fillText(l, W / 2, H * 0.36 + (n - (linhas.length - 1) / 2) * tam * 1.15));
-      }
-      const r = 200, cx = W / 2, cy = H * 0.53 + 30;
-      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip(); cobrir(ctx, v, cx - r, cy - r, 2 * r, 2 * r); ctx.restore();
-      ctx.lineWidth = 12; ctx.strokeStyle = LAR; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.stroke();
-    } else if (enquadre(c, v) === 'inteiro') {  // vídeo inteiro, com o fundo borrado
+    if (lay === 'circulo') {  // conta grande e o professor num círculo
+      ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.36, W - 160, 120); ctx.filter = filtro;
+      circulo(ctx, v, W / 2, H * 0.53 + 30, 200);
+    } else if (lay === 'dividida') {  // conta em cima, câmera embaixo
+      ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.3, W - 140, 120); ctx.filter = filtro;
+      ctx.save(); ctx.beginPath(); ctx.rect(0, H * 0.48, W, H * 0.52); ctx.clip(); cobrir(ctx, v, 0, H * 0.48, W, H * 0.52); ctx.restore();
+      ctx.save(); ctx.filter = 'none'; ctx.fillStyle = LAR; ctx.fillRect(0, H * 0.48 - 6, W, 12); ctx.restore();
+    } else if (lay === 'canto') {  // conta ocupando a tela e o rosto pequeno no canto
+      ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.38, W - 140, 140); ctx.filter = filtro;
+      circulo(ctx, v, W - 190, H * 0.56, 150);
+    } else if (lay === 'mascote') {  // só o mascote apresentando, com a lousa; a voz é a sua
+      ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
+      boneco(ctx, e.pose, 30, H * 0.97, 680, falandoEm(grupos, t), local);
+    } else if (lay === 'mascote_fundo') {  // você ao fundo (escurecido) e o mascote na frente apresentando
+      ctx.save(); ctx.filter = `${filtro === 'none' ? '' : filtro} blur(3px) brightness(.5)`; cobrir(ctx, v, -20, -20, W + 40, H + 40); ctx.restore();
+      ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
+      boneco(ctx, e.pose, 30, H * 0.97, 680, falandoEm(grupos, t), local);
+    } else if (lay === 'inteira') {  // vídeo inteiro, com o fundo borrado
       ctx.save(); ctx.filter = 'blur(36px) brightness(.55)'; cobrir(ctx, v, -60, -60, W + 120, H + 120); ctx.restore();
       ctx.filter = filtro; caber(ctx, v);
     } else cobrir(ctx, v, 0, 0, W, H);
@@ -608,17 +692,19 @@ Se não houver fala, devolva a lista vazia.`;
     ctx.fillStyle = LAR; ctx.fillRect(0, 0, W * Math.min(1, decorrido / total), 14);
     ctx.font = '42px Anton, Impact, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
     const a = '@DELMAO', bb = 'SIMPLIFICA', la = ctx.measureText(a).width, lb = ctx.measureText(bb).width;
-    ctx.save(); ctx.shadowColor = '#000a'; ctx.shadowBlur = 10;
-    ctx.fillStyle = b.cena === 'tela' ? NAVY : '#fff'; ctx.fillText(a, (W - la - lb) / 2, 80);
+    ctx.save(); ctx.shadowColor = creme ? 'transparent' : '#000a'; ctx.shadowBlur = 10;
+    ctx.fillStyle = creme ? NAVY : '#fff'; ctx.fillText(a, (W - la - lb) / 2, 80);
     ctx.fillStyle = LAR; ctx.fillText(bb, (W - la - lb) / 2 + la, 80); ctx.restore();
-    if (b.texto_tela) {  // texto entra "pulando" no começo do bloco
-      const e = Math.min(1, local / 0.22), s = 0.7 + 0.3 * (1 - Math.pow(1 - e, 3)) + (e < 1 ? 0.06 * Math.sin(e * Math.PI) : 0);
-      ctx.save(); ctx.translate(W / 2, H * 0.17); ctx.scale(s, s); ctx.translate(-W / 2, -H * 0.17); ctx.globalAlpha = Math.min(1, e * 1.6);
-      caixa(ctx, b.texto_tela, H * 0.17, b.gancho ? LAR : NAVY, b.gancho ? 96 : 80);
+    if (b.texto_tela) {
+      const [fundo, corT] = CORES_TITULO[e.corTitulo] || CORES_TITULO.navy, y = H * (POS_TITULO[e.posTitulo] || 0.17);
+      const q = e.animTitulo ? Math.min(1, local / 0.22) : 1;  // entra "pulando" no começo do bloco
+      const sc = 0.7 + 0.3 * (1 - Math.pow(1 - q, 3)) + (q < 1 ? 0.06 * Math.sin(q * Math.PI) : 0);
+      ctx.save(); ctx.translate(W / 2, y); ctx.scale(sc, sc); ctx.translate(-W / 2, -y); ctx.globalAlpha = Math.min(1, q * 1.6);
+      caixa(ctx, b.texto_tela, y, fundo, TAM_TITULO[e.tamTitulo] || 80, corT);
       ctx.restore();
     }
     legenda(ctx, grupos, t, H * 0.68);
-    if (k === blocos.length - 1 && opcoes().mascote && mascote && mascote.naturalWidth) {
+    if (k === blocos.length - 1 && opcoes().mascote && mascote && mascote.naturalWidth && !COM_MASCOTE.includes(est(k).layout)) {
       const h = 380, w = mascote.naturalWidth * h / mascote.naturalHeight;  // abaixo da legenda
       ctx.drawImage(mascote, 30, H * 0.92 - h, w, h);
     }
@@ -628,10 +714,24 @@ Se não houver fala, devolva a lista vazia.`;
   const tamanho = k => { const c = takes()[k]; return c ? Math.max(0, c.fim - c.ini) / vel(c) : 0; };
   const totalDur = () => blocos.reduce((s, _, k) => s + tamanho(k), 0);
   const antes = k => blocos.slice(0, k).reduce((s, _, n) => s + tamanho(n), 0);
-  async function abrirVideo(blob) {
+  // o celular só aguenta poucos vídeos abertos ao mesmo tempo: cada um é solto (soltar) assim que deixa de ser usado
+  function soltar(v) {
+    if (!v) return;
+    try { v.pause(); } catch (e) { /* já parado */ }
+    if (v.src && v.src.startsWith('blob:')) URL.revokeObjectURL(v.src);
+    v.removeAttribute('src'); v.load();
+  }
+  async function abrirVideo(blob, tentativa = 0) {
     const v = document.createElement('video');
     v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(blob);
-    await new Promise((ok, erro) => { v.onloadeddata = ok; v.onerror = () => erro(new Error('não consegui abrir um take')); });
+    try {
+      await new Promise((ok, erro) => { v.onloadeddata = ok; v.onerror = () => erro(new Error('não consegui abrir um take')); });
+    } catch (e) {
+      soltar(v);
+      if (tentativa >= 2) throw e;
+      await espera(600);  // dá tempo de o navegador liberar os vídeos anteriores
+      return abrirVideo(blob, tentativa + 1);
+    }
     return v;
   }
   function irAoTempo(v, t) {
@@ -642,11 +742,20 @@ Se não houver fala, devolva a lista vazia.`;
       v.addEventListener('seeked', fim); v.currentTime = t;
     });
   }
+  // com a tela sem desenhar, o navegador pode nunca terminar de preparar uma imagem: espera no máximo um tempo
+  const noMaximo = (p, ms) => Promise.race([Promise.resolve(p).catch(() => {}), espera(ms)]);
+  const poses = new Map();
   async function carregarMascote() {
+    const carregando = [];
+    for (const nome of Object.keys(POSES)) if (!poses.has(nome)) {
+      const im = new Image(); im.src = BASE + `mascote/${nome}.webp`; poses.set(nome, im);
+      carregando.push(noMaximo(im.decode(), 2500));
+    }
+    await Promise.all(carregando);
     if (mascote) return;
     mascote = new Image(); mascote.src = BASE + 'mascote/joinha.webp';
-    await mascote.decode().catch(() => {});
-    await document.fonts.load('96px Anton').catch(() => {});
+    await noMaximo(mascote.decode(), 2500);
+    await noMaximo(document.fonts.load('96px Anton'), 2500);
   }
   /* "Melhorar voz" (como no Edits): corta o ronco grave, tira o abafado, dá presença, comprime e sobe o volume */
   function cadeiaVoz(a, saida) {
@@ -681,6 +790,37 @@ Se não houver fala, devolva a lista vazia.`;
       const gm = ac().createGain(); gm.gain.value = op.volMusica; fonteM.connect(gm); gm.connect(saida);
       if (musica.duration) musica.currentTime = antes(ks[0]) % musica.duration;
     }
+    // quadro final do bloco anterior (para as transições que misturam os dois)
+    const foto = document.createElement('canvas'); foto.width = W; foto.height = H;
+    const buf = document.createElement('canvas'); buf.width = W; buf.height = H;
+    let temFoto = false;
+    if (ks[0] > 0 && takes()[ks[0] - 1]) {  // vendo um bloco só: prepara o fim do anterior para mostrar a transição
+      try {
+        const ca = takes()[ks[0] - 1], va = await abrirVideo(ca.blob); va.muted = true;
+        await irAoTempo(va, Math.max(0, ca.fim - 0.05));
+        desenhar(foto.getContext('2d'), va, ks[0] - 1, gruposDe(ks[0] - 1), ca.fim - 0.05, antes(ks[0]), total);
+        temFoto = true; soltar(va);
+      } catch (e) { /* sem transição na prévia */ }
+    }
+    const T = 0.4, suave = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    function compor(k, v, grupos, t, dec) {
+      const c = takes()[k], tr = est(k).transicao, local = Math.max(0, (t - c.ini) / vel(c));
+      const cruzada = ['esmaecer', 'deslizar', 'subir', 'desfoque'].includes(tr) && temFoto && k > 0 && local < T;
+      if (!cruzada) {
+        desenhar(ctx, v, k, grupos, t, dec, total);
+        if (tr === 'flash' && k > 0 && local < T) { ctx.fillStyle = `rgba(255,255,255,${0.95 * Math.pow(1 - local / T, 2)})`; ctx.fillRect(0, 0, W, H); }
+        return;
+      }
+      const p = suave(local / T);
+      desenhar(buf.getContext('2d'), v, k, grupos, t, dec, total);
+      if (tr === 'esmaecer') { ctx.drawImage(foto, 0, 0); ctx.globalAlpha = p; ctx.drawImage(buf, 0, 0); ctx.globalAlpha = 1; }
+      else if (tr === 'deslizar') { ctx.drawImage(foto, -W * p, 0); ctx.drawImage(buf, W * (1 - p), 0); }
+      else if (tr === 'subir') { ctx.drawImage(foto, 0, -H * p); ctx.drawImage(buf, 0, H * (1 - p)); }
+      else if (tr === 'desfoque') {
+        ctx.save(); ctx.filter = `blur(${Math.round(28 * (1 - p))}px)`; ctx.drawImage(buf, 0, 0); ctx.restore();
+        ctx.globalAlpha = 1 - p; ctx.drawImage(foto, 0, 0); ctx.globalAlpha = 1;
+      }
+    }
     try { await tocarBlocos(); } finally {
       if (musica) { musica.pause(); fonteM.disconnect(); URL.revokeObjectURL(musica.src); }
       if (voz) voz.nos.forEach(x => x.disconnect());
@@ -689,7 +829,9 @@ Se não houver fala, devolva a lista vazia.`;
     for (const k of ks) {
       if (controle.parar) break;
       const c = takes()[k]; if (!c) continue;
-      const v = await abrirVideo(c.blob), a = ac();
+      let v;
+      try { v = await abrirVideo(c.blob); } catch (e) { throw new Error(`o take do bloco ${k + 1} está com defeito. Toque nesse bloco e em 🎥 Regravar.`); }
+      const a = ac();
       const fonte = a.createMediaElementSource(v), ganho = a.createGain();
       ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(entradaVoz);
       v.playbackRate = vel(c); v.preservesPitch = true;
@@ -707,18 +849,19 @@ Se não houver fala, devolva a lista vazia.`;
           }
           if (ativo) {
             const dec = antes(k) + Math.max(0, t - c.ini) / vel(c);
-            desenhar(ctx, v, k, grupos, t, dec, total);
+            compor(k, v, grupos, t, dec);
             if (aoTempo) aoTempo(dec, total, k);
           }
           if (t >= c.fim || v.ended) {
             ganho.gain.value = 0; if (musica) musica.pause(); if (gravador && gravador.state === 'recording') gravador.pause();
+            foto.getContext('2d').drawImage(ctx.canvas, 0, 0); temFoto = true;  // guarda o último quadro para a próxima transição
             v.pause(); ok(); return;
           }
           proximo(passo);
         };
         proximo(passo);
       });
-      fonte.disconnect(); URL.revokeObjectURL(v.src); v.removeAttribute('src');
+      fonte.disconnect(); soltar(v);
     }
     }
   }
@@ -730,7 +873,7 @@ Se não houver fala, devolva a lista vazia.`;
     await carregarMascote();
     let v = quadros.get(k);
     if (!v || v.dataset.blob !== String(c.blob.size)) {
-      if (v) URL.revokeObjectURL(v.src);
+      if (v) soltar(v);
       v = await abrirVideo(c.blob); v.muted = true; v.dataset.blob = String(c.blob.size); quadros.set(k, v);
     }
     const alvoT = t == null ? c.ini + 0.05 : t;
@@ -772,19 +915,28 @@ Se não houver fala, devolva a lista vazia.`;
       <label>✂️ Começa em <b id="vini"></b></label><input id="rini" type="range" min="0" max="${c.dur}" step="0.05" value="${c.ini}">
       <label>✂️ Termina em <b id="vfim"></b> <small>(take de ${seg(c.dur)})</small></label><input id="rfim" type="range" min="0" max="${c.dur}" step="0.05" value="${c.fim}">
       <div class="ebot"><button id="etrecho">▶ Ver este bloco</button><button id="eregravar">🎥 Regravar</button></div>
-      <label for="etexto">Texto na tela</label><input id="etexto" type="text" value="${esc(b.texto_tela)}">
+      <label for="etexto">Título na tela</label><input id="etexto" type="text" value="${esc(b.texto_tela)}" placeholder="(sem título neste bloco)">
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(CORES_TITULO).map(x => `<button data-tc="${x}" style="flex:1 0 18%">${{laranja: '🟧', navy: '🟦', branco: '⬜', amarelo: '🟨', sem: 'Sem caixa'}[x]}</button>`).join('')}</div>
+      <div class="ebot">${Object.keys(TAM_TITULO).map(x => `<button data-tt="${x}">${{P: 'Pequeno', M: 'Médio', G: 'Grande'}[x]}</button>`).join('')}</div>
+      <div class="ebot">${Object.keys(POS_TITULO).map(x => `<button data-tp="${x}">${{alto: 'No alto', centro: 'No meio', baixo: 'Embaixo'}[x]}</button>`).join('')}</div>
+      <label class="echeck"><input id="eanim" type="checkbox" ${est(k).animTitulo ? 'checked' : ''}> Título entra com animação</label>
       <label for="efala">Legenda <small id="eslg"></small></label>
       <textarea id="efala">${esc(c.transcricao && c.transcricao.length ? c.transcricao.map(p => p.w).join(' ') : b.fala)}</textarea>
       <div class="ebot"><button id="etransc"></button></div>
-      ${b.cena === 'tela' ? '' : `<label>Enquadramento</label>
-      <div class="ebot"><button data-e="preencher">Preencher a tela</button><button data-e="inteiro">Vídeo inteiro</button></div>`}
+      <label>Layout deste bloco</label>
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(LAYOUTS).map(x => `<button data-l="${x}" style="flex:1 0 30%">${LAYOUTS[x]}</button>`).join('')}</div>
+      <div id="eposew"><label>Pose do mascote</label>
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div></div>
+      <div id="econtaw"><label for="econta">Conta / texto grande (vai na lousa nos layouts do mascote)</label><input id="econta" type="text" value="${esc(b.quadro || '')}" placeholder="ex.: 8% de 25 = 25% de 8"></div>
+      ${k > 0 ? `<label>Transição para este bloco</label>
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(TRANSICOES).map(x => `<button data-tr="${x}" style="flex:1 0 22%">${TRANSICOES[x]}</button>`).join('')}</div>
+      <div class="ebot"><button id="etrtodos">Usar esta transição em todos os cortes</button></div>` : ''}
       <label>Velocidade deste bloco</label>
       <div class="ebot">${[1, 1.15, 1.3, 1.5].map(x => `<button data-v="${x}">${String(x).replace('.', ',')}×</button>`).join('')}</div>
       <label style="margin-top:20px;font:20px Anton,Impact,sans-serif">VÍDEO TODO</label>
       <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (mais clara e mais alta)</label>
       <label class="echeck"><input id="eleg" type="checkbox" ${op.legenda ? 'checked' : ''}> Legenda automática (palavra por palavra)</label>
       <label class="echeck"><input id="elvoz" type="checkbox" ${op.legendaVoz ? 'checked' : ''}> Legenda pela minha voz (senão, usa o texto do roteiro)</label>
-      <label class="echeck"><input id="ezoom" type="checkbox" ${op.zoomCorte ? 'checked' : ''}> Zoom de impacto em cada corte</label>
       <label class="echeck"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final</label>
       <label>Filtro de cor</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(FILTROS).map(f => `<button data-f="${f}" style="flex:1 0 28%">${NOMES_FILTRO[f]}</button>`).join('')}</div>
@@ -792,7 +944,8 @@ Se não houver fala, devolva a lista vazia.`;
       <div class="ebot"><button id="emus">${item.musica ? '🎵 ' + esc(item.musicaNome || 'música') : 'Escolher música do celular'}</button>
         ${item.musica ? '<button id="emusx" style="flex:0 0 52px">✕</button>' : ''}</div>
       ${item.musica ? `<label>Volume da música <b id="vmus"></b></label><input id="evolm" type="range" min="0" max="0.6" step="0.01" value="${op.volMusica}">` : ''}
-      <input id="earq" type="file" accept="audio/*" hidden>`;
+      <input id="earq" type="file" accept="audio/*" hidden>
+      <div class="ebot" style="margin-top:22px"><button id="etudo" style="color:#b00;border-color:#e8b4b4 !important">🔁 Regravar tudo do início</button></div>`;
     const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
     mostrarCorte();
     const guardar = () => salvar(item).catch(() => {});
@@ -822,15 +975,35 @@ Se não houver fala, devolva a lista vazia.`;
       if (c.erroTranscricao && sel === k) alert('Não consegui ouvir a voz agora: ' + c.erroTranscricao);
     };
     g('etexto').onchange = g('efala').onchange = guardar;
-    ui.querySelectorAll('[data-e]').forEach(bt => {
-      bt.classList.toggle('on', (c.enquadre || 'auto') === bt.dataset.e);
-      bt.onclick = () => { c.enquadre = bt.dataset.e; guardar(); selecionar(k); };
-    });
     g('eleg').onchange = () => { op.legenda = g('eleg').checked; guardar(); mostrarQuadro(k); };
     g('emasc').onchange = () => { op.mascote = g('emasc').checked; guardar(); mostrarQuadro(k); };
     g('evoz').onchange = () => { op.voz = g('evoz').checked; guardar(); };
     g('elvoz').onchange = () => { op.legendaVoz = g('elvoz').checked; guardar(); mostrarQuadro(k); };
-    g('ezoom').onchange = () => { op.zoomCorte = g('ezoom').checked; guardar(); };
+    const e = est(k);
+    const marcar = (attr, valor) => ui.querySelectorAll(`[data-${attr}]`).forEach(x => x.classList.toggle('on', x.dataset[attr] === valor));
+    const opcao = (attr, campo, depois) => {
+      marcar(attr, String(e[campo]));
+      ui.querySelectorAll(`[data-${attr}]`).forEach(x => x.onclick = () => {
+        e[campo] = x.dataset[attr]; marcar(attr, e[campo]); guardar(); if (depois) depois(); mostrarQuadro(k);
+      });
+    };
+    const mostrarConta = () => { g('econtaw').hidden = !COM_TEXTO.includes(e.layout); g('eposew').hidden = !COM_MASCOTE.includes(e.layout); };
+    opcao('tc', 'corTitulo'); opcao('tt', 'tamTitulo'); opcao('tp', 'posTitulo'); opcao('l', 'layout', mostrarConta); opcao('po', 'pose');
+    mostrarConta();
+    g('eanim').onchange = () => { e.animTitulo = g('eanim').checked; guardar(); };
+    g('econta').oninput = () => { setTexto(k, 'quadro', g('econta').value); mostrarQuadro(k); };
+    g('econta').onchange = guardar;
+    if (k > 0) {
+      opcao('tr', 'transicao', () => previa([k]));  // ao escolher, já mostra a transição
+      g('etrtodos').onclick = () => { blocos.forEach((_, n) => { if (n > 0) est(n).transicao = e.transicao; }); guardar(); alert(`Transição “${TRANSICOES[e.transicao]}” em todos os cortes.`); };
+    }
+    g('etudo').onclick = async () => {
+      if (!confirm('Apagar TODOS os takes e gravar de novo a partir do bloco 1?\nOs textos, a legenda corrigida à mão, os estilos e a música ficam.')) return;
+      item.takes = []; await guardar();
+      for (const v of quadros.values()) soltar(v);
+      quadros.clear();
+      irGravar(0);
+    };
     ui.querySelectorAll('[data-v]').forEach(bt => {
       bt.classList.toggle('on', vel(c) === Number(bt.dataset.v));
       bt.onclick = () => { c.vel = Number(bt.dataset.v); guardar(); selecionar(k); };
