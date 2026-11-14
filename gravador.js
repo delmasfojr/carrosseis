@@ -167,19 +167,53 @@ const Gravador = (() => {
     g('gver').disabled ||= !tk;
     g('gver').textContent = revendo ? '📷' : '▶';
     g('geditar').disabled ||= !takes().some(Boolean);
-    g('grec').disabled = revendo;
+    g('grec').disabled = revendo || abrindo;
+    if (abrindo) for (const id of ['gvirar', 'geditar']) g(id).disabled = true;
   }
 
   function pararCamera() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; }
-  async function ligarCamera(forcar) {
+  // uma troca de câmera por vez: se pedirem outra no meio, espera a anterior terminar
+  let fila = Promise.resolve(), abrindo = false;
+  function ligarCamera(forcar) {
+    const p = fila.then(() => ligarCameraJa(forcar));
+    fila = p.catch(() => {});
+    return p;
+  }
+  async function pedirCamera(lado) {
+    const audio = {echoCancellation: true, noiseSuppression: true};
+    const tentativas = [
+      // resizeMode 'none' = formato nativo da câmera, sem recorte (o recorte era o "zoom" exagerado)
+      {facingMode: lado, resizeMode: {ideal: 'none'}, width: {ideal: 1920}, height: {ideal: 1440}, frameRate: {ideal: 30}},
+      {facingMode: lado},  // celular que recusa as opções acima
+    ];
+    let erro;
+    for (let n = 0; n < 3; n++) {  // o Android às vezes demora a soltar a câmera anterior
+      for (const video of tentativas) {
+        try { return await navigator.mediaDevices.getUserMedia({video, audio}); } catch (e) {
+          erro = e;
+          if (e.name === 'NotAllowedError' || e.name === 'SecurityError') throw e;  // permissão negada: não adianta insistir
+        }
+      }
+      await espera(600);
+    }
+    throw erro;
+  }
+  async function ligarCameraJa(forcar) {
     const tk = takes()[i];
     const quer = forcar || (tk && tk.facing) || (blocos[i].cena === 'quadro' ? 'environment' : 'user');
     if (!(stream && facing === quer && stream.active)) {
-      pararCamera(); facing = quer;
-      // resizeMode 'none' = formato nativo da câmera, sem recorte (o recorte era o "zoom" exagerado)
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {facingMode: facing, resizeMode: {ideal: 'none'}, width: {ideal: 1920}, height: {ideal: 1440}, frameRate: {ideal: 30}},
-        audio: {echoCancellation: true, noiseSuppression: true}});
+      pararCamera();
+      abrindo = true; atualizarGravar();
+      g('ginfo').textContent = quer === 'environment' ? 'Abrindo a câmera de trás…' : 'Abrindo a câmera…';
+      await espera(250);  // dá tempo de o celular soltar a câmera anterior
+      try {
+        stream = await pedirCamera(quer); facing = quer;
+      } catch (e) {
+        if (quer === 'environment' && e.name !== 'NotAllowedError') {  // câmera de trás falhou: usa a da frente
+          stream = await pedirCamera('user'); facing = 'user';
+          alert('Não consegui abrir a câmera de trás; vou usar a da frente. Use 🔄 para tentar de novo.');
+        } else throw e;
+      } finally { abrindo = false; }
       const t = stream.getVideoTracks()[0], cap = t.getCapabilities ? t.getCapabilities() : {};
       if (cap.zoom && cap.zoom.max > cap.zoom.min) {
         g('gzoomw').hidden = false;
@@ -195,8 +229,14 @@ const Gravador = (() => {
       g('ginfo').dataset.res = `${v.videoWidth}×${v.videoHeight}`;
     };
     await v.play().catch(() => {});
+    atualizarGravar();
   }
-  const erroCamera = e => alert('Não consegui abrir a câmera. Permita o uso da câmera e do microfone para este site.\n(' + e.message + ')');
+  const erroCamera = e => {
+    abrindo = false; if (ui) atualizarGravar();
+    alert(e.name === 'NotAllowedError'
+      ? 'O celular bloqueou a câmera ou o microfone. Toque no cadeado ao lado do endereço (ou em Configurações do site) e permita câmera e microfone.'
+      : `Não consegui abrir a câmera (${e.name || ''} ${e.message}). Feche outros apps que usam a câmera e toque em 🔄.`);
+  };
 
   async function irPara(k) {
     if (k < 0 || k >= blocos.length || gravando) return;
@@ -212,7 +252,9 @@ const Gravador = (() => {
   }
 
   async function gravar() {
-    if (!stream) return erroCamera(new Error('câmera desligada'));
+    if (abrindo || !(stream && stream.active)) {  // câmera ainda abrindo (ou caiu): abre antes de gravar
+      try { await ligarCamera(); } catch (e) { return erroCamera(e); }
+    }
     ac();  // libera o áudio no toque (iPhone)
     g('grec').disabled = true;
     for (const n of [3, 2, 1]) { conta(n); await espera(650); }
