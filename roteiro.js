@@ -15,11 +15,12 @@ const Roteiro = (() => {
   const S = {type: 'STRING'};
   const obj = p => ({type: 'OBJECT', properties: p, required: Object.keys(p)});
   const lista = i => ({type: 'ARRAY', items: i});
-  const ESQUEMA = obj({roteiros: lista(obj({
+  const ESQUEMA = obj({prova_citada: S, roteiros: lista(obj({
     tema: S, nota_viral: {type: 'INTEGER'}, por_que: S, ganchos: lista(S), texto_capa: S,
     blocos: lista(obj({tempo: S, cena: {type: 'STRING', enum: ['camera', 'quadro', 'tela']}, fala: S, quadro: S, texto_tela: S})),
     comentario_fixado: S, duracao: S, legenda: S,
   }))});
+  ESQUEMA.propertyOrdering = ['prova_citada', 'roteiros'];
 
   async function pedir(link, inicio, fim) {
     const video = {fileData: {fileUri: link}};
@@ -33,7 +34,7 @@ const Roteiro = (() => {
       generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.8,
         ...(inicio != null ? {mediaResolution: 'MEDIA_RESOLUTION_LOW'} : {})},
     });
-    return (await chamarGemini(corpo, aviso, inicio != null)).roteiros;
+    return limparProvas(await chamarGemini(corpo, aviso, inicio != null), 'roteiros');
   }
 
   async function gerar(link, inicio = 0, longo = false) {

@@ -34,7 +34,8 @@ const setFila = f => { localStorage.setItem('fila', JSON.stringify(f)); mostrarF
 const S = {type: 'STRING'}, POSE = {type: 'STRING', enum: Cards.POSES};
 const obj = p => ({type: 'OBJECT', properties: p, required: Object.keys(p)});
 const lista = i => ({type: 'ARRAY', items: i});  // Gemini 3.x recusa minItems/maxItems
-const ESQUEMA = obj({carrosseis: lista(obj({
+// prova_citada vem antes: o Gemini decide se o vídeo cita alguma prova antes de escrever
+const ESQUEMA = obj({prova_citada: S, carrosseis: lista(obj({
   tema: S,
   capa: obj({linha1: S, linha2: S, subtitulo: S, estilo: {type: 'STRING', enum: ['questao', 'quadro', 'postit']}, questao_rotulo: S,
     questao_destaque: S, conta: S, questao_emoji: S, frase: S, pose: POSE}),
@@ -43,6 +44,7 @@ const ESQUEMA = obj({carrosseis: lista(obj({
   resumo: obj({linha1: S, linha2: S, destaque: S, etapas: lista(obj({emoji: S, rotulo: S})), frase: S, pose: POSE}),
   cta_frase: S, legenda: S,
 }))});
+ESQUEMA.propertyOrdering = ['prova_citada', 'carrosseis'];
 const mmss = s => s >= 3600 ? `${Math.floor(s / 3600)}h${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}` : `${Math.floor(s / 60)} min`;
 
 async function pedirAoGemini(link, inicio, fim, aviso) {
@@ -61,7 +63,20 @@ async function pedirAoGemini(link, inicio, fim, aviso) {
     generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.6,
       ...(inicio != null ? {mediaResolution: 'MEDIA_RESOLUTION_LOW'} : {})},
   });
-  return (await chamarGemini(corpo, aviso, inicio != null)).carrosseis;
+  return limparProvas(await chamarGemini(corpo, aviso, inicio != null), 'carrosseis');
+}
+
+/* Trava extra: tira da legenda hashtags de provas que o vídeo não citou (o Gemini às vezes põe #vestibular sozinho).
+   Usado também pelos roteiros (roteiro.js). Devolve a lista resp[chave]. */
+function limparProvas(resp, chave) {
+  const citada = (resp.prova_citada || '').toLowerCase();
+  const PROVAS = ['enem', 'vestibular', 'concurs', 'obmep'];
+  const fora = tag => PROVAS.some(p => tag.toLowerCase().includes(p) && !citada.includes(p)) ? '' : tag;
+  for (const c of resp[chave] || [])
+    c.legenda = (c.legenda || '').split('\n')
+      .map(l => l.includes('#') ? l.replace(/#[\p{L}\p{N}_]+/gu, fora).replace(/ {2,}/g, ' ').trim() : l)
+      .join('\n').trimEnd();
+  return resp[chave];
 }
 
 /* Manda o pedido ao Gemini, trocando de modelo quando um está ocupado. Devolve o JSON da resposta.
