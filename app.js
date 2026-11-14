@@ -168,6 +168,7 @@ function tela(id) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tela === id));
   if (id === 'lista') mostrarLista();
   if (id === 'roteiros' && typeof Roteiro !== 'undefined') Roteiro.mostrarLista();
+  if (id === 'virais' && typeof Roteiro !== 'undefined') Roteiro.abrirVirais();
   window.scrollTo(0, 0);
 }
 const aviso = txt => { $('#status').textContent = txt; $('#status').hidden = !txt; };

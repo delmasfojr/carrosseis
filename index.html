@@ -99,6 +99,7 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
 #tpbarra{position:fixed;left:0;right:0;bottom:0;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;background:#111e;padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
 #tpbarra button{background:#333;color:#fff;padding:10px 12px;min-width:44px}
 #tpbarra #tpplay{background:var(--lar);min-width:64px;font-size:20px}
+#rvideofinal video{width:100%;max-height:70vh;background:#000;border-radius:12px;margin-top:12px;display:block}
 #tpinfo{color:#aaa;font-size:12px;width:100%;text-align:center}
 </style>
 </head>
@@ -162,7 +163,7 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
     <label class="check"><input id="soshorts" type="checkbox" checked> <span>Só vídeos curtos (até 4 min, inclui Shorts)</span></label>
     <button id="buscar" class="principal">🔥 Buscar virais</button>
     <p class="dica">Cada termo gasta 1% da cota grátis do dia (dá ~90 termos por dia). Toque em <b>Roteiro</b> num vídeo para gerar o roteiro na hora.</p>
-    <div id="virais"></div>
+    <div id="vlista"></div>
   </section>
 
   <section class="tela" id="roteiros" hidden>
@@ -174,7 +175,9 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
   <section class="tela" id="verroteiro" hidden>
     <button id="rvoltar" class="sec">← Voltar</button>
     <h2 id="rtitulo" style="margin-top:14px"></h2>
-    <button id="rtp" class="principal" style="margin-top:0">🎬 Abrir teleprompter</button>
+    <button id="rgravar" class="principal" style="margin-top:0">🎥 Gravar o vídeo</button>
+    <div id="rvideofinal"></div>
+    <button id="rtp" class="sec" style="width:100%;margin-top:10px">🎬 Só teleprompter (gravar com outra câmera)</button>
     <div id="rcorpo"></div>
     <label for="rlegenda">Legenda (pode editar)</label>
     <textarea id="rlegenda" style="min-height:180px"></textarea>
@@ -224,5 +227,6 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
 <script src="cards.js"></script>
 <script src="app.js"></script>
 <script src="roteiro.js"></script>
+<script src="gravador.js"></script>
 </body>
 </html>

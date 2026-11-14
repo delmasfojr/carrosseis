@@ -93,7 +93,27 @@ const Roteiro = (() => {
     $('#rlegenda').value = (c.legenda || '').replace(/\\n/g, '\n');
     $('#rmarcar').textContent = atual.gravado ? 'Desmarcar gravado' : 'Marcar como gravado';
     $('#rvideo').href = atual.link;
+    // gravação e vídeo pronto
+    const nt = (atual.takes || []).filter(Boolean).length, nb = c.blocos.length + 1;
+    $('#rgravar').textContent = atual.video ? '🎥 Regravar ou remontar' : nt ? `🎥 Continuar a gravação (${nt} de ${nb} blocos)` : '🎥 Gravar o vídeo';
+    if (urlVideo) { URL.revokeObjectURL(urlVideo); urlVideo = null; }
+    if (atual.video) {
+      urlVideo = URL.createObjectURL(atual.video);
+      $('#rvideofinal').innerHTML = `<video controls playsinline src="${urlVideo}"></video>
+        <div class="acoes"><button id="rcompvid" class="principal">Compartilhar vídeo no Instagram</button>
+        <button id="rbaixvid" class="sec" style="grid-column:1/-1">Baixar vídeo</button></div>`;
+      const arquivo = () => new File([atual.video], `${atual.conteudo.tema}.${atual.video.type.includes('mp4') ? 'mp4' : 'webm'}`, {type: atual.video.type});
+      $('#rcompvid').onclick = () => {  // o share tem de sair já no toque
+        const files = [arquivo()];
+        if (!(navigator.canShare && navigator.canShare({files}))) return alert('Este navegador não compartilha vídeo. Use "Baixar vídeo".');
+        const cop = copiar($('#rlegenda').value);
+        navigator.share({files}).catch(e => { if (e.name !== 'AbortError') alert('Não deu para compartilhar: ' + e.message); });
+        cop.then(ok => { aviso(ok ? 'Legenda copiada: no Instagram, escolha "Reels" e cole a legenda.' : ''); setTimeout(() => aviso(''), 8000); });
+      };
+      $('#rbaixvid').onclick = () => { const a = document.createElement('a'); a.href = urlVideo; a.download = arquivo().name; a.click(); };
+    } else $('#rvideofinal').innerHTML = '';
   }
+  let urlVideo = null;
 
   function textoRoteiro() {
     const c = atual.conteudo;
@@ -175,6 +195,7 @@ const Roteiro = (() => {
     const dias = Number($('#periodo').value), curtos = $('#soshorts').checked;
     const depois = new Date(Date.now() - dias * 864e5).toISOString();
     $('#buscar').disabled = true;
+    $('#vlista').innerHTML = '<p class="dica">🔎 Buscando os vídeos que estão bombando… (uns 10 segundos)</p>';
     try {
       const ids = new Set();
       for (const [k, q] of lista_.entries()) {
@@ -202,16 +223,31 @@ const Roteiro = (() => {
       gravar('virais', {quando: new Date().toISOString(), res});
       mostrarVirais();
       aviso('');
-      if (!res.length) alert('Não achei vídeos com bastante visualização nesse período. Tente um período maior ou outros termos.');
-    } catch (e) { aviso(''); alert(e.message); }
+    } catch (e) {
+      aviso('');
+      $('#vlista').innerHTML = `<p class="dica">Não deu para buscar: ${esc(e.message)}</p>`;
+      alert(e.message);
+    }
     finally { $('#buscar').disabled = false; }
+  }
+
+  // ao abrir a aba: busca sozinho se ainda não buscou nas últimas 12 h
+  function abrirVirais() {
+    const v = ler('virais', null);
+    if (!chaveYT()) {
+      $('#vlista').innerHTML = '<p class="dica">Falta a <b>chave do YouTube</b>: toque em <b>Chaves</b> (embaixo), cole a chave na parte “Chave do YouTube” e toque em Salvar.</p>';
+      return;
+    }
+    if (!v || Date.now() - new Date(v.quando) > 12 * 3600e3) buscar();
+    else mostrarVirais();
   }
 
   function mostrarVirais() {
     const v = ler('virais', null), u = usados();
-    if (!v) { $('#virais').innerHTML = ''; return; }
+    if (!v) { $('#vlista').innerHTML = '<p class="dica">Toque em <b>🔥 Buscar virais</b> para ver os vídeos.</p>'; return; }
+    if (!v.res.length) { $('#vlista').innerHTML = '<p class="dica">Nenhum vídeo com 5 mil visualizações ou mais nesse período. Escolha um período maior ou troque os termos e busque de novo.</p>'; return; }
     const quando = new Date(v.quando);
-    $('#virais').innerHTML = `<p class="dica">Busca de ${quando.toLocaleDateString('pt-BR')} às ${quando.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}. ` +
+    $('#vlista').innerHTML = `<p class="dica">Busca de ${quando.toLocaleDateString('pt-BR')} às ${quando.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}. ` +
       `<b>“× o canal”</b> = visualizações divididas pelos inscritos: quanto maior, mais o vídeo furou a bolha.</p>` +
       v.res.map(x => `<div class="viral ${u.has(x.id) ? 'usado' : ''}">
         <a href="https://www.youtube.com/watch?v=${x.id}" target="_blank" rel="noopener"><img src="${esc(x.thumb)}" alt="" loading="lazy"><span class="dur">${x.dur}</span></a>
@@ -220,8 +256,8 @@ const Roteiro = (() => {
         <small><span class="vez">${x.vezes >= 20 ? '🔥🔥🔥' : x.vezes >= 5 ? '🔥🔥' : '🔥'} ${compacto(x.vezes)}× o canal</span> · ${compacto(x.views)} views · há ${x.dias} d${u.has(x.id) ? ' · já usado ✓' : ''}</small>
         <div class="vacoes"><button class="principal" data-r="${x.id}">Roteiro</button><button class="sec" data-c="${x.id}">Carrossel</button></div></div>
       </div>`).join('');
-    $('#virais').querySelectorAll('[data-r]').forEach(b => b.onclick = () => gerar(`https://www.youtube.com/watch?v=${b.dataset.r}`));
-    $('#virais').querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+    $('#vlista').querySelectorAll('[data-r]').forEach(b => b.onclick = () => gerar(`https://www.youtube.com/watch?v=${b.dataset.r}`));
+    $('#vlista').querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
       const link = `https://www.youtube.com/watch?v=${b.dataset.c}`; marcarUsado(link); gerar_carrossel(link);
     });
   }
@@ -236,6 +272,7 @@ const Roteiro = (() => {
     mostrarVirais();
     $('#rvoltar').onclick = () => tela('roteiros');
     $('#rtp').onclick = abrirTP;
+    $('#rgravar').onclick = () => Gravador.abrir(atual, salvarR, () => abrir(atual.id));
     $('#rcopiar').onclick = async () => alert(await copiar(textoRoteiro()) ? 'Roteiro copiado!' : 'Não consegui copiar.');
     $('#rcopiarleg').onclick = async () => alert(await copiar($('#rlegenda').value) ? 'Legenda copiada!' : 'Selecione e copie à mão.');
     $('#rlegenda').onchange = async () => { atual.conteudo.legenda = $('#rlegenda').value; await salvarR(atual); };
@@ -256,5 +293,5 @@ const Roteiro = (() => {
       alert(r.ok ? 'A chave do YouTube funciona! ✅' : `A chave não funcionou (${r.status}).`);
     };
   }
-  return {iniciar, gerar, mostrarLista};
+  return {iniciar, gerar, mostrarLista, abrirVirais};
 })();
