@@ -233,6 +233,7 @@ const Roteiro = (() => {
 
   // ao abrir a aba: busca sozinho se ainda não buscou nas últimas 12 h
   function abrirVirais() {
+    if (!$('#vlista')) return;
     const v = ler('virais', null);
     if (!chaveYT()) {
       $('#vlista').innerHTML = '<p class="dica">Falta a <b>chave do YouTube</b>: toque em <b>Chaves</b> (embaixo), cole a chave na parte “Chave do YouTube” e toque em Salvar.</p>';
@@ -266,6 +267,17 @@ const Roteiro = (() => {
 
   /* ---------------------------------------------------------------- início */
   async function iniciar() {
+    // página velha (guardada no celular) com este arquivo novo: baixa a página de novo e recarrega uma vez
+    if (!document.querySelector('#vlista') || !document.querySelector('#rgravar')) {
+      if (!sessionStorage.getItem('recarregou')) {
+        sessionStorage.setItem('recarregou', '1');
+        await fetch(BASE + 'index.html', {cache: 'reload'}).catch(() => {});
+        await fetch(BASE, {cache: 'reload'}).catch(() => {});
+        location.reload();
+      }
+      return;  // sem as telas novas: o resto do app funciona normalmente
+    }
+    sessionStorage.removeItem('recarregou');
     PROMPT_R = await fetch(BASE + 'prompt-roteiro.md').then(r => r.text());
     $('#termos').value = termos().join('\n');
     $('#buscar').onclick = buscar;
