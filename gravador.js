@@ -16,7 +16,12 @@ const Gravador = (() => {
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
-  const opcoes = () => item.edicao || (item.edicao = {legenda: true, mascote: true});
+  const PADRAO = {legenda: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false};
+  const opcoes = () => {  // completa o que faltar SEM trocar o objeto (quem já tem a referência continua valendo)
+    const op = item.edicao || (item.edicao = {});
+    for (const [k, v] of Object.entries(PADRAO)) if (!(k in op)) op[k] = v;
+    return op;
+  };
   const ac = () => { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); return actx; };
 
   /* tempo que o roteiro dá para cada bloco ("8–15 s" = 7 s; gancho = 3 s) */
@@ -118,6 +123,7 @@ const Gravador = (() => {
           </div>
           <div id="gzoomw" hidden>🔍 <input id="gzoom" type="range"> <span id="gzoomv"></span></div>
           <div id="gtl"></div>
+          <div class="glinha" style="margin-top:6px"><button id="gruido" style="font-size:12px;padding:6px 10px"></button></div>
           <div id="ginfo"></div>
         </div>
       </div>
@@ -133,6 +139,10 @@ const Gravador = (() => {
     g('gvirar').onclick = () => ligarCamera(facing === 'user' ? 'environment' : 'user').catch(erroCamera);
     g('gver').onclick = () => revendo ? voltarCamera() : rever();
     g('gfechar').onclick = fechar;
+    g('gruido').onclick = async () => {
+      opcoes().ruido = !opcoes().ruido; salvar(item).catch(() => {});
+      const lado = facing; pararCamera(); await ligarCamera(lado).catch(erroCamera);
+    };
     g('geditar').onclick = () => abrirEditor(Math.min(i, blocos.length - 1));
     g('gzoom').oninput = () => {
       const t = stream && stream.getVideoTracks()[0], z = Number(g('gzoom').value);
@@ -168,6 +178,8 @@ const Gravador = (() => {
     g('gver').textContent = revendo ? '📷' : '▶';
     g('geditar').disabled ||= !takes().some(Boolean);
     g('grec').disabled = revendo || abrindo;
+    g('gruido').textContent = opcoes().ruido ? '🎙 Reduzir ruído: LIGADO (lugar barulhento)' : '🎙 Reduzir ruído: desligado (voz mais natural)';
+    g('gruido').disabled = gravando || abrindo;
     if (abrindo) for (const id of ['gvirar', 'geditar']) g(id).disabled = true;
   }
 
@@ -180,7 +192,10 @@ const Gravador = (() => {
     return p;
   }
   async function pedirCamera(lado) {
-    const audio = {echoCancellation: true, noiseSuppression: true};
+    // filtros de "chamada" do celular (cancelamento de eco, supressão de ruído, ganho automático) deixam a voz
+    // abafada e robótica: ficam desligados. "Reduzir ruído" liga só a supressão, para lugar barulhento.
+    const audio = {echoCancellation: false, noiseSuppression: !!opcoes().ruido, autoGainControl: false,
+      channelCount: {ideal: 1}, sampleRate: {ideal: 48000}, sampleSize: {ideal: 16}};
     const tentativas = [
       // resizeMode 'none' = formato nativo da câmera, sem recorte (o recorte era o "zoom" exagerado)
       {facingMode: lado, resizeMode: {ideal: 'none'}, width: {ideal: 1920}, height: {ideal: 1440}, frameRate: {ideal: 30}},
@@ -260,7 +275,7 @@ const Gravador = (() => {
     for (const n of [3, 2, 1]) { conta(n); await espera(650); }
     conta('');
     const mt = tipo(), partes = [], a = alvo(blocos[i]);
-    rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6});
+    rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6, audioBitsPerSecond: 192000});
     rec.ondataavailable = e => { if (e.data.size) partes.push(e.data); };
     rec.onstop = async () => {
       clearInterval(relogio);
@@ -443,9 +458,20 @@ const Gravador = (() => {
     ctx.restore();
   }
   let mascote = null;
+  const FILTROS = {nenhum: 'none', vivo: 'saturate(1.35) contrast(1.08)', quente: 'sepia(.22) saturate(1.25) brightness(1.04)',
+    claro: 'brightness(1.13) contrast(1.05)', frio: 'saturate(1.1) hue-rotate(-8deg) brightness(1.03)', pb: 'grayscale(1) contrast(1.15)'};
+  const NOMES_FILTRO = {nenhum: 'Normal', vivo: 'Vivo', quente: 'Quente', claro: 'Claro', frio: 'Frio', pb: 'P&B'};
+  const vel = c => c.vel || 1;
   function desenhar(ctx, v, k, grupos, t, decorrido, total) {
-    const c = takes()[k], b = blocos[k];
+    const c = takes()[k], b = blocos[k], op = opcoes();
+    const local = Math.max(0, (t - c.ini) / vel(c));  // segundos desde o começo deste bloco no vídeo final
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    const filtro = FILTROS[op.filtro] || 'none';
+    // "zoom de impacto" no começo de cada corte (como nos Reels): 8% de zoom que volta ao normal em 0,35 s
+    const z = op.zoomCorte && k > 0 && b.cena !== 'tela' && local < 0.35 ? 1 + 0.08 * Math.pow(1 - local / 0.35, 2) : 1;
+    ctx.save();
+    if (z !== 1) { ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2); }
+    ctx.filter = filtro;
     if (b.cena === 'tela') {  // fundo creme com a conta grande e o professor num círculo
       ctx.fillStyle = CREME; ctx.fillRect(0, 0, W, H);
       if (b.quadro) {
@@ -460,8 +486,9 @@ const Gravador = (() => {
       ctx.lineWidth = 12; ctx.strokeStyle = LAR; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.stroke();
     } else if (enquadre(c, v) === 'inteiro') {  // vídeo inteiro, com o fundo borrado
       ctx.save(); ctx.filter = 'blur(36px) brightness(.55)'; cobrir(ctx, v, -60, -60, W + 120, H + 120); ctx.restore();
-      caber(ctx, v);
+      ctx.filter = filtro; caber(ctx, v);
     } else cobrir(ctx, v, 0, 0, W, H);
+    ctx.restore(); ctx.filter = 'none';
     ctx.fillStyle = '#ffffff40'; ctx.fillRect(0, 0, W, 14);
     ctx.fillStyle = LAR; ctx.fillRect(0, 0, W * Math.min(1, decorrido / total), 14);
     ctx.font = '42px Anton, Impact, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
@@ -469,7 +496,12 @@ const Gravador = (() => {
     ctx.save(); ctx.shadowColor = '#000a'; ctx.shadowBlur = 10;
     ctx.fillStyle = b.cena === 'tela' ? NAVY : '#fff'; ctx.fillText(a, (W - la - lb) / 2, 80);
     ctx.fillStyle = LAR; ctx.fillText(bb, (W - la - lb) / 2 + la, 80); ctx.restore();
-    if (b.texto_tela) caixa(ctx, b.texto_tela, H * 0.17, b.gancho ? LAR : NAVY, b.gancho ? 96 : 80);
+    if (b.texto_tela) {  // texto entra "pulando" no começo do bloco
+      const e = Math.min(1, local / 0.22), s = 0.7 + 0.3 * (1 - Math.pow(1 - e, 3)) + (e < 1 ? 0.06 * Math.sin(e * Math.PI) : 0);
+      ctx.save(); ctx.translate(W / 2, H * 0.17); ctx.scale(s, s); ctx.translate(-W / 2, -H * 0.17); ctx.globalAlpha = Math.min(1, e * 1.6);
+      caixa(ctx, b.texto_tela, H * 0.17, b.gancho ? LAR : NAVY, b.gancho ? 96 : 80);
+      ctx.restore();
+    }
     legenda(ctx, grupos, t, H * 0.68);
     if (k === blocos.length - 1 && opcoes().mascote && mascote && mascote.naturalWidth) {
       const h = 380, w = mascote.naturalWidth * h / mascote.naturalHeight;  // abaixo da legenda
@@ -478,7 +510,7 @@ const Gravador = (() => {
   }
 
   /* ---------------------------------------------------------------- tocar os takes (prévia e exportação) */
-  const tamanho = k => { const c = takes()[k]; return c ? Math.max(0, c.fim - c.ini) : 0; };
+  const tamanho = k => { const c = takes()[k]; return c ? Math.max(0, c.fim - c.ini) / vel(c) : 0; };
   const totalDur = () => blocos.reduce((s, _, k) => s + tamanho(k), 0);
   const antes = k => blocos.slice(0, k).reduce((s, _, n) => s + tamanho(n), 0);
   async function abrirVideo(blob) {
@@ -501,14 +533,51 @@ const Gravador = (() => {
     await mascote.decode().catch(() => {});
     await document.fonts.load('96px Anton').catch(() => {});
   }
+  /* "Melhorar voz" (como no Edits): corta o ronco grave, tira o abafado, dá presença, comprime e sobe o volume */
+  function cadeiaVoz(a, saida) {
+    const n = (tipo, f, q, ganho) => {
+      const x = a.createBiquadFilter(); x.type = tipo; x.frequency.value = f;
+      if (q) x.Q.value = q; if (ganho != null) x.gain.value = ganho; return x;
+    };
+    const etapas = [n('highpass', 85, 0.7), n('peaking', 250, 1, -3), n('peaking', 3200, 0.9, 4), n('highshelf', 9000, null, 2.5)];
+    const comp = a.createDynamicsCompressor();
+    comp.threshold.value = -26; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.18;
+    const volume = a.createGain(); volume.gain.value = 1.6;
+    const limite = a.createDynamicsCompressor();
+    limite.threshold.value = -4; limite.knee.value = 0; limite.ratio.value = 20; limite.attack.value = 0.001; limite.release.value = 0.08;
+    [...etapas, comp, volume, limite].reduce((x, y) => { x.connect(y); return y; }).connect(saida);
+    return {entrada: etapas[0], nos: [...etapas, comp, volume, limite]};
+  }
+  // próximo quadro: normalmente acompanha a tela; se o celular "congelar" o desenho, um relógio garante que continue
+  function proximo(f) {
+    let feito = false;
+    const vai = () => { if (!feito) { feito = true; f(); } };
+    requestAnimationFrame(vai); setTimeout(vai, 40);
+  }
   async function tocar(ks, saida, gravador, controle, aoTempo) {
-    const ctx = g('ecanvas').getContext('2d'), total = totalDur();
+    const ctx = g('ecanvas').getContext('2d'), total = totalDur(), op = opcoes();
+    const voz = op.voz ? cadeiaVoz(ac(), saida) : null, entradaVoz = voz ? voz.entrada : saida;
+    // música de fundo: toca só enquanto o vídeo anda, em volume baixo, e recomeça se acabar
+    let musica = null, fonteM = null;
+    if (item.musica) {
+      musica = document.createElement('audio'); musica.src = URL.createObjectURL(item.musica); musica.loop = true;
+      await new Promise(ok => { musica.oncanplay = ok; musica.onerror = ok; setTimeout(ok, 3000); });
+      fonteM = ac().createMediaElementSource(musica);
+      const gm = ac().createGain(); gm.gain.value = op.volMusica; fonteM.connect(gm); gm.connect(saida);
+      if (musica.duration) musica.currentTime = antes(ks[0]) % musica.duration;
+    }
+    try { await tocarBlocos(); } finally {
+      if (musica) { musica.pause(); fonteM.disconnect(); URL.revokeObjectURL(musica.src); }
+      if (voz) voz.nos.forEach(x => x.disconnect());
+    }
+    async function tocarBlocos() {
     for (const k of ks) {
       if (controle.parar) break;
       const c = takes()[k]; if (!c) continue;
       const v = await abrirVideo(c.blob), a = ac();
       const fonte = a.createMediaElementSource(v), ganho = a.createGain();
-      ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(saida);
+      ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(entradaVoz);
+      v.playbackRate = vel(c); v.preservesPitch = true;
       await irAoTempo(v, c.ini);  // se o celular não conseguir pular, toca do zero e espera chegar no corte
       const grupos = gruposDe(k);
       await v.play();
@@ -518,23 +587,24 @@ const Gravador = (() => {
           if (controle.parar) { v.pause(); ok(); return; }
           const t = v.currentTime;
           if (!ativo && t >= c.ini - 0.02) {
-            ativo = true; ganho.gain.value = 1;
+            ativo = true; ganho.gain.value = 1; if (musica) musica.play().catch(() => {});
             if (gravador) { if (gravador.state === 'inactive') gravador.start(1000); else if (gravador.state === 'paused') gravador.resume(); }
           }
           if (ativo) {
-            const dec = antes(k) + Math.max(0, t - c.ini);
+            const dec = antes(k) + Math.max(0, t - c.ini) / vel(c);
             desenhar(ctx, v, k, grupos, t, dec, total);
             if (aoTempo) aoTempo(dec, total, k);
           }
           if (t >= c.fim || v.ended) {
-            ganho.gain.value = 0; if (gravador && gravador.state === 'recording') gravador.pause();
+            ganho.gain.value = 0; if (musica) musica.pause(); if (gravador && gravador.state === 'recording') gravador.pause();
             v.pause(); ok(); return;
           }
-          requestAnimationFrame(passo);
+          proximo(passo);
         };
-        requestAnimationFrame(passo);
+        proximo(passo);
       });
       fonte.disconnect(); URL.revokeObjectURL(v.src); v.removeAttribute('src');
+    }
     }
   }
 
@@ -551,8 +621,9 @@ const Gravador = (() => {
     const alvoT = t == null ? c.ini + 0.05 : t;
     await irAoTempo(v, alvoT);
     if (tocando) return;
-    desenhar(g('ecanvas').getContext('2d'), v, k, gruposDe(k), alvoT, antes(k) + Math.max(0, alvoT - c.ini), totalDur());
-    g('etempo').textContent = `${seg(antes(k) + Math.max(0, alvoT - c.ini))} / ${seg(totalDur())}`;
+    const dec = antes(k) + Math.max(0, alvoT - c.ini) / vel(c);
+    desenhar(g('ecanvas').getContext('2d'), v, k, gruposDe(k), alvoT, dec, totalDur());
+    g('etempo').textContent = `${seg(dec)} / ${seg(totalDur())}`;
   }
   function desenharTimeline() {
     g('etl').innerHTML = blocos.map((b, k) => {
@@ -590,9 +661,20 @@ const Gravador = (() => {
       <label for="efala">Legenda (o que você falou)</label><textarea id="efala">${esc(b.fala)}</textarea>
       ${b.cena === 'tela' ? '' : `<label>Enquadramento</label>
       <div class="ebot"><button data-e="preencher">Preencher a tela</button><button data-e="inteiro">Vídeo inteiro</button></div>`}
-      <label style="margin-top:18px">Vídeo todo</label>
+      <label>Velocidade deste bloco</label>
+      <div class="ebot">${[1, 1.15, 1.3, 1.5].map(x => `<button data-v="${x}">${String(x).replace('.', ',')}×</button>`).join('')}</div>
+      <label style="margin-top:20px;font:20px Anton,Impact,sans-serif">VÍDEO TODO</label>
+      <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (mais clara e mais alta)</label>
       <label class="echeck"><input id="eleg" type="checkbox" ${op.legenda ? 'checked' : ''}> Legenda automática (palavra por palavra)</label>
-      <label class="echeck"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final</label>`;
+      <label class="echeck"><input id="ezoom" type="checkbox" ${op.zoomCorte ? 'checked' : ''}> Zoom de impacto em cada corte</label>
+      <label class="echeck"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final</label>
+      <label>Filtro de cor</label>
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(FILTROS).map(f => `<button data-f="${f}" style="flex:1 0 28%">${NOMES_FILTRO[f]}</button>`).join('')}</div>
+      <label>🎵 Música de fundo</label>
+      <div class="ebot"><button id="emus">${item.musica ? '🎵 ' + esc(item.musicaNome || 'música') : 'Escolher música do celular'}</button>
+        ${item.musica ? '<button id="emusx" style="flex:0 0 52px">✕</button>' : ''}</div>
+      ${item.musica ? `<label>Volume da música <b id="vmus"></b></label><input id="evolm" type="range" min="0" max="0.6" step="0.01" value="${op.volMusica}">` : ''}
+      <input id="earq" type="file" accept="audio/*" hidden>`;
     const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
     mostrarCorte();
     const guardar = () => salvar(item).catch(() => {});
@@ -610,6 +692,29 @@ const Gravador = (() => {
     });
     g('eleg').onchange = () => { op.legenda = g('eleg').checked; guardar(); mostrarQuadro(k); };
     g('emasc').onchange = () => { op.mascote = g('emasc').checked; guardar(); mostrarQuadro(k); };
+    g('evoz').onchange = () => { op.voz = g('evoz').checked; guardar(); };
+    g('ezoom').onchange = () => { op.zoomCorte = g('ezoom').checked; guardar(); };
+    ui.querySelectorAll('[data-v]').forEach(bt => {
+      bt.classList.toggle('on', vel(c) === Number(bt.dataset.v));
+      bt.onclick = () => { c.vel = Number(bt.dataset.v); guardar(); selecionar(k); };
+    });
+    ui.querySelectorAll('[data-f]').forEach(bt => {
+      bt.classList.toggle('on', op.filtro === bt.dataset.f);
+      bt.onclick = () => { op.filtro = bt.dataset.f; guardar(); ui.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('on', x === bt)); mostrarQuadro(k); };
+    });
+    g('emus').onclick = () => g('earq').click();
+    g('earq').onchange = async () => {
+      const f = g('earq').files[0]; if (!f) return;
+      if (f.size > 25e6) return alert('Música grande demais (mais de 25 MB). Escolha um arquivo menor.');
+      item.musica = f; item.musicaNome = f.name.replace(/\.[^.]+$/, ''); await guardar(); selecionar(k);
+    };
+    if (g('emusx')) g('emusx').onclick = async () => { delete item.musica; delete item.musicaNome; await guardar(); selecionar(k); };
+    if (g('evolm')) {
+      const mostrarVol = () => { g('vmus').textContent = Math.round(op.volMusica * 100 / 0.6) + '%'; };
+      mostrarVol();
+      g('evolm').oninput = () => { op.volMusica = Number(g('evolm').value); mostrarVol(); };
+      g('evolm').onchange = guardar;
+    }
     mostrarQuadro(k);
   }
 
