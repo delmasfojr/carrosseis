@@ -80,7 +80,7 @@ const Gravador = (() => {
 #geditar{background:#FF7A00 !important}
 /* editor */
 #gedit{position:absolute;inset:0;display:flex;flex-direction:column;background:#FFF6E6;color:#0F1B2D}
-.eprev{position:relative;flex:none;height:44dvh;background:#000;display:flex;justify-content:center;padding-top:env(safe-area-inset-top)}
+.eprev{position:relative;flex:none;height:40dvh;background:#000;display:flex;justify-content:center;padding-top:env(safe-area-inset-top)}
 #ecanvas{height:100%;aspect-ratio:9/16}
 #eplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50% !important;background:#000a;color:#fff;font-size:26px}
 #etempo{position:absolute;right:10px;bottom:8px;background:#000a;color:#fff;font-size:12px;padding:2px 8px;border-radius:8px}
@@ -95,6 +95,11 @@ const Gravador = (() => {
 #epainel input[type=range]{width:100%;accent-color:#FF7A00}
 #epainel input[type=text],#epainel textarea{width:100%;font:inherit;font-size:15px;padding:10px 12px;border:2px solid #D9DDE3;border-radius:10px;background:#fff;color:#0F1B2D}
 #epainel textarea{min-height:76px}
+.eabas{display:flex;gap:2px;overflow-x:auto;padding:6px 6px;background:#fff;border-bottom:2px solid #D9DDE3;flex:none;scrollbar-width:none}
+#grav .eabas button{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;background:none;color:#556;font-size:11px;border-radius:10px !important}
+#grav .eabas button i{font-style:normal;font-size:20px;line-height:1.1}
+#grav .eabas button.on{background:#0F1B2D;color:#fff}
+.eaba>label:first-child{margin-top:4px}
 .ebot{display:flex;gap:8px;margin-top:10px}
 .ebot button{flex:1;padding:11px 8px;background:#fff;color:#0F1B2D;border:2px solid #D9DDE3 !important}
 .ebot button.on{border-color:#FF7A00 !important;color:#FF7A00}
@@ -130,6 +135,7 @@ const Gravador = (() => {
       <div id="gedit" hidden>
         <div class="eprev"><canvas id="ecanvas" width="${W}" height="${H}"></canvas><button id="eplay">▶</button><div id="etempo"></div></div>
         <div id="etl"></div>
+        <div class="eabas" id="eabas">${ABAS_ED.map(([id, ic, nome]) => `<button data-aba="${id}"><i>${ic}</i>${nome}</button>`).join('')}</div>
         <div id="epainel"></div>
         <div class="ebarra"><button id="esair">✕ Sair</button><button id="egravar">🎥 Gravar</button><button id="eexportar">⬇ Exportar vídeo</button></div>
         <div id="eaviso" hidden></div>
@@ -178,7 +184,8 @@ const Gravador = (() => {
     g('gver').textContent = revendo ? '📷' : '▶';
     g('geditar').disabled ||= !takes().some(Boolean);
     g('grec').disabled = revendo || abrindo;
-    g('gruido').textContent = opcoes().ruido ? '🎙 Reduzir ruído: LIGADO (lugar barulhento)' : '🎙 Reduzir ruído: desligado (voz mais natural)';
+    g('gruido').textContent = opcoes().ruido ? '🎙 Reduzir ruído: LIGADO' : '🎙 Reduzir ruído: desligado';
+    g('gruido').title = opcoes().ruido ? 'Bom para lugar barulhento' : 'Voz mais natural (lugar silencioso)';
     g('gruido').disabled = gravando || abrindo;
     if (abrindo) for (const id of ['gvirar', 'geditar']) g(id).disabled = true;
   }
@@ -891,6 +898,16 @@ Se não houver fala, devolva a lista vazia.`;
     }).join('');
     g('etl').querySelectorAll('button').forEach(bt => bt.onclick = () => selecionar(Number(bt.dataset.k)));
   }
+  const ABAS_ED = [['cortar', '✂️', 'Cortar'], ['titulo', '🔤', 'Título'], ['legenda', '💬', 'Legenda'],
+    ['visual', '🎨', 'Layout'], ['efeitos', '✨', 'Efeitos'], ['som', '🎵', 'Som']];
+  let abaEd = 'cortar';  // a aba fica a mesma ao trocar de bloco
+  function mostrarAba() {
+    ui.querySelectorAll('#eabas [data-aba]').forEach(b => {
+      b.classList.toggle('on', b.dataset.aba === abaEd);
+      b.onclick = () => { abaEd = b.dataset.aba; mostrarAba(); g('epainel').scrollTop = 0; };
+    });
+    g('epainel').querySelectorAll('.eaba').forEach(d => d.hidden = d.dataset.aba !== abaEd);
+  }
   function abrirEditor(k) {
     if (gravando) return;
     if (revendo) voltarCamera();
@@ -904,6 +921,7 @@ Se não houver fala, devolva a lista vazia.`;
     desenharTimeline();
     const b = blocos[k], c = takes()[k], op = opcoes();
     const p = g('epainel');
+    g('eabas').hidden = !c;
     if (!c) {
       p.innerHTML = `<h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
         <p>Este bloco ainda não foi gravado.</p><div class="ebot"><button id="eregravar" class="on">🎥 Gravar este bloco</button></div>`;
@@ -912,40 +930,52 @@ Se não houver fala, devolva a lista vazia.`;
       return;
     }
     p.innerHTML = `<h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
+      <div class="eaba" data-aba="cortar">
       <label>✂️ Começa em <b id="vini"></b></label><input id="rini" type="range" min="0" max="${c.dur}" step="0.05" value="${c.ini}">
       <label>✂️ Termina em <b id="vfim"></b> <small>(take de ${seg(c.dur)})</small></label><input id="rfim" type="range" min="0" max="${c.dur}" step="0.05" value="${c.fim}">
       <div class="ebot"><button id="etrecho">▶ Ver este bloco</button><button id="eregravar">🎥 Regravar</button></div>
+      <label>Velocidade deste bloco</label>
+      <div class="ebot">${[1, 1.15, 1.3, 1.5].map(x => `<button data-v="${x}">${String(x).replace('.', ',')}×</button>`).join('')}</div>
+      </div>
+      <div class="eaba" data-aba="titulo">
       <label for="etexto">Título na tela</label><input id="etexto" type="text" value="${esc(b.texto_tela)}" placeholder="(sem título neste bloco)">
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(CORES_TITULO).map(x => `<button data-tc="${x}" style="flex:1 0 18%">${{laranja: '🟧', navy: '🟦', branco: '⬜', amarelo: '🟨', sem: 'Sem caixa'}[x]}</button>`).join('')}</div>
       <div class="ebot">${Object.keys(TAM_TITULO).map(x => `<button data-tt="${x}">${{P: 'Pequeno', M: 'Médio', G: 'Grande'}[x]}</button>`).join('')}</div>
       <div class="ebot">${Object.keys(POS_TITULO).map(x => `<button data-tp="${x}">${{alto: 'No alto', centro: 'No meio', baixo: 'Embaixo'}[x]}</button>`).join('')}</div>
       <label class="echeck"><input id="eanim" type="checkbox" ${est(k).animTitulo ? 'checked' : ''}> Título entra com animação</label>
+      </div>
+      <div class="eaba" data-aba="legenda">
       <label for="efala">Legenda <small id="eslg"></small></label>
       <textarea id="efala">${esc(c.transcricao && c.transcricao.length ? c.transcricao.map(p => p.w).join(' ') : b.fala)}</textarea>
       <div class="ebot"><button id="etransc"></button></div>
+      <label class="echeck" style="margin-top:16px"><input id="eleg" type="checkbox" ${op.legenda ? 'checked' : ''}> Mostrar legenda (vale para o vídeo todo)</label>
+      <label class="echeck"><input id="elvoz" type="checkbox" ${op.legendaVoz ? 'checked' : ''}> Legenda pela minha voz (senão, usa o texto do roteiro)</label>
+      </div>
+      <div class="eaba" data-aba="visual">
       <label>Layout deste bloco</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(LAYOUTS).map(x => `<button data-l="${x}" style="flex:1 0 30%">${LAYOUTS[x]}</button>`).join('')}</div>
       <div id="eposew"><label>Pose do mascote</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div></div>
       <div id="econtaw"><label for="econta">Conta / texto grande (vai na lousa nos layouts do mascote)</label><input id="econta" type="text" value="${esc(b.quadro || '')}" placeholder="ex.: 8% de 25 = 25% de 8"></div>
+      </div>
+      <div class="eaba" data-aba="efeitos">
       ${k > 0 ? `<label>Transição para este bloco</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(TRANSICOES).map(x => `<button data-tr="${x}" style="flex:1 0 22%">${TRANSICOES[x]}</button>`).join('')}</div>
-      <div class="ebot"><button id="etrtodos">Usar esta transição em todos os cortes</button></div>` : ''}
-      <label>Velocidade deste bloco</label>
-      <div class="ebot">${[1, 1.15, 1.3, 1.5].map(x => `<button data-v="${x}">${String(x).replace('.', ',')}×</button>`).join('')}</div>
-      <label style="margin-top:20px;font:20px Anton,Impact,sans-serif">VÍDEO TODO</label>
-      <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (mais clara e mais alta)</label>
-      <label class="echeck"><input id="eleg" type="checkbox" ${op.legenda ? 'checked' : ''}> Legenda automática (palavra por palavra)</label>
-      <label class="echeck"><input id="elvoz" type="checkbox" ${op.legendaVoz ? 'checked' : ''}> Legenda pela minha voz (senão, usa o texto do roteiro)</label>
-      <label class="echeck"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final</label>
-      <label>Filtro de cor</label>
+      <div class="ebot"><button id="etrtodos">Usar esta transição em todos os cortes</button></div>` : '<p>O primeiro bloco não tem transição (é onde o vídeo começa).</p>'}
+      <label>Filtro de cor <small>(vídeo todo)</small></label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(FILTROS).map(f => `<button data-f="${f}" style="flex:1 0 28%">${NOMES_FILTRO[f]}</button>`).join('')}</div>
+      <label class="echeck" style="margin-top:16px"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final do vídeo</label>
+      </div>
+      <div class="eaba" data-aba="som">
+      <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (mais clara e mais alta)</label>
       <label>🎵 Música de fundo</label>
       <div class="ebot"><button id="emus">${item.musica ? '🎵 ' + esc(item.musicaNome || 'música') : 'Escolher música do celular'}</button>
         ${item.musica ? '<button id="emusx" style="flex:0 0 52px">✕</button>' : ''}</div>
       ${item.musica ? `<label>Volume da música <b id="vmus"></b></label><input id="evolm" type="range" min="0" max="0.6" step="0.01" value="${op.volMusica}">` : ''}
       <input id="earq" type="file" accept="audio/*" hidden>
-      <div class="ebot" style="margin-top:22px"><button id="etudo" style="color:#b00;border-color:#e8b4b4 !important">🔁 Regravar tudo do início</button></div>`;
+      <div class="ebot" style="margin-top:22px"><button id="etudo" style="color:#b00;border-color:#e8b4b4 !important">🔁 Regravar tudo do início</button></div>
+      </div>`;
+    mostrarAba();
     const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
     mostrarCorte();
     const guardar = () => salvar(item).catch(() => {});
@@ -969,7 +999,7 @@ Se não houver fala, devolva a lista vazia.`;
     };
     estado();
     g('etransc').onclick = async () => {
-      if (!chave()) return alert('Para a legenda pela voz, cole a chave do Gemini em "Chaves".');
+      if (!chave()) return alert('Para a legenda pela voz, cole a chave do Gemini na ⚙️ (no alto da tela inicial).');
       delete c.erroTranscricao;
       const p = transcreverFundo(k); estado(); desenharTimeline(); await p;
       if (c.erroTranscricao && sel === k) alert('Não consegui ouvir a voz agora: ' + c.erroTranscricao);

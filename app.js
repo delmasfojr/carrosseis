@@ -178,11 +178,22 @@ async function desenharCarrossel(item, aviso) {
 }
 
 /* ---------------------------------------------------------------- telas */
+// "Meus posts" junta Carrosséis e Roteiros (seletor no topo); abre no último que ele usou
+const ABA_MENU = {novo: 'novo', virais: 'virais', lista: 'meus', ver: 'meus', roteiros: 'meus', verroteiro: 'meus'};
 function tela(id) {
+  if (id === 'meus') { try { id = localStorage.getItem('meus') || 'lista'; } catch { id = 'lista'; } }
+  if (id === 'lista' || id === 'roteiros') try { localStorage.setItem('meus', id); } catch {}
   document.querySelectorAll('.tela').forEach(t => t.hidden = t.id !== id);
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tela === id));
-  if (id === 'lista') mostrarLista();
-  if (id === 'roteiros' && typeof Roteiro !== 'undefined') Roteiro.mostrarLista();
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tela === ABA_MENU[id]));
+  $('#engrenagem').classList.toggle('on', id === 'config');
+  if (id === 'lista') {
+    mostrarLista();
+    if (typeof Roteiro !== 'undefined') Roteiro.contar().then(n => document.querySelectorAll('.nroteiros').forEach(e => e.textContent = n ? `(${n})` : ''));
+  }
+  if (id === 'roteiros') {
+    if (typeof Roteiro !== 'undefined') Roteiro.mostrarLista();
+    todos().then(l => document.querySelectorAll('.nlista').forEach(e => e.textContent = l.length ? `(${l.length})` : ''));
+  }
   if (id === 'virais' && typeof Roteiro !== 'undefined') Roteiro.abrirVirais();
   window.scrollTo(0, 0);
 }
@@ -238,6 +249,7 @@ async function mostrarLista() {
   limparUrls();
   const itens = (await todos()).sort((a, b) => b.id.localeCompare(a.id));
   $('#vazio').hidden = itens.length > 0;
+  document.querySelectorAll('.nlista').forEach(e => e.textContent = itens.length ? `(${itens.length})` : '');
   $('#limpar').hidden = itens.length === 0;
   $('#apagarpostados').hidden = !itens.some(i => i.postado);
   $('#itens').innerHTML = itens.map(i => `<button class="cartao ${i.postado ? 'postado' : ''}" data-id="${i.id}">
@@ -282,6 +294,8 @@ async function iniciar() {
       .then(([d, g]) => { DESCRICOES = d; return new Map(Object.keys(d).map(n => [n, g[n] || []])); }),
   ]);
   document.querySelectorAll('nav button').forEach(b => b.onclick = () => tela(b.dataset.tela));
+  document.querySelectorAll('[data-meus]').forEach(b => b.onclick = () => tela(b.dataset.meus));
+  $('#engrenagem').onclick = () => tela('config');
   const modo = () => (document.querySelector('input[name=modo]:checked') || {}).value || 'carrossel';
   const textoBotao = () => { $('#gerar').textContent = {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()]; };
   document.querySelectorAll('input[name=modo]').forEach(r => r.onchange = textoBotao); textoBotao();
@@ -293,7 +307,7 @@ async function iniciar() {
     await gerar(link, inicio, longo);
     if (modo() === 'dois') await Roteiro.gerar(link, inicio, longo);
   };
-  const mostrarMinuto = () => { $('#blocominuto').hidden = !$('#longo').checked; };
+  const mostrarMinuto = () => { $('#blocominuto').hidden = !$('#longo').checked; if ($('#longo').checked) $('#maisopcoes').open = true; };
   $('#longo').onchange = mostrarMinuto; mostrarMinuto();
   $('#chave').value = chave();
   $('#salvarchave').onclick = () => { localStorage.setItem('gemini', $('#chave').value.trim()); alert('Chave salva só neste celular.'); tela('novo'); };

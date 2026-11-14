@@ -16,9 +16,12 @@
 :root{color-scheme:light dark;--navy:#0F1B2D;--lar:#FF7A00;--creme:#FFF6E6;--cinza:#D9DDE3;--azul:#E6F1FF}
 *{box-sizing:border-box}
 body{margin:0;background:var(--creme);color:var(--navy);font:16px/1.4 'Open Sans',system-ui,sans-serif;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
-header{background:var(--navy);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;font:26px 'Anton',Impact,sans-serif;letter-spacing:.5px}
+header{display:flex;align-items:center;gap:10px;background:var(--navy);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 12px 12px 16px;font:26px 'Anton',Impact,sans-serif;letter-spacing:.5px}
+header>b{flex:1;font-weight:400}
 header span{color:var(--lar)}
-#linkestudio{display:none;float:right;font:700 15px 'Open Sans',sans-serif;color:#fff;background:var(--lar);padding:6px 12px;border-radius:10px;text-decoration:none;margin-top:2px}
+#engrenagem{background:none;color:#fff;font-size:22px;padding:6px 8px;line-height:1;opacity:.85}
+#engrenagem.on{opacity:1;background:#ffffff26;border-radius:10px}
+#linkestudio{display:none;font:700 15px 'Open Sans',sans-serif;color:#fff;background:var(--lar);padding:6px 12px;border-radius:10px;text-decoration:none}
 @media (min-width:900px) and (pointer:fine){#linkestudio{display:inline-block}}
 main{padding:16px;max-width:640px;margin:0 auto}
 h2{font:30px 'Anton',Impact,sans-serif;text-transform:uppercase;margin:6px 0 12px}
@@ -55,13 +58,24 @@ button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:13px 16p
 #legenda{min-height:200px;margin-top:6px}
 .perigo{background:none;color:#b00;text-decoration:underline;padding:12px 0}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--navy);padding-bottom:env(safe-area-inset-bottom)}
-nav button{flex:1;background:none;color:#fff;border-radius:0;padding:14px 4px;font-size:14px;opacity:.7}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;color:#fff;border-radius:0;padding:10px 4px 12px;font-size:13px;opacity:.7}
+nav button i{font-style:normal;font-size:22px;line-height:1}
 nav button.on{opacity:1;color:var(--lar)}
-nav button{font-size:13px;padding:14px 2px}
 .modos{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px}
-.modos label{margin:0;font-weight:700;font-size:14px;text-align:center;background:#fff;border:2px solid var(--cinza);border-radius:12px;padding:10px 4px;cursor:pointer}
+.modos label{margin:0;font-weight:700;font-size:14px;text-align:center;background:#fff;border:2px solid var(--cinza);border-radius:12px;padding:12px 4px;cursor:pointer;line-height:1.2}
+.modos label i{display:block;font-style:normal;font-size:26px;margin-bottom:4px}
 .modos input{display:none}
 .modos label:has(input:checked){border-color:var(--lar);color:var(--lar)}
+details.mais{margin-top:14px;background:#fff;border-radius:12px;padding:2px 14px}
+details.mais summary{cursor:pointer;font-weight:700;padding:10px 0;color:#556}
+details.mais[open]{padding-bottom:12px}
+details.mais .check{margin-top:4px}
+.seg{display:flex;background:#fff;border:2px solid var(--cinza);border-radius:14px;padding:4px;gap:4px;margin-bottom:14px}
+.seg button{flex:1;background:none;color:#667;padding:10px 6px;border-radius:10px}
+.seg button.on{background:var(--navy);color:#fff}
+.seg small{font-weight:400;opacity:.8}
+.rodape{margin-top:26px;padding-top:12px;border-top:2px solid var(--cinza);display:flex;flex-wrap:wrap;gap:4px 18px}
+.rodape .perigo{padding:8px 0}
 select{width:100%;font:inherit;padding:12px 14px;border:2px solid var(--cinza);border-radius:12px;background:#fff;color:var(--navy)}
 #termos{min-height:150px}
 .viral{display:flex;gap:10px;background:#fff;border-radius:12px;padding:10px;margin-top:10px}
@@ -106,36 +120,40 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
 </style>
 </head>
 <body>
-<header>@DELMAO<span>SIMPLIFICA</span><a id="linkestudio" href="estudio.html">🎬 Estúdio de gravação</a></header>
+<header><b>@DELMAO<span>SIMPLIFICA</span></b><a id="linkestudio" href="estudio.html">🎬 Estúdio de gravação</a><button id="engrenagem" title="Chaves e configurações" aria-label="Configurações">⚙️</button></header>
 <main>
   <div id="status" hidden></div>
 
   <section class="tela" id="novo" hidden>
-    <h2>Novo <span>conteúdo</span></h2>
-    <label>O que gerar</label>
-    <div class="modos">
-      <label><input type="radio" name="modo" value="carrossel" checked>Carrossel</label>
-      <label><input type="radio" name="modo" value="roteiro">Roteiro de Reels</label>
-      <label><input type="radio" name="modo" value="dois">Os dois</label>
-    </div>
-    <label for="link">Link do vídeo do YouTube</label>
+    <h2>Criar <span>conteúdo</span></h2>
+    <label for="link">1. Cole o link do vídeo do YouTube</label>
     <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
-    <label class="check"><input id="longo" type="checkbox"> <span>Vídeo longo (mais de 40 min): ler em partes de 30 min</span></label>
-    <div id="blocominuto" hidden>
-      <label for="minuto">Começar no minuto</label>
-      <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
+    <label>2. O que gerar</label>
+    <div class="modos">
+      <label><input type="radio" name="modo" value="carrossel" checked><i>🖼️</i>Carrossel</label>
+      <label><input type="radio" name="modo" value="roteiro"><i>🎬</i>Roteiro de Reels</label>
+      <label><input type="radio" name="modo" value="dois"><i>✨</i>Os dois</label>
     </div>
+    <details class="mais" id="maisopcoes">
+      <summary>Vídeo longo? (mais de 40 min)</summary>
+      <label class="check"><input id="longo" type="checkbox"> <span>Ler em partes de 30 min</span></label>
+      <div id="blocominuto" hidden>
+        <label for="minuto">Começar no minuto</label>
+        <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
+      </div>
+    </details>
     <button id="gerar" class="principal">Gerar carrosséis</button>
-    <p class="dica">O app cria <b>um carrossel (ou roteiro) para cada ideia</b> do vídeo, com legenda. Sem link? Veja a aba <b>🔥 Virais</b>. Demora de 1 a 5 minutos: deixe o app aberto na tela até terminar.</p>
+    <p class="dica">Sai <b>um post para cada ideia</b> do vídeo, já com legenda. Leva de 1 a 5 minutos: deixe o app aberto até terminar. Sem link? Procure em <b>🔥 Ideias</b>.</p>
     <div id="fila"></div>
   </section>
 
   <section class="tela" id="lista" hidden>
-    <h2>Meus <span>carrosséis</span></h2>
-    <p id="vazio" class="dica" hidden>Nenhum carrossel ainda. Toque em <b>Novo</b> e cole um link do YouTube.</p>
+    <h2>Meus <span>posts</span></h2>
+    <div class="seg"><button class="on" data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
+    <p id="vazio" class="dica" hidden>Nenhum carrossel ainda. Toque em <b>＋ Criar</b> e cole um link do YouTube.</p>
     <div id="itens"></div>
-    <div id="limpar" hidden>
-      <button id="apagarpostados" class="perigo">Apagar os já postados</button><br>
+    <div id="limpar" class="rodape" hidden>
+      <button id="apagarpostados" class="perigo">Apagar os já postados</button>
       <button id="apagartodos" class="perigo">Apagar todos</button>
     </div>
   </section>
@@ -153,11 +171,12 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
     <label for="legenda">Legenda (pode editar)</label>
     <textarea id="legenda"></textarea>
     <div class="acoes"><button id="marcar" class="sec" style="grid-column:1/-1"></button></div>
-    <button id="excluir" class="perigo">Excluir este carrossel</button>
+    <div class="rodape"><button id="excluir" class="perigo">Excluir este carrossel</button></div>
   </section>
 
   <section class="tela" id="virais" hidden>
-    <h2>Vídeos <span>virais</span></h2>
+    <h2>Ideias <span>virais</span></h2>
+    <p style="margin:-4px 0 0;color:#556">Ache vídeos que estão bombando e transforme em roteiro.</p>
     <label for="termos">O que buscar no YouTube (um termo por linha)</label>
     <textarea id="termos" spellcheck="false"></textarea>
     <label for="periodo">Publicados nos últimos</label>
@@ -169,8 +188,9 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
   </section>
 
   <section class="tela" id="roteiros" hidden>
-    <h2>Meus <span>roteiros</span></h2>
-    <p id="rvazio" class="dica" hidden>Nenhum roteiro ainda. Em <b>Novo</b>, escolha “Roteiro de Reels”, ou toque em <b>Roteiro</b> num vídeo da aba <b>🔥 Virais</b>.</p>
+    <h2>Meus <span>posts</span></h2>
+    <div class="seg"><button data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button class="on" data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
+    <p id="rvazio" class="dica" hidden>Nenhum roteiro ainda. Em <b>＋ Criar</b>, escolha “Roteiro de Reels”, ou toque em <b>Roteiro</b> num vídeo da aba <b>🔥 Ideias</b>.</p>
     <div id="ritens"></div>
   </section>
 
@@ -188,19 +208,19 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
       <button id="rcopiarleg" class="sec">Copiar legenda</button>
       <button id="rmarcar" class="sec" style="grid-column:1/-1"></button>
     </div>
-    <p><a id="rvideo" target="_blank" rel="noopener">Ver o vídeo de origem</a></p>
-    <button id="rexcluir" class="perigo">Excluir este roteiro</button>
+    <div class="rodape"><a id="rvideo" target="_blank" rel="noopener" style="padding:8px 0;color:var(--navy)">▶ Ver o vídeo de origem</a><button id="rexcluir" class="perigo">Excluir este roteiro</button></div>
   </section>
 
   <section class="tela" id="config" hidden>
-    <h2>Chave do <span>Gemini</span></h2>
+    <h2>Minhas <span>chaves</span></h2>
+    <h3>Chave do Gemini</h3>
     <p>O app usa a sua chave gratuita do Gemini. Ela fica guardada <b>só neste celular</b> e só é enviada ao Google.</p>
     <label for="chave">Cole a chave aqui</label>
     <input id="chave" type="password" autocomplete="off" spellcheck="false">
     <div class="acoes"><button id="testar" class="sec">Testar</button><button id="salvarchave" class="principal" style="grid-column:auto">Salvar</button></div>
     <p class="dica">Para pegar a chave: abra <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> no celular, entre com a mesma conta Google e copie a chave (ou crie uma). Não mande a chave para ninguém.</p>
-    <h2 style="margin-top:28px">Chave do <span>YouTube</span></h2>
-    <p>Usada só na aba <b>🔥 Virais</b>, para buscar vídeos. Também fica só neste celular.</p>
+    <h3 style="margin-top:32px">Chave do YouTube</h3>
+    <p>Usada só na aba <b>🔥 Ideias</b>, para buscar vídeos. Também fica só neste celular.</p>
     <label for="chaveyt">Cole a chave aqui</label>
     <input id="chaveyt" type="password" autocomplete="off" spellcheck="false">
     <div class="acoes"><button id="testaryt" class="sec">Testar</button><button id="salvaryt" class="principal" style="grid-column:auto">Salvar</button></div>
@@ -220,11 +240,9 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
   </div>
 </div>
 <nav>
-  <button data-tela="novo">＋ Novo</button>
-  <button data-tela="virais">🔥 Virais</button>
-  <button data-tela="lista">Carrosséis</button>
-  <button data-tela="roteiros">Roteiros</button>
-  <button data-tela="config">Chaves</button>
+  <button data-tela="novo"><i>＋</i>Criar</button>
+  <button data-tela="meus"><i>📁</i>Meus posts</button>
+  <button data-tela="virais"><i>🔥</i>Ideias</button>
 </nav>
 <script src="cards.js"></script>
 <script src="app.js"></script>

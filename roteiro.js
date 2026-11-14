@@ -62,6 +62,7 @@ const Roteiro = (() => {
   async function mostrarLista() {
     const itens = (await todosR()).sort((a, b) => b.id.localeCompare(a.id));
     $('#rvazio').hidden = itens.length > 0;
+    document.querySelectorAll('.nroteiros').forEach(e => e.textContent = itens.length ? `(${itens.length})` : '');
     $('#ritens').innerHTML = itens.map(i => `<button class="rcartao ${i.gravado ? 'postado' : ''}" data-id="${i.id}">
       <span class="nota">${fogo(i.conteudo.nota_viral)} ${i.conteudo.nota_viral}/10</span>
       <b>${esc(i.conteudo.tema)}</b>
@@ -181,7 +182,7 @@ const Roteiro = (() => {
     if (!r.ok) {
       const motivo = j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason;
       if (motivo === 'quotaExceeded') throw new Error('A cota grátis de hoje do YouTube acabou. Amanhã ela volta (zera às 5h, horário de Brasília).');
-      if (r.status === 400 || r.status === 403) throw new Error('A chave do YouTube não funcionou. Confira em "Chaves". (' + (j.error && j.error.message || r.status) + ')');
+      if (r.status === 400 || r.status === 403) throw new Error('A chave do YouTube não funcionou. Confira em ⚙️ (no alto, à direita). (' + (j.error && j.error.message || r.status) + ')');
       throw new Error(`YouTube respondeu ${r.status}.`);
     }
     return j;
@@ -189,7 +190,7 @@ const Roteiro = (() => {
   const emPartes = (a, n) => Array.from({length: Math.ceil(a.length / n)}, (_, i) => a.slice(i * n, i * n + n));
 
   async function buscar() {
-    if (!chaveYT()) { tela('config'); return alert('Primeiro cole a sua chave do YouTube (em "Chaves").'); }
+    if (!chaveYT()) { tela('config'); return alert('Primeiro cole a sua chave do YouTube (⚙️ no alto, à direita).'); }
     const lista_ = $('#termos').value.split('\n').map(t => t.trim()).filter(Boolean);
     if (!lista_.length) return alert('Escreva pelo menos um termo de busca.');
     gravar('termos', lista_);
@@ -237,7 +238,7 @@ const Roteiro = (() => {
     if (!$('#vlista')) return;
     const v = ler('virais', null);
     if (!chaveYT()) {
-      $('#vlista').innerHTML = '<p class="dica">Falta a <b>chave do YouTube</b>: toque em <b>Chaves</b> (embaixo), cole a chave na parte “Chave do YouTube” e toque em Salvar.</p>';
+      $('#vlista').innerHTML = '<p class="dica">Falta a <b>chave do YouTube</b>: toque na <b>⚙️</b> (no alto, à direita), cole a chave na parte “Chave do YouTube” e toque em Salvar.</p>';
       return;
     }
     if (!v || Date.now() - new Date(v.quando) > 12 * 3600e3) buscar();
@@ -306,5 +307,5 @@ const Roteiro = (() => {
       alert(r.ok ? 'A chave do YouTube funciona! ✅' : `A chave não funcionou (${r.status}).`);
     };
   }
-  return {iniciar, gerar, mostrarLista, abrirVirais};
+  return {iniciar, gerar, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
 })();
