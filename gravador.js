@@ -1,7 +1,9 @@
-/* Grava o Reels dentro do app, bloco a bloco, e monta o vídeo final já editado:
-   corta os silêncios do começo/fim de cada take, põe o texto de cada bloco na tela, legenda palavra por palavra,
-   barra de progresso, @DELMAOSIMPLIFICA, cena "tela" com a conta grande e o professor num círculo, mascote no final.
-   Tudo roda no celular (câmera + MediaRecorder + canvas), sem servidor e sem gastar IA. */
+/* Gravador e editor de Reels dentro do app (no estilo do Edits do Instagram).
+   GRAVAR: câmera no quadro 9:16, teleprompter no alto, cronômetro com o tempo de cada bloco (anel em volta do botão),
+           linha do tempo com os blocos, zoom e troca de câmera.
+   EDITAR: prévia do vídeo pronto, corte de começo/fim de cada take, texto na tela, legenda, enquadramento,
+           legenda automática e mascote liga/desliga, regravar um bloco.
+   EXPORTAR: monta o MP4 1080×1920 já editado. Tudo no celular, sem servidor e sem gastar IA. */
 const Gravador = (() => {
   const W = 1080, H = 1920, NAVY = '#0F1B2D', LAR = '#FF7A00', CREME = '#FFF6E6';
   const TIPOS = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4',
@@ -9,120 +11,238 @@ const Gravador = (() => {
   const tipo = () => TIPOS.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
   const CENA = {camera: '🎥 CÂMERA', quadro: '🧑‍🏫 QUADRO', tela: '📱 TELA'};
   const espera = ms => new Promise(r => setTimeout(r, ms));
-  let item, salvar, aoFim, blocos, i = 0, stream = null, facing = 'user', rec = null, gravando = false, revendo = false, trava = null, t0 = 0, ui = null;
+  const seg = s => `${Number(s).toFixed(1).replace('.', ',')} s`;
+  let item, salvar, aoFim, blocos, i = 0, sel = 0, stream = null, facing = 'user', rec = null, gravando = false, revendo = false;
+  let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
+  const takes = () => item.takes || (item.takes = []);
+  const opcoes = () => item.edicao || (item.edicao = {legenda: true, mascote: true});
+  const ac = () => { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); return actx; };
 
-  /* ---------------------------------------------------------------- tela de gravação */
-  function criarUI() {
-    if (ui) return;
-    const st = document.createElement('style');
-    st.textContent = `
-#grav{position:fixed;inset:0;z-index:60;background:#000;color:#fff;overflow:hidden}
-#gprev,#grav canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#grav canvas{object-fit:contain;background:#000}
-#gprev.espelho{transform:scaleX(-1)}
-#gfala{position:absolute;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top)) 18px 46px;background:linear-gradient(#000e 72%,#0000);font:700 24px/1.32 'Open Sans',sans-serif;text-align:center}
-#gfala small{display:block;color:#FF7A00;font-size:13px;letter-spacing:1px;margin-bottom:6px}
-#gfala .gq{display:block;font-size:16px;font-weight:600;color:#ffe2bf;margin-top:8px}
-#gconta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:150px 'Anton',Impact,sans-serif;text-shadow:0 0 24px #000;pointer-events:none;text-align:center}
-#gconta.peq{font:700 22px 'Open Sans',sans-serif;padding:0 30px}
-#gbarra{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#0000,#000d 32%);padding:34px 10px calc(10px + env(safe-area-inset-bottom))}
-#gpontos{display:flex;gap:7px;justify-content:center}
-#gpontos span{width:13px;height:13px;border-radius:50%;background:#fff4;border:2px solid transparent}
-#gpontos span.ok{background:#3c3}
-#gpontos span.at{border-color:#FF7A00}
-#ginfo{text-align:center;font-size:14px;margin-top:6px;font-weight:700}
-.glinha{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px}
-.glinha button{background:#333d;color:#fff;padding:11px 13px;font-size:15px}
-#grec{width:76px;height:76px;border-radius:50%;padding:0;background:#e22;border:6px solid #fff;transition:border-radius .2s}
-#grec.on{border-radius:18px;background:#e22;animation:pisca 1s infinite}
-@keyframes pisca{50%{opacity:.6}}
-#gmontar{background:#FF7A00 !important}
-#grav button:disabled{opacity:.35}`;
-    document.head.appendChild(st);
-    ui = document.createElement('div'); ui.id = 'grav'; ui.hidden = true;
-    ui.innerHTML = `<video id="gprev" playsinline muted autoplay></video>
-      <div id="gfala"></div><div id="gconta"></div>
-      <div id="gbarra"><div id="gpontos"></div><div id="ginfo"></div>
-        <div class="glinha"><button id="gant">◀</button><button id="gvirar" title="Trocar câmera">🔄</button>
-          <button id="grec" title="Gravar"></button><button id="gver">▶ Ver</button><button id="gprox">▶</button></div>
-        <div class="glinha"><button id="gfechar">✕ Sair</button><button id="gmontar">🎬 Montar vídeo</button></div></div>`;
-    document.body.appendChild(ui);
-    g('grec').onclick = () => gravando ? parar() : gravar();
-    g('gant').onclick = () => irPara(i - 1);
-    g('gprox').onclick = () => irPara(i + 1);
-    g('gvirar').onclick = () => ligarCamera(facing === 'user' ? 'environment' : 'user').catch(erroCamera);
-    g('gver').onclick = () => revendo ? voltarCamera() : rever();
-    g('gfechar').onclick = fechar;
-    g('gmontar').onclick = () => montar().catch(e => { conta(''); alert('Não consegui montar: ' + e.message); fechar(); });
+  /* tempo que o roteiro dá para cada bloco ("8–15 s" = 7 s; gancho = 3 s) */
+  function alvo(b) {
+    if (b.gancho) return 3;
+    const m = String(b.tempo).match(/(\d+(?:[.,]\d+)?)\s*[–-]\s*(\d+(?:[.,]\d+)?)/);
+    if (!m) return 5;
+    return Math.min(20, Math.max(2, parseFloat(m[2].replace(',', '.')) - parseFloat(m[1].replace(',', '.'))));
   }
-
   function montarBlocos(it) {
     const c = it.conteudo;
     return [{tempo: '0–3 s', cena: 'camera', fala: c.ganchos[it.gancho || 0], quadro: '', texto_tela: c.texto_capa, gancho: true}, ...c.blocos];
   }
-  const takes = () => item.takes || (item.takes = []);
+  // edição de texto vai direto para o roteiro (o gancho mora em ganchos[] e texto_capa)
+  function setTexto(k, campo, valor) {
+    const c = item.conteudo;
+    if (k === 0) { if (campo === 'fala') c.ganchos[item.gancho || 0] = valor; else c.texto_capa = valor; }
+    else c.blocos[k - 1][campo] = valor;
+    blocos = montarBlocos(item);
+  }
+
+  /* ---------------------------------------------------------------- tela */
+  function criarUI() {
+    if (ui) return;
+    const st = document.createElement('style');
+    st.textContent = `
+#grav{position:fixed;inset:0;z-index:60;background:#000;color:#fff;overflow:hidden;font-family:'Open Sans',system-ui,sans-serif}
+#grav [hidden],#grav[hidden]{display:none !important}
+#grav button{font:inherit;font-weight:700;border:0;border-radius:12px;cursor:pointer}
+#grav button:disabled{opacity:.35}
+.gquadro{position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(100vw,calc(100dvh * 9 / 16));aspect-ratio:9/16;overflow:hidden;background:#111}
+#gprev{width:100%;height:100%;object-fit:cover;display:block}
+#gprev.inteiro{object-fit:contain}
+#gprev.espelho{transform:scaleX(-1)}
+#gfala{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 16px 40px;background:linear-gradient(#000d 70%,#0000);font-weight:700;line-height:1.3;text-align:center}
+#gfala small{display:block;color:#FF7A00;font-size:12px;letter-spacing:1px;margin-bottom:4px}
+#gfala .gq{display:block;font-size:.66em;font-weight:600;color:#ffe2bf;margin-top:6px}
+#gconta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:140px 'Anton',Impact,sans-serif;text-shadow:0 0 24px #000;pointer-events:none;text-align:center}
+#gconta.peq{font:700 20px 'Open Sans',sans-serif;padding:0 30px}
+#gbarra{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#0000,#000e 26%);padding:26px 10px calc(8px + env(safe-area-inset-bottom))}
+#gtempo{text-align:center;font:700 22px 'Open Sans',sans-serif;font-variant-numeric:tabular-nums}
+#gtempo.passou{color:#FF7A00}
+.glinha{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:6px}
+.glinha>button{background:#333d;color:#fff;padding:11px 12px;font-size:15px;min-width:48px}
+#grecw{position:relative;width:86px;height:86px;flex:none}
+#grecw svg{position:absolute;inset:0;transform:rotate(-90deg)}
+#grec{position:absolute;left:11px;top:11px;width:64px;height:64px;border-radius:50% !important;padding:0;background:#e22;transition:all .2s}
+#grec.on{left:23px;top:23px;width:40px;height:40px;border-radius:8px !important}
+#gzoomw{display:flex;gap:8px;align-items:center;justify-content:center;font-size:13px;margin-top:4px}
+#gzoom{width:55%;accent-color:#FF7A00}
+#gtl{display:flex;gap:3px;margin-top:8px}
+#gtl button{flex-basis:0;min-width:22px;height:30px;padding:0;font-size:11px;background:#fff3;color:#fff;border-radius:6px !important;border:2px solid transparent}
+#gtl button.ok{background:#FF7A00}
+#gtl button.at{border-color:#fff}
+#ginfo{text-align:center;font-size:12px;color:#ccc;margin-top:5px}
+#geditar{background:#FF7A00 !important}
+/* editor */
+#gedit{position:absolute;inset:0;display:flex;flex-direction:column;background:#FFF6E6;color:#0F1B2D}
+.eprev{position:relative;flex:none;height:44dvh;background:#000;display:flex;justify-content:center;padding-top:env(safe-area-inset-top)}
+#ecanvas{height:100%;aspect-ratio:9/16}
+#eplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50% !important;background:#000a;color:#fff;font-size:26px}
+#etempo{position:absolute;right:10px;bottom:8px;background:#000a;color:#fff;font-size:12px;padding:2px 8px;border-radius:8px}
+#etl{display:flex;gap:4px;overflow-x:auto;padding:10px 12px;background:#0F1B2D;flex:none}
+#etl button{flex:none;height:46px;padding:0 6px;background:#33415a;color:#fff;font-size:12px;border:3px solid transparent;border-radius:8px !important;text-align:left;line-height:1.15}
+#etl button.at{border-color:#FF7A00}
+#etl button.falta{background:#7a1f1f}
+#epainel{flex:1;overflow-y:auto;padding:12px 16px 16px}
+#epainel h4{margin:0 0 6px;font:22px 'Anton',Impact,sans-serif;font-weight:400}
+#epainel h4 span{color:#FF7A00}
+#epainel label{display:block;font-weight:700;font-size:14px;margin:12px 0 4px}
+#epainel input[type=range]{width:100%;accent-color:#FF7A00}
+#epainel input[type=text],#epainel textarea{width:100%;font:inherit;font-size:15px;padding:10px 12px;border:2px solid #D9DDE3;border-radius:10px;background:#fff;color:#0F1B2D}
+#epainel textarea{min-height:76px}
+.ebot{display:flex;gap:8px;margin-top:10px}
+.ebot button{flex:1;padding:11px 8px;background:#fff;color:#0F1B2D;border:2px solid #D9DDE3 !important}
+.ebot button.on{border-color:#FF7A00 !important;color:#FF7A00}
+.echeck{display:flex !important;gap:10px;align-items:center;font-weight:400 !important}
+.echeck input{width:20px;height:20px;accent-color:#FF7A00}
+.ebarra{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0F1B2D}
+.ebarra button{flex:1;padding:13px 6px;background:#33415a;color:#fff}
+#eexportar{background:#FF7A00 !important;flex:1.4}
+#eaviso{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:18px;padding:30px;color:#fff;z-index:2}`;
+    document.head.appendChild(st);
+    ui = document.createElement('div'); ui.id = 'grav'; ui.hidden = true;
+    ui.innerHTML = `
+      <div id="ggrava">
+        <div class="gquadro"><video id="gprev" playsinline muted autoplay></video><div id="gconta"></div></div>
+        <div id="gfala"></div>
+        <div id="gbarra">
+          <div id="gtempo"></div>
+          <div class="glinha">
+            <button id="gfechar" title="Sair">✕</button>
+            <button id="gvirar" title="Trocar câmera">🔄</button>
+            <div id="grecw"><svg viewBox="0 0 86 86"><circle cx="43" cy="43" r="39" fill="none" stroke="#fff5" stroke-width="5"/>
+              <circle id="ganel" cx="43" cy="43" r="39" fill="none" stroke="#FF7A00" stroke-width="5" stroke-linecap="round" stroke-dasharray="245" stroke-dashoffset="245"/></svg>
+              <button id="grec" title="Gravar"></button></div>
+            <button id="gver" title="Ver o take">▶</button>
+            <button id="geditar">✂️ Editar</button>
+          </div>
+          <div id="gzoomw" hidden>🔍 <input id="gzoom" type="range"> <span id="gzoomv"></span></div>
+          <div id="gtl"></div>
+          <div id="ginfo"></div>
+        </div>
+      </div>
+      <div id="gedit" hidden>
+        <div class="eprev"><canvas id="ecanvas" width="${W}" height="${H}"></canvas><button id="eplay">▶</button><div id="etempo"></div></div>
+        <div id="etl"></div>
+        <div id="epainel"></div>
+        <div class="ebarra"><button id="esair">✕ Sair</button><button id="egravar">🎥 Gravar</button><button id="eexportar">⬇ Exportar vídeo</button></div>
+        <div id="eaviso" hidden></div>
+      </div>`;
+    document.body.appendChild(ui);
+    g('grec').onclick = () => gravando ? parar() : gravar();
+    g('gvirar').onclick = () => ligarCamera(facing === 'user' ? 'environment' : 'user').catch(erroCamera);
+    g('gver').onclick = () => revendo ? voltarCamera() : rever();
+    g('gfechar').onclick = fechar;
+    g('geditar').onclick = () => abrirEditor(Math.min(i, blocos.length - 1));
+    g('gzoom').oninput = () => {
+      const t = stream && stream.getVideoTracks()[0], z = Number(g('gzoom').value);
+      if (t) t.applyConstraints({advanced: [{zoom: z}]}).catch(() => {});
+      g('gzoomv').textContent = z.toFixed(1) + '×';
+    };
+    g('eplay').onclick = () => tocando ? pararPrevia() : previa();
+    g('esair').onclick = fechar;
+    g('egravar').onclick = () => irGravar(sel);
+    g('eexportar').onclick = () => exportar().catch(e => { aviso(''); ocupado = false; alert('Não consegui exportar: ' + e.message); });
+  }
   const conta = (t, peq) => { g('gconta').textContent = t; g('gconta').classList.toggle('peq', !!peq); };
 
-  function atualizar() {
-    const b = blocos[i];
-    g('gfala').innerHTML = `<small>BLOCO ${i + 1} DE ${blocos.length} · ${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)} · ${esc(b.tempo)}</small>${esc(b.fala)}` +
+  /* ---------------------------------------------------------------- modo GRAVAR */
+  function atualizarGravar() {
+    const b = blocos[i], tk = takes()[i], a = alvo(b);
+    const fonte = b.fala.length > 120 ? 19 : b.fala.length > 70 ? 22 : 25;
+    g('gfala').style.fontSize = fonte + 'px';
+    g('gfala').innerHTML = `<small>BLOCO ${i + 1} DE ${blocos.length} · ${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)} · ${a} s</small>${esc(b.fala)}` +
       (b.cena !== 'camera' && b.quadro ? `<span class="gq">${b.cena === 'quadro' ? 'No quadro' : 'Na tela'}: ${esc(b.quadro)}</span>` : '');
-    g('gpontos').innerHTML = blocos.map((_, k) => `<span class="${takes()[k] ? 'ok' : ''} ${k === i ? 'at' : ''}"></span>`).join('');
-    const tk = takes()[i];
-    g('ginfo').textContent = gravando ? 'Gravando… toque no botão para parar' :
-      revendo ? 'Vendo o take' : tk ? `Take gravado (${tk.dur.toFixed(1)} s). Grave de novo se quiser.` : 'Toque no botão vermelho para gravar este bloco';
+    if (!gravando) {
+      g('gtempo').textContent = tk ? `✓ ${seg(tk.fim - tk.ini)} (meta ${a} s)` : `meta: ${a} s`;
+      g('gtempo').classList.remove('passou');
+      g('ganel').style.strokeDashoffset = 245;
+    }
+    g('gtl').innerHTML = blocos.map((x, k) => `<button data-k="${k}" style="flex-grow:${alvo(x)}" class="${takes()[k] ? 'ok' : ''} ${k === i ? 'at' : ''}">${k + 1}</button>`).join('');
+    g('gtl').querySelectorAll('button').forEach(bt => { bt.disabled = gravando; bt.onclick = () => irPara(Number(bt.dataset.k)); });
+    g('ginfo').textContent = gravando ? 'Gravando… toque no quadrado para parar' : revendo ? 'Vendo o take' :
+      tk ? 'Take gravado. Grave de novo se quiser, ou toque em ✂️ Editar.' : 'Toque no botão vermelho para gravar este bloco';
     g('grec').classList.toggle('on', gravando);
-    for (const id of ['gant', 'gprox', 'gvirar', 'gver', 'gmontar', 'gfechar']) g(id).disabled = gravando;
-    g('gant').disabled ||= i === 0;
-    g('gprox').disabled ||= i === blocos.length - 1;
+    for (const id of ['gvirar', 'gver', 'geditar', 'gfechar']) g(id).disabled = gravando;
     g('gver').disabled ||= !tk;
-    g('gver').textContent = revendo ? '📷 Câmera' : '▶ Ver';
-    g('gmontar').disabled ||= blocos.some((_, k) => !takes()[k]);
+    g('gver').textContent = revendo ? '📷' : '▶';
+    g('geditar').disabled ||= !takes().some(Boolean);
     g('grec').disabled = revendo;
   }
 
-  /* ---------------------------------------------------------------- câmera */
   function pararCamera() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; }
   async function ligarCamera(forcar) {
     const tk = takes()[i];
     const quer = forcar || (tk && tk.facing) || (blocos[i].cena === 'quadro' ? 'environment' : 'user');
     if (!(stream && facing === quer && stream.active)) {
       pararCamera(); facing = quer;
+      // resizeMode 'none' = formato nativo da câmera, sem recorte (o recorte era o "zoom" exagerado)
       stream = await navigator.mediaDevices.getUserMedia({
-        video: {facingMode: facing, width: {ideal: 1080}, height: {ideal: 1920}, frameRate: {ideal: 30}},
+        video: {facingMode: facing, resizeMode: {ideal: 'none'}, width: {ideal: 1920}, height: {ideal: 1440}, frameRate: {ideal: 30}},
         audio: {echoCancellation: true, noiseSuppression: true}});
+      const t = stream.getVideoTracks()[0], cap = t.getCapabilities ? t.getCapabilities() : {};
+      if (cap.zoom && cap.zoom.max > cap.zoom.min) {
+        g('gzoomw').hidden = false;
+        Object.assign(g('gzoom'), {min: cap.zoom.min, max: Math.min(cap.zoom.max, cap.zoom.min * 4), step: cap.zoom.step || 0.1});
+        g('gzoom').value = cap.zoom.min; g('gzoom').oninput();  // começa no mais aberto possível
+      } else g('gzoomw').hidden = true;
     }
     const v = g('gprev');
     if (v.srcObject !== stream) v.srcObject = stream;
     v.classList.toggle('espelho', facing === 'user');
+    v.onloadedmetadata = () => {
+      v.classList.toggle('inteiro', v.videoWidth / v.videoHeight > 0.8);  // câmera deitada: mostra inteiro
+      g('ginfo').dataset.res = `${v.videoWidth}×${v.videoHeight}`;
+    };
     await v.play().catch(() => {});
   }
   const erroCamera = e => alert('Não consegui abrir a câmera. Permita o uso da câmera e do microfone para este site.\n(' + e.message + ')');
 
   async function irPara(k) {
-    if (k < 0 || k >= blocos.length) return;
+    if (k < 0 || k >= blocos.length || gravando) return;
     if (revendo) voltarCamera();
-    i = k; atualizar();
+    i = k; atualizarGravar();
+    await ligarCamera().catch(erroCamera);
+  }
+  async function irGravar(k) {
+    pararPrevia();
+    g('gedit').hidden = true; g('ggrava').hidden = false;
+    i = k; atualizarGravar();
     await ligarCamera().catch(erroCamera);
   }
 
   async function gravar() {
     if (!stream) return erroCamera(new Error('câmera desligada'));
+    ac();  // libera o áudio no toque (iPhone)
     g('grec').disabled = true;
-    for (const n of [3, 2, 1]) { conta(n); await espera(700); }
+    for (const n of [3, 2, 1]) { conta(n); await espera(650); }
     conta('');
-    const mt = tipo(), partes = [];
-    rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 5e6});
+    const mt = tipo(), partes = [], a = alvo(blocos[i]);
+    rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6});
     rec.ondataavailable = e => { if (e.data.size) partes.push(e.data); };
     rec.onstop = async () => {
+      clearInterval(relogio);
       const blob = new Blob(partes, {type: (rec.mimeType || mt || 'video/webm').split(';')[0]});
-      takes()[i] = {blob, dur: (Date.now() - t0) / 1000, facing};
+      const c = {blob, dur: (Date.now() - t0) / 1000, facing};
       gravando = false;
+      g('ginfo').textContent = 'Guardando o take…';
+      await analisar(c);
+      takes()[i] = c;
       try { await salvar(item); } catch (e) { alert('Não consegui guardar o take: ' + e.message); }
-      if (i < blocos.length - 1) await irPara(i + 1); else atualizar();
+      const proximo = blocos.findIndex((_, k) => k > i && !takes()[k]);
+      if (proximo > 0) await irPara(proximo);
+      else if (blocos.every((_, k) => takes()[k])) abrirEditor(i);  // gravou tudo: vai para a edição
+      else atualizarGravar();
     };
-    rec.start(1000); t0 = Date.now(); gravando = true; atualizar();
+    rec.start(1000); t0 = Date.now(); gravando = true; vibrou = false;
+    relogio = setInterval(() => {
+      const s = (Date.now() - t0) / 1000;
+      g('gtempo').textContent = `${seg(s)} / ${a} s`;
+      g('gtempo').classList.toggle('passou', s > a);
+      g('ganel').style.strokeDashoffset = 245 * (1 - Math.min(1, s / a));
+      if (s >= a && !vibrou) { vibrou = true; if (navigator.vibrate) navigator.vibrate(60); }
+    }, 100);
+    atualizarGravar();
   }
   function parar() { if (rec && rec.state !== 'inactive') rec.stop(); }
 
@@ -133,7 +253,7 @@ const Gravador = (() => {
     v.srcObject = null; v.src = URL.createObjectURL(tk.blob); v.muted = false; v.controls = true;
     v.classList.toggle('espelho', tk.facing === 'user');
     v.onended = voltarCamera; v.play().catch(() => {});
-    atualizar();
+    atualizarGravar();
   }
   function voltarCamera() {
     const v = g('gprev');
@@ -142,30 +262,33 @@ const Gravador = (() => {
     v.controls = false; v.muted = true; v.srcObject = stream;
     v.classList.toggle('espelho', facing === 'user');
     v.play().catch(() => {});
-    atualizar();
+    atualizarGravar();
   }
 
+  /* ---------------------------------------------------------------- abrir / fechar */
   async function abrir(it, salvarFn, aoTerminar) {
     if (!(navigator.mediaDevices && window.MediaRecorder)) return alert('Este navegador não grava vídeo. Use o Chrome (Android) ou o Safari (iPhone) atualizados.');
     criarUI();
     item = it; salvar = salvarFn; aoFim = aoTerminar; blocos = montarBlocos(it);
-    i = Math.max(0, blocos.findIndex((_, k) => !takes()[k]));
-    if (blocos.every((_, k) => takes()[k])) i = 0;
     ui.hidden = false; document.documentElement.style.overflow = 'hidden';
     if (navigator.wakeLock) navigator.wakeLock.request('screen').then(t => { trava = t; }).catch(() => {});
-    atualizar();
-    await ligarCamera().catch(erroCamera);
+    for (const c of takes()) if (c && c.ini == null) await analisar(c);  // takes da versão anterior
+    const falta = blocos.findIndex((_, k) => !takes()[k]);
+    if (falta < 0) return abrirEditor(0);  // já tem tudo gravado: abre a edição
+    await irGravar(falta);
   }
   function fechar() {
-    parar(); if (revendo) voltarCamera(); pararCamera();
+    if (ocupado) return;
+    parar(); if (revendo) voltarCamera(); pararPrevia(); pararCamera();
     g('gprev').srcObject = null;
-    ui.querySelectorAll('canvas').forEach(c => c.remove());
+    for (const v of quadros.values()) { URL.revokeObjectURL(v.src); v.removeAttribute('src'); }
+    quadros.clear();
     ui.hidden = true; document.documentElement.style.overflow = '';
     if (trava) { trava.release().catch(() => {}); trava = null; }
     if (aoFim) aoFim();
   }
 
-  /* ---------------------------------------------------------------- análise da voz (cortes e tempo das palavras) */
+  /* ---------------------------------------------------------------- análise da voz (corte automático e tempo das palavras) */
   function vozes(buf) {
     const d = buf.getChannelData(0), j = Math.round(buf.sampleRate * 0.02), rms = [];
     for (let k = 0; k + j <= d.length; k += j) { let s = 0; for (let m = k; m < k + j; m++) s += d[m] * d[m]; rms.push(Math.sqrt(s / j)); }
@@ -187,12 +310,27 @@ const Gravador = (() => {
     }
     return segs.filter(s => s[1] - s[0] >= 0.12);
   }
+  async function analisar(c) {
+    let segs = null;
+    try {
+      const buf = await ac().decodeAudioData(await c.blob.arrayBuffer());
+      c.dur = buf.duration; segs = vozes(buf);
+    } catch (e) { /* sem análise: usa o take inteiro */ }
+    if (!segs || !segs.length) segs = [[0.15, Math.max(0.6, c.dur - 0.15)]];
+    c.segs = segs;
+    c.ini = Math.max(0, segs[0][0] - 0.15);
+    c.fim = Math.min(c.dur, segs[segs.length - 1][1] + 0.35);
+  }
+  const cortados = c => {  // trechos com voz dentro do corte escolhido
+    const s = (c.segs || []).map(([a, b]) => [Math.max(a, c.ini), Math.min(b, c.fim)]).filter(([a, b]) => b - a > 0.05);
+    return s.length ? s : [[c.ini, c.fim]];
+  };
   function distribuir(texto, segs) {
-    // o professor leu o roteiro: espalha as palavras dele pelos trechos com voz, proporcional ao tamanho de cada palavra
+    // o professor leu o roteiro: espalha as palavras pelos trechos com voz, proporcional ao tamanho de cada palavra
     const pal = String(texto).split(/\s+/).filter(Boolean);
     const peso = pal.map(w => w.length + 2 + (/[.,!?…:;]$/.test(w) ? 4 : 0));
     const total = peso.reduce((a, b) => a + b, 0) || 1, voz = segs.reduce((a, s) => a + s[1] - s[0], 0);
-    const tempo = x => {  // fração do texto -> instante no take
+    const tempo = x => {
       let resta = x * voz;
       for (const s of segs) { const d = s[1] - s[0]; if (resta <= d) return s[0] + resta; resta -= d; }
       return segs[segs.length - 1][1];
@@ -210,23 +348,20 @@ const Gravador = (() => {
     if (atual.length) grupos.push(atual);
     return grupos;
   }
-  async function analisar(actx, take, texto) {
-    let dur = take.dur, segs = null;
-    try {
-      const buf = await actx.decodeAudioData(await take.blob.arrayBuffer());
-      dur = buf.duration; segs = vozes(buf);
-    } catch (e) { /* sem análise: usa o take inteiro */ }
-    if (!segs || !segs.length) segs = [[0.15, Math.max(0.6, dur - 0.15)]];
-    const ini = Math.max(0, segs[0][0] - 0.15), fim = Math.min(dur, segs[segs.length - 1][1] + 0.35);
-    return {take, ini, fim, grupos: agrupar(distribuir(texto, segs))};
-  }
+  const gruposDe = k => opcoes().legenda ? agrupar(distribuir(blocos[k].fala, cortados(takes()[k]))) : [];
 
-  /* ---------------------------------------------------------------- desenho de cada quadro do vídeo */
+  /* ---------------------------------------------------------------- desenho de cada quadro */
   function cobrir(ctx, v, x, y, w, h) {
     const vw = v.videoWidth, vh = v.videoHeight; if (!vw) return;
     const s = Math.max(w / vw, h / vh), sw = w / s, sh = h / s;
     ctx.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, x, y, w, h);
   }
+  function caber(ctx, v) {
+    const vw = v.videoWidth, vh = v.videoHeight; if (!vw) return;
+    const s = Math.min(W / vw, H / vh), w = vw * s, h = vh * s;
+    ctx.drawImage(v, (W - w) / 2, (H - h) / 2, w, h);
+  }
+  const enquadre = (c, v) => c.enquadre || (v.videoWidth / v.videoHeight > 0.8 ? 'inteiro' : 'preencher');
   function quebrar(ctx, txt, max) {
     const linhas = []; let l = '';
     for (const w of String(txt).split(/\s+/).filter(Boolean)) {
@@ -236,10 +371,7 @@ const Gravador = (() => {
     if (l) linhas.push(l);
     return linhas;
   }
-  function retangulo(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h);
-  }
+  function retangulo(ctx, x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
   function caixa(ctx, txt, yc, fundo, tam) {
     ctx.font = `${tam}px Anton, Impact, sans-serif`;
     const linhas = quebrar(ctx, String(txt).toUpperCase(), W - 220), alt = tam * 1.12;
@@ -255,7 +387,7 @@ const Gravador = (() => {
     if (!gr || t > gr[gr.length - 1].b + 0.6) return;
     ctx.font = '96px Anton, Impact, sans-serif'; ctx.textBaseline = 'middle';
     const pal = gr.map(p => p.w.toUpperCase()), esp = 26;
-    let larg = pal.reduce((s, w) => s + ctx.measureText(w).width, 0) + esp * (pal.length - 1);
+    const larg = pal.reduce((s, w) => s + ctx.measureText(w).width, 0) + esp * (pal.length - 1);
     const escala = Math.min(1, (W - 120) / larg);
     ctx.save(); ctx.translate(W / 2, yc); ctx.scale(escala, escala);
     let x = -larg / 2;
@@ -268,22 +400,26 @@ const Gravador = (() => {
     });
     ctx.restore();
   }
-  function desenhar(ctx, v, s, b, t, decorrido, total, ultimo, mascote) {
+  let mascote = null;
+  function desenhar(ctx, v, k, grupos, t, decorrido, total) {
+    const c = takes()[k], b = blocos[k];
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     if (b.cena === 'tela') {  // fundo creme com a conta grande e o professor num círculo
       ctx.fillStyle = CREME; ctx.fillRect(0, 0, W, H);
       if (b.quadro) {
-        ctx.font = '120px Anton, Impact, sans-serif';
-        let linhas = quebrar(ctx, b.quadro, W - 160), tam = 120;
+        let tam = 120; ctx.font = `${tam}px Anton, Impact, sans-serif`;
+        let linhas = quebrar(ctx, b.quadro, W - 160);
         while (linhas.length > 3 && tam > 70) { tam -= 10; ctx.font = `${tam}px Anton, Impact, sans-serif`; linhas = quebrar(ctx, b.quadro, W - 160); }
         ctx.fillStyle = NAVY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        linhas.forEach((l, k) => ctx.fillText(l, W / 2, H * 0.36 + (k - (linhas.length - 1) / 2) * tam * 1.15));
+        linhas.forEach((l, n) => ctx.fillText(l, W / 2, H * 0.36 + (n - (linhas.length - 1) / 2) * tam * 1.15));
       }
       const r = 200, cx = W / 2, cy = H * 0.53 + 30;
       ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.clip(); cobrir(ctx, v, cx - r, cy - r, 2 * r, 2 * r); ctx.restore();
       ctx.lineWidth = 12; ctx.strokeStyle = LAR; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.stroke();
+    } else if (enquadre(c, v) === 'inteiro') {  // vídeo inteiro, com o fundo borrado
+      ctx.save(); ctx.filter = 'blur(36px) brightness(.55)'; cobrir(ctx, v, -60, -60, W + 120, H + 120); ctx.restore();
+      caber(ctx, v);
     } else cobrir(ctx, v, 0, 0, W, H);
-    // barra de progresso e assinatura
     ctx.fillStyle = '#ffffff40'; ctx.fillRect(0, 0, W, 14);
     ctx.fillStyle = LAR; ctx.fillRect(0, 0, W * Math.min(1, decorrido / total), 14);
     ctx.font = '42px Anton, Impact, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
@@ -292,73 +428,197 @@ const Gravador = (() => {
     ctx.fillStyle = b.cena === 'tela' ? NAVY : '#fff'; ctx.fillText(a, (W - la - lb) / 2, 80);
     ctx.fillStyle = LAR; ctx.fillText(bb, (W - la - lb) / 2 + la, 80); ctx.restore();
     if (b.texto_tela) caixa(ctx, b.texto_tela, H * 0.17, b.gancho ? LAR : NAVY, b.gancho ? 96 : 80);
-    legenda(ctx, s.grupos, t, H * 0.68);
-    if (ultimo && mascote && mascote.naturalWidth) {
-      const h = 380, w = mascote.naturalWidth * h / mascote.naturalHeight;  // abaixo da legenda (que fica em 68% da altura)
+    legenda(ctx, grupos, t, H * 0.68);
+    if (k === blocos.length - 1 && opcoes().mascote && mascote && mascote.naturalWidth) {
+      const h = 380, w = mascote.naturalWidth * h / mascote.naturalHeight;  // abaixo da legenda
       ctx.drawImage(mascote, 30, H * 0.92 - h, w, h);
     }
   }
 
-  /* ---------------------------------------------------------------- montagem do vídeo final */
-  async function montar() {
-    if (revendo) voltarCamera();
-    pararCamera(); g('gprev').srcObject = null;
-    for (const id of ['gant', 'gprox', 'gvirar', 'gver', 'gmontar', 'grec']) g(id).disabled = true;
-    g('gfala').innerHTML = '<small>MONTANDO O VÍDEO</small>Deixe o app aberto nesta tela até terminar.';
-    conta('Analisando a sua voz…', true);
-    await document.fonts.load('96px Anton').catch(() => {});
-    const actx = new (window.AudioContext || window.webkitAudioContext)();
-    await actx.resume();
-    const segs = [];
-    for (let k = 0; k < blocos.length; k++) segs.push(await analisar(actx, takes()[k], blocos[k].fala));
-    const total = segs.reduce((s, x) => s + x.fim - x.ini, 0);
-    const mascote = new Image(); mascote.src = BASE + 'mascote/joinha.webp';
+  /* ---------------------------------------------------------------- tocar os takes (prévia e exportação) */
+  const tamanho = k => { const c = takes()[k]; return c ? Math.max(0, c.fim - c.ini) : 0; };
+  const totalDur = () => blocos.reduce((s, _, k) => s + tamanho(k), 0);
+  const antes = k => blocos.slice(0, k).reduce((s, _, n) => s + tamanho(n), 0);
+  async function abrirVideo(blob) {
+    const v = document.createElement('video');
+    v.playsInline = true; v.preload = 'auto'; v.src = URL.createObjectURL(blob);
+    await new Promise((ok, erro) => { v.onloadeddata = ok; v.onerror = () => erro(new Error('não consegui abrir um take')); });
+    return v;
+  }
+  function irAoTempo(v, t) {
+    if (Math.abs(v.currentTime - t) < 0.03) return Promise.resolve();
+    return new Promise(ok => {
+      const fim = () => { clearTimeout(z); v.removeEventListener('seeked', fim); ok(); };
+      const z = setTimeout(fim, 1500);
+      v.addEventListener('seeked', fim); v.currentTime = t;
+    });
+  }
+  async function carregarMascote() {
+    if (mascote) return;
+    mascote = new Image(); mascote.src = BASE + 'mascote/joinha.webp';
     await mascote.decode().catch(() => {});
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    ui.insertBefore(cv, g('gfala'));
-    const ctx = cv.getContext('2d');
-    const dest = actx.createMediaStreamDestination();
-    const saida = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
-    const mt = tipo(), partes = [];
-    const r = new MediaRecorder(saida, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6, audioBitsPerSecond: 128000});
-    r.ondataavailable = e => { if (e.data.size) partes.push(e.data); };
-    let feito = 0, comecou = false;
-    for (let k = 0; k < segs.length; k++) {
-      const s = segs[k], b = blocos[k];
-      conta('');
-      g('ginfo').textContent = `Montando: bloco ${k + 1} de ${segs.length}…`;
-      const v = document.createElement('video'), u = URL.createObjectURL(s.take.blob);
-      v.playsInline = true; v.preload = 'auto'; v.src = u;
-      await new Promise((ok, erro) => { v.onloadeddata = ok; v.onerror = () => erro(new Error(`não consegui abrir o take ${k + 1}`)); });
-      const fonte = actx.createMediaElementSource(v), ganho = actx.createGain();
-      ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(dest);
+    await document.fonts.load('96px Anton').catch(() => {});
+  }
+  async function tocar(ks, saida, gravador, controle, aoTempo) {
+    const ctx = g('ecanvas').getContext('2d'), total = totalDur();
+    for (const k of ks) {
+      if (controle.parar) break;
+      const c = takes()[k]; if (!c) continue;
+      const v = await abrirVideo(c.blob), a = ac();
+      const fonte = a.createMediaElementSource(v), ganho = a.createGain();
+      ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(saida);
+      await irAoTempo(v, c.ini);  // se o celular não conseguir pular, toca do zero e espera chegar no corte
+      const grupos = gruposDe(k);
       await v.play();
       let ativo = false;
       await new Promise(ok => {
         const passo = () => {
+          if (controle.parar) { v.pause(); ok(); return; }
           const t = v.currentTime;
-          if (!ativo && t >= s.ini) {  // pula o silêncio do começo do take
+          if (!ativo && t >= c.ini - 0.02) {
             ativo = true; ganho.gain.value = 1;
-            if (!comecou) { r.start(1000); comecou = true; } else if (r.state === 'paused') r.resume();
+            if (gravador) { if (gravador.state === 'inactive') gravador.start(1000); else if (gravador.state === 'paused') gravador.resume(); }
           }
-          desenhar(ctx, v, s, b, t, feito + Math.max(0, t - s.ini), total, k === segs.length - 1, mascote);
-          if (t >= s.fim || v.ended) {  // corta o silêncio do fim
-            ganho.gain.value = 0; if (r.state === 'recording') r.pause(); v.pause(); ok(); return;
+          if (ativo) {
+            const dec = antes(k) + Math.max(0, t - c.ini);
+            desenhar(ctx, v, k, grupos, t, dec, total);
+            if (aoTempo) aoTempo(dec, total, k);
+          }
+          if (t >= c.fim || v.ended) {
+            ganho.gain.value = 0; if (gravador && gravador.state === 'recording') gravador.pause();
+            v.pause(); ok(); return;
           }
           requestAnimationFrame(passo);
         };
         requestAnimationFrame(passo);
       });
-      feito += s.fim - s.ini;
-      fonte.disconnect(); URL.revokeObjectURL(u);
+      fonte.disconnect(); URL.revokeObjectURL(v.src); v.removeAttribute('src');
     }
+  }
+
+  /* ---------------------------------------------------------------- modo EDITAR */
+  const quadros = new Map();  // vídeo de cada take só para mostrar um quadro parado (sem som)
+  async function mostrarQuadro(k, t) {
+    const c = takes()[k]; if (!c) return;
+    await carregarMascote();
+    let v = quadros.get(k);
+    if (!v || v.dataset.blob !== String(c.blob.size)) {
+      if (v) URL.revokeObjectURL(v.src);
+      v = await abrirVideo(c.blob); v.muted = true; v.dataset.blob = String(c.blob.size); quadros.set(k, v);
+    }
+    const alvoT = t == null ? c.ini + 0.05 : t;
+    await irAoTempo(v, alvoT);
+    if (tocando) return;
+    desenhar(g('ecanvas').getContext('2d'), v, k, gruposDe(k), alvoT, antes(k) + Math.max(0, alvoT - c.ini), totalDur());
+    g('etempo').textContent = `${seg(antes(k) + Math.max(0, alvoT - c.ini))} / ${seg(totalDur())}`;
+  }
+  function desenharTimeline() {
+    g('etl').innerHTML = blocos.map((b, k) => {
+      const c = takes()[k];
+      return `<button data-k="${k}" class="${k === sel ? 'at' : ''} ${c ? '' : 'falta'}" style="width:${Math.max(58, Math.round((c ? tamanho(k) : alvo(b)) * 16))}px">
+        <b>${k + 1}</b> ${b.gancho ? 'gancho' : esc(b.cena)}<br>${c ? seg(tamanho(k)) : 'falta'}</button>`;
+    }).join('');
+    g('etl').querySelectorAll('button').forEach(bt => bt.onclick = () => selecionar(Number(bt.dataset.k)));
+  }
+  function abrirEditor(k) {
+    if (gravando) return;
+    if (revendo) voltarCamera();
+    pararCamera(); g('gprev').srcObject = null;
+    g('ggrava').hidden = true; g('gedit').hidden = false;
+    selecionar(k);
+  }
+  function selecionar(k) {
+    pararPrevia();
+    sel = k;
+    desenharTimeline();
+    const b = blocos[k], c = takes()[k], op = opcoes();
+    const p = g('epainel');
+    if (!c) {
+      p.innerHTML = `<h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
+        <p>Este bloco ainda não foi gravado.</p><div class="ebot"><button id="eregravar" class="on">🎥 Gravar este bloco</button></div>`;
+      g('eregravar').onclick = () => irGravar(k);
+      const ctx = g('ecanvas').getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      return;
+    }
+    p.innerHTML = `<h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
+      <label>✂️ Começa em <b id="vini"></b></label><input id="rini" type="range" min="0" max="${c.dur}" step="0.05" value="${c.ini}">
+      <label>✂️ Termina em <b id="vfim"></b> <small>(take de ${seg(c.dur)})</small></label><input id="rfim" type="range" min="0" max="${c.dur}" step="0.05" value="${c.fim}">
+      <div class="ebot"><button id="etrecho">▶ Ver este bloco</button><button id="eregravar">🎥 Regravar</button></div>
+      <label for="etexto">Texto na tela</label><input id="etexto" type="text" value="${esc(b.texto_tela)}">
+      <label for="efala">Legenda (o que você falou)</label><textarea id="efala">${esc(b.fala)}</textarea>
+      ${b.cena === 'tela' ? '' : `<label>Enquadramento</label>
+      <div class="ebot"><button data-e="preencher">Preencher a tela</button><button data-e="inteiro">Vídeo inteiro</button></div>`}
+      <label style="margin-top:18px">Vídeo todo</label>
+      <label class="echeck"><input id="eleg" type="checkbox" ${op.legenda ? 'checked' : ''}> Legenda automática (palavra por palavra)</label>
+      <label class="echeck"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final</label>`;
+    const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
+    mostrarCorte();
+    const guardar = () => salvar(item).catch(() => {});
+    g('rini').oninput = () => { c.ini = Math.min(Number(g('rini').value), c.fim - 0.3); g('rini').value = c.ini; mostrarCorte(); mostrarQuadro(k, c.ini); };
+    g('rfim').oninput = () => { c.fim = Math.max(Number(g('rfim').value), c.ini + 0.3); g('rfim').value = c.fim; mostrarCorte(); mostrarQuadro(k, c.fim - 0.05); };
+    g('rini').onchange = g('rfim').onchange = () => { desenharTimeline(); guardar(); };
+    g('etrecho').onclick = () => previa([k]);
+    g('eregravar').onclick = () => irGravar(k);
+    g('etexto').oninput = () => { setTexto(k, 'texto_tela', g('etexto').value); mostrarQuadro(k); };
+    g('efala').oninput = () => { setTexto(k, 'fala', g('efala').value); mostrarQuadro(k); };
+    g('etexto').onchange = g('efala').onchange = guardar;
+    ui.querySelectorAll('[data-e]').forEach(bt => {
+      bt.classList.toggle('on', (c.enquadre || 'auto') === bt.dataset.e);
+      bt.onclick = () => { c.enquadre = bt.dataset.e; guardar(); selecionar(k); };
+    });
+    g('eleg').onchange = () => { op.legenda = g('eleg').checked; guardar(); mostrarQuadro(k); };
+    g('emasc').onchange = () => { op.mascote = g('emasc').checked; guardar(); mostrarQuadro(k); };
+    mostrarQuadro(k);
+  }
+
+  async function previa(ks) {
+    if (ocupado) return;
+    pararPrevia();
+    const lista = ks || blocos.map((_, k) => k).filter(k => k >= sel && takes()[k]);
+    if (!lista.length) return;
+    await carregarMascote();
+    const controle = {parar: false};
+    tocando = controle; g('eplay').textContent = '⏸';
+    await tocar(lista, ac().destination, null, controle, (dec, tot, k) => {
+      g('etempo').textContent = `${seg(dec)} / ${seg(tot)}`;
+      if (k !== sel) { sel = k; desenharTimeline(); }
+    });
+    if (tocando === controle) { tocando = null; g('eplay').textContent = '▶'; }
+  }
+  function pararPrevia() {
+    if (tocando) tocando.parar = true;
+    tocando = null;
+    if (ui) g('eplay').textContent = '▶';
+  }
+
+  /* ---------------------------------------------------------------- exportar o vídeo final */
+  const aviso = t => { g('eaviso').hidden = !t; g('eaviso').textContent = t; };
+  async function exportar() {
+    if (blocos.some((_, k) => !takes()[k])) {
+      const k = blocos.findIndex((_, n) => !takes()[n]);
+      selecionar(k);
+      return alert(`Falta gravar o bloco ${k + 1}.`);
+    }
+    pararPrevia(); ocupado = true;
+    aviso('Montando o vídeo…\nDeixe o app aberto nesta tela.');
+    await carregarMascote();
+    const a = ac(), dest = a.createMediaStreamDestination();
+    const saida = new MediaStream([...g('ecanvas').captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+    const mt = tipo(), partes = [];
+    const r = new MediaRecorder(saida, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6, audioBitsPerSecond: 128000});
+    r.ondataavailable = e => { if (e.data.size) partes.push(e.data); };
+    await tocar(blocos.map((_, k) => k), dest, r, {parar: false}, (dec, tot) => {
+      aviso(`Montando o vídeo… ${Math.round(100 * dec / tot)}%\nDeixe o app aberto nesta tela.`);
+    });
     const terminou = new Promise(ok => { r.onstop = ok; });
     if (r.state === 'paused') r.resume();
-    r.stop(); await terminou; actx.close();
+    if (r.state !== 'inactive') r.stop();
+    await terminou;
     item.video = new Blob(partes, {type: (r.mimeType || mt || 'video/webm').split(';')[0]});
-    item.videoDur = total;
+    item.videoDur = totalDur();
     await salvar(item);
-    alert(`Vídeo pronto! ${total.toFixed(0)} s.`);
+    aviso(''); ocupado = false;
+    alert(`Vídeo pronto! ${Math.round(item.videoDur)} s. Ele aparece no roteiro, com o botão de compartilhar.`);
     fechar();
   }
 
