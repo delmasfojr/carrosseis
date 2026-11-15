@@ -9,6 +9,10 @@ const Gravador = (() => {
   const TIPOS = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4',
     'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
   const tipo = () => TIPOS.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  // modo "só voz": grava só o microfone; o vídeo é montado com mascote, contas, desenhos e emojis
+  const TIPOS_AUDIO = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'];
+  const tipoAudio = () => TIPOS_AUDIO.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  const soVoz = () => !!opcoes().soVoz;
   const CENA = {camera: '🎥 CÂMERA', quadro: '🧑‍🏫 QUADRO', tela: '📱 TELA'};
   const espera = ms => new Promise(r => setTimeout(r, ms));
   const seg = s => `${Number(s).toFixed(1).replace('.', ',')} s`;
@@ -16,7 +20,7 @@ const Gravador = (() => {
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
-  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false};
+  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false, soVoz: false};
   const opcoes = () => {  // completa o que faltar SEM trocar o objeto (quem já tem a referência continua valendo)
     const op = item.edicao || (item.edicao = {});
     for (const [k, v] of Object.entries(PADRAO)) if (!(k in op)) op[k] = v;
@@ -56,6 +60,14 @@ const Gravador = (() => {
 #gprev{width:100%;height:100%;object-fit:cover;display:block}
 #gprev.inteiro{object-fit:contain}
 #gprev.espelho{transform:scaleX(-1)}
+#gsovoz{position:absolute;inset:0;background:#FFF6E6;color:#0F1B2D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:150px 26px 230px;text-align:center}
+#gsovoz img{height:34%;object-fit:contain}
+#gsovoz b{font:30px 'Anton',Impact,sans-serif;font-weight:400}
+#gsovoz small{font-size:13px;color:#445}
+#gnivel{width:70%;height:14px;border-radius:7px;background:#D9DDE3;overflow:hidden}
+#gnivel i{display:block;height:100%;width:0;background:#FF7A00;transition:width .08s}
+#gmodo{font-size:12px;padding:6px 10px}
+#gmodo.on{background:#FF7A00 !important}
 #gfala{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 16px 40px;background:linear-gradient(#000d 70%,#0000);font-weight:700;line-height:1.3;text-align:center}
 #gfala small{display:block;color:#FF7A00;font-size:12px;letter-spacing:1px;margin-bottom:4px}
 #gfala .gq{display:block;font-size:.66em;font-weight:600;color:#ffe2bf;margin-top:6px}
@@ -129,7 +141,10 @@ const Gravador = (() => {
     ui = document.createElement('div'); ui.id = 'grav'; ui.hidden = true;
     ui.innerHTML = `
       <div id="ggrava">
-        <div class="gquadro"><video id="gprev" playsinline muted autoplay></video><div id="gconta"></div></div>
+        <div class="gquadro"><video id="gprev" playsinline muted autoplay></video>
+          <div id="gsovoz" hidden><img src="${BASE}mascote/explicando.webp" alt=""><b>🎙 SÓ A SUA VOZ</b>
+            <small>Você não aparece: o vídeo é montado com o mascote, as contas, os desenhos e os emojis.</small><div id="gnivel"><i></i></div></div>
+          <div id="gconta"></div></div>
         <div id="gfala"></div>
         <div id="gbarra">
           <div id="gtempo"></div>
@@ -144,7 +159,7 @@ const Gravador = (() => {
           </div>
           <div id="gzoomw" hidden>🔍 <input id="gzoom" type="range"> <span id="gzoomv"></span></div>
           <div id="gtl"></div>
-          <div class="glinha" style="margin-top:6px"><button id="gruido" style="font-size:12px;padding:6px 10px"></button></div>
+          <div class="glinha" style="margin-top:6px"><button id="gmodo"></button><button id="gruido" style="font-size:12px;padding:6px 10px"></button></div>
           <div id="ginfo"></div>
         </div>
       </div>
@@ -164,6 +179,10 @@ const Gravador = (() => {
     g('gruido').onclick = async () => {
       opcoes().ruido = !opcoes().ruido; salvar(item).catch(() => {});
       const lado = facing; pararCamera(); await ligarCamera(lado).catch(erroCamera);
+    };
+    g('gmodo').onclick = async () => {
+      opcoes().soVoz = !opcoes().soVoz; salvar(item).catch(() => {});
+      pararCamera(); await ligarCamera().catch(erroCamera);
     };
     g('geditar').onclick = () => abrirEditor(Math.min(i, blocos.length - 1));
     g('gzoom').oninput = () => {
@@ -203,10 +222,16 @@ const Gravador = (() => {
     g('gruido').textContent = opcoes().ruido ? '🎙 Reduzir ruído: LIGADO' : '🎙 Reduzir ruído: desligado';
     g('gruido').title = opcoes().ruido ? 'Bom para lugar barulhento' : 'Voz mais natural (lugar silencioso)';
     g('gruido').disabled = gravando || abrindo;
+    g('gmodo').textContent = soVoz() ? '🎙 Só a voz (sem câmera)' : '🎥 Com câmera';
+    g('gmodo').title = 'Tocar para trocar entre gravar com câmera e gravar só a voz';
+    g('gmodo').classList.toggle('on', soVoz());
+    g('gmodo').disabled = gravando || abrindo;
+    g('gsovoz').hidden = !soVoz();
+    g('gvirar').disabled ||= soVoz();
     if (abrindo) for (const id of ['gvirar', 'geditar']) g(id).disabled = true;
   }
 
-  function pararCamera() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; }
+  function pararCamera() { if (typeof pararMedidor === 'function') pararMedidor(); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; }
   // uma troca de câmera por vez: se pedirem outra no meio, espera a anterior terminar
   let fila = Promise.resolve(), abrindo = false;
   function ligarCamera(forcar) {
@@ -214,11 +239,42 @@ const Gravador = (() => {
     fila = p.catch(() => {});
     return p;
   }
+  // filtros de "chamada" do celular (cancelamento de eco, supressão de ruído, ganho automático) deixam a voz
+  // abafada e robótica: ficam desligados. "Reduzir ruído" liga só a supressão, para lugar barulhento.
+  const cfgAudio = () => ({echoCancellation: false, noiseSuppression: !!opcoes().ruido, autoGainControl: false,
+    channelCount: {ideal: 1}, sampleRate: {ideal: 48000}, sampleSize: {ideal: 16}});
+  // medidor de volume do microfone (no modo só voz não há imagem para saber se está captando)
+  let medidor = null;
+  function medirNivel() {
+    pararMedidor();
+    if (!stream || !stream.getAudioTracks().length) return;
+    const a = ac(), an = a.createAnalyser(); an.fftSize = 512;
+    const src = a.createMediaStreamSource(stream); src.connect(an);
+    const d = new Float32Array(an.fftSize), m = {src, ativo: true};
+    const passo = () => {
+      if (!m.ativo) return;
+      an.getFloatTimeDomainData(d);
+      let s = 0; for (const x of d) s += x * x;
+      g('gnivel').firstChild.style.width = Math.min(100, Math.sqrt(s / d.length) * 600) + '%';
+      setTimeout(passo, 80);
+    };
+    medidor = m; passo();
+  }
+  function pararMedidor() { if (medidor) { medidor.ativo = false; medidor.src.disconnect(); medidor = null; } }
+  async function ligarMicrofone() {
+    if (!(stream && stream.active && !stream.getVideoTracks().length)) {
+      pararCamera();
+      abrindo = true; atualizarGravar();
+      g('ginfo').textContent = 'Abrindo o microfone…';
+      try { stream = await navigator.mediaDevices.getUserMedia({audio: cfgAudio()}); } finally { abrindo = false; }
+    }
+    g('gzoomw').hidden = true;
+    const v = g('gprev'); v.srcObject = null;
+    medirNivel();
+    atualizarGravar();
+  }
   async function pedirCamera(lado) {
-    // filtros de "chamada" do celular (cancelamento de eco, supressão de ruído, ganho automático) deixam a voz
-    // abafada e robótica: ficam desligados. "Reduzir ruído" liga só a supressão, para lugar barulhento.
-    const audio = {echoCancellation: false, noiseSuppression: !!opcoes().ruido, autoGainControl: false,
-      channelCount: {ideal: 1}, sampleRate: {ideal: 48000}, sampleSize: {ideal: 16}};
+    const audio = cfgAudio();
     const tentativas = [
       // resizeMode 'none' = formato nativo da câmera, sem recorte (o recorte era o "zoom" exagerado)
       {facingMode: lado, resizeMode: {ideal: 'none'}, width: {ideal: 1920}, height: {ideal: 1440}, frameRate: {ideal: 30}},
@@ -237,6 +293,9 @@ const Gravador = (() => {
     throw erro;
   }
   async function ligarCameraJa(forcar) {
+    if (soVoz()) return ligarMicrofone();
+    pararMedidor();
+    if (stream && !stream.getVideoTracks().length) pararCamera();  // saindo do modo só voz
     const tk = takes()[i];
     const quer = forcar || (tk && tk.facing) || (blocos[i].cena === 'quadro' ? 'environment' : 'user');
     if (!(stream && facing === quer && stream.active)) {
@@ -297,17 +356,19 @@ const Gravador = (() => {
     g('grec').disabled = true;
     for (const n of [3, 2, 1]) { contador(n); await espera(650); }
     contador('');
-    const mt = tipo(), partes = [], a = alvo(blocos[i]);
-    rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), videoBitsPerSecond: 6e6, audioBitsPerSecond: 192000});
+    const voz = !stream.getVideoTracks().length;  // modo só voz
+    const mt = voz ? tipoAudio() : tipo(), partes = [], a = alvo(blocos[i]);
+    rec = new MediaRecorder(stream, {...(mt ? {mimeType: mt} : {}), ...(voz ? {} : {videoBitsPerSecond: 6e6}), audioBitsPerSecond: 192000});
     rec.ondataavailable = e => { if (e.data.size) partes.push(e.data); };
     rec.onstop = async () => {
       clearInterval(relogio);
-      const blob = new Blob(partes, {type: (rec.mimeType || mt || 'video/webm').split(';')[0]});
-      const c = {blob, dur: (Date.now() - t0) / 1000, facing};
+      const blob = new Blob(partes, {type: (rec.mimeType || mt || (voz ? 'audio/webm' : 'video/webm')).split(';')[0]});
+      const c = {blob, dur: (Date.now() - t0) / 1000, facing, ...(voz ? {soVoz: true} : {})};
       gravando = false;
       if (blob.size < 2000) {  // a câmera não entregou imagem: não guarda um take vazio
         atualizarGravar();
-        return alert('Esse take não gravou (a câmera não mandou imagem). Toque em 🔄 ou saia e entre de novo, e grave este bloco outra vez.');
+        return alert(voz ? 'Esse take não gravou (o microfone não mandou som). Saia e entre de novo, e grave este bloco outra vez.'
+          : 'Esse take não gravou (a câmera não mandou imagem). Toque em 🔄 ou saia e entre de novo, e grave este bloco outra vez.');
       }
       g('ginfo').textContent = 'Guardando o take…';
       await analisar(c);
@@ -316,7 +377,12 @@ const Gravador = (() => {
       transcreverFundo(i);  // legenda pela voz real, sem travar a gravação
       const proximo = blocos.findIndex((_, k) => k > i && !takes()[k]);
       if (proximo > 0) await irPara(proximo);
-      else if (blocos.every((_, k) => takes()[k])) abrirEditor(i);  // gravou tudo: vai para a edição
+      else if (blocos.every((_, k) => takes()[k])) {  // gravou tudo: vai para a edição
+        abrirEditor(i);
+        // vídeo só com a voz e ainda sem montagem: a IA já monta as cenas sozinha
+        if (blocos.every((_, k) => takes()[k].soVoz) && !item.montouIA && chave())
+          montarComIA(true).catch(e2 => { aviso(''); ocupado = false; alert('A IA não conseguiu montar agora: ' + e2.message + '\nToque em ✨ Montar com IA para tentar de novo.'); });
+      }
       else atualizarGravar();
     };
     rec.start(1000); t0 = Date.now(); gravando = true; vibrou = false;
@@ -685,11 +751,14 @@ Se não houver fala, devolva a lista vazia.`;
   const vel = c => c.vel || 1;
   const LAYOUTS = {auto: 'Automático', cheia: 'Câmera cheia', inteira: 'Câmera inteira', circulo: 'Conta + círculo',
     dividida: 'Tela dividida', canto: 'Conta + rosto no canto', mascote: 'Mascote + lousa',
-    mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote'};
+    mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote', visual: 'Visual: conta + mascote'};
+  // take gravado só com a voz não tem imagem: só valem os layouts sem câmera
+  const SEM_CAMERA = ['visual', 'mascote'];
+  const semImagem = k => !!(takes()[k] && takes()[k].soVoz);
   const POSES = {explicando: 'Explicando', ideia: 'Ideia', resolvendo: 'Resolvendo', pensando: 'Pensando',
     desafiando: 'Desafiando', confiante: 'Confiante', estudando: 'Estudando', joinha: 'Joinha'};
-  const COM_TEXTO = ['circulo', 'dividida', 'canto', 'mascote', 'mascote_fundo', 'alternar'];
-  const COM_MASCOTE = ['mascote', 'mascote_fundo', 'alternar'];
+  const COM_TEXTO = ['circulo', 'dividida', 'canto', 'mascote', 'mascote_fundo', 'alternar', 'visual'];
+  const COM_MASCOTE = ['mascote', 'mascote_fundo', 'alternar', 'visual'];
   const TRANSICOES = {nenhuma: 'Corte seco', zoom: 'Zoom', esmaecer: 'Esmaecer', deslizar: 'Deslizar', subir: 'Subir', flash: 'Flash', desfoque: 'Desfoque'};
   const CORES_TITULO = {laranja: [LAR, '#fff'], navy: [NAVY, '#fff'], branco: ['#fff', NAVY], amarelo: ['#FFD21F', NAVY], sem: [null, '#fff']};
   const TAM_TITULO = {P: 62, M: 80, G: 104};
@@ -698,6 +767,7 @@ Se não houver fala, devolva a lista vazia.`;
     const todos = item.estilo || (item.estilo = []);
     const e = todos[k] || (todos[k] = {});
     const b = blocos[k], c = takes()[k], op = opcoes();
+    if (c && c.soVoz && !SEM_CAMERA.includes(e.layout)) e.layout = k % 3 === 2 ? 'mascote' : 'visual';
     if (!e.layout) e.layout = b.cena === 'tela' ? 'circulo' : c && c.enquadre === 'inteiro' ? 'inteira' : c && c.enquadre === 'preencher' ? 'cheia' : 'auto';
     if (!e.transicao) e.transicao = k === 0 || op.zoomCorte === false ? 'nenhuma' : 'zoom';
     if (!e.corTitulo) e.corTitulo = b.gancho ? 'laranja' : 'navy';
@@ -715,7 +785,7 @@ Se não houver fala, devolva a lista vazia.`;
   }
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
   function desenhar(ctx, v, k, grupos, t, decorrido, total) {
-    if (opcoes().seco) {  // vídeo seco: só a câmera, sem título, legenda, mascote, filtro nem efeito
+    if (opcoes().seco && !semImagem(k)) {  // vídeo seco: só a câmera, sem título, legenda, mascote, filtro nem efeito
       ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
       if (v.videoWidth / v.videoHeight > 0.8) caber(ctx, v); else cobrir(ctx, v, 0, 0, W, H);
       return;
@@ -727,7 +797,7 @@ Se não houver fala, devolva a lista vazia.`;
       const n = cortados(c).filter(sg => sg[0] <= t + 0.05).length;
       lay = n % 2 === 1 || n === 0 ? (v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia') : 'mascote_fundo';
     }
-    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote';
+    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual';
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const filtro = FILTROS[op.filtro] || 'none';
     // transição "zoom": 8% de zoom que volta ao normal em 0,35 s (as outras transições são feitas em tocar())
@@ -746,6 +816,13 @@ Se não houver fala, devolva a lista vazia.`;
     } else if (lay === 'canto') {  // conta ocupando a tela e o rosto pequeno no canto
       ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.38, W - 140, 140); ctx.filter = filtro;
       circulo(ctx, v, W - 190, H * 0.56, 150);
+    } else if (lay === 'visual') {  // sem câmera: folha de caderno, conta grande no meio e o mascote embaixo apresentando
+      ctx.filter = 'none';
+      ctx.strokeStyle = '#0F1B2D14'; ctx.lineWidth = 3;
+      for (let x = 60; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      conta(ctx, b.quadro, H * 0.42, W - 140, 150);
+      boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.98, 560 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
     } else if (lay === 'mascote') {  // só o mascote apresentando, com a lousa; a voz é a sua
       ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.97, ALTURA_MASCOTE * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
@@ -1091,10 +1168,11 @@ Se não houver fala, devolva a lista vazia.`;
   }
 
   /* ---------------------------------------------------------------- ✨ Montar com IA */
-  async function montarComIA() {
+  async function montarComIA(sozinho = false) {
     if (!chave()) return alert('Para montar com IA, cole a chave do Gemini em "Chaves".');
     if (blocos.some((_, k) => !takes()[k])) return alert('Grave todos os blocos antes de montar com IA.');
-    if (!confirm('A IA vai sugerir layout, mascote, título, transição e figuras para TODOS os blocos, pelo que você falou.\nDá para desfazer depois. Continuar?')) return;
+    if (!sozinho && !confirm('A IA vai sugerir layout, mascote, título, transição e figuras para TODOS os blocos, pelo que você falou.\nDá para desfazer depois. Continuar?')) return;
+    const semVideo = blocos.every((_, k) => semImagem(k));  // vídeo só com a voz: tudo o que se vê vem daqui
     pararPrevia(); ocupado = true;
     if (opcoes().legendaVoz) {  // para a IA "ouvir" o que você falou de verdade
       const faltam = blocos.map((_, k) => k).filter(k => !takes()[k].transcricao);
@@ -1107,21 +1185,30 @@ Se não houver fala, devolva a lista vazia.`;
     const desenhos = Object.entries(DESCRICOES || {}).map(([n, d]) => `${n} = ${d}`).join('\n');
     const textoBlocos = blocos.map((b, k) => `BLOCO ${k + 1}${b.gancho ? ' (GANCHO, abre o vídeo)' : ''} — ${seg(tamanho(k))} — fala: "${palavrasDe(k).map(p => p.w).join(' ') || b.fala}"` +
       (b.quadro ? ` — conta do roteiro: "${b.quadro}"` : '')).join('\n');
+    const regrasLayout = semVideo ? `- O PROFESSOR NÃO APARECE neste vídeo: só a voz dele. Tudo o que se vê é o mascote, a conta, o título e as figuras, então capriche nas figuras.
+- layout: "visual" (folha de caderno, conta grande no meio, mascote embaixo apresentando) ou "mascote" (mascote grande ao lado de uma lousa com a conta).
+  Use "visual" na maioria dos blocos e "mascote" em 1 ou 2 blocos para variar (nunca três blocos seguidos iguais).
+- conta: o texto curto da conta ou do número em destaque (até 24 caracteres, símbolos Unicode como × ÷ ² √ %), em TODOS os blocos, avançando a conta passo a passo.`
+      : `- layout: "cheia" (professor falando, use no gancho e no final), "dividida" (conta em cima, professor embaixo), "circulo" (conta grande + professor num círculo),
+  "canto" (conta ocupando a tela + rosto no canto), "mascote" (só o mascote apresentando com lousa; a voz é do professor), "mascote_fundo" (mascote na frente, professor ao fundo),
+  "alternar" (alterna professor e mascote a cada frase). Varie: no máximo 2 blocos com mascote em destaque; nunca dois blocos seguidos com o mesmo layout de conta.
+- conta: o texto curto da lousa/quadro (até 24 caracteres, símbolos Unicode como × ÷ ² √ %), só quando o layout mostra conta ou lousa; senão "".`;
+    const regrasFig = semVideo ? `- figuras: 1 a 3 por bloco (o vídeo depende delas), cada uma ligada a UMA palavra que o professor fala naquele bloco (copie a palavra exatamente como está na fala).
+  Prefira "desenho" (use SÓ nomes exatos da lista abaixo); use "emoji" quando nenhum desenho combinar. posicao: alto_esquerda, alto_direita, baixo_esquerda ou baixo_direita
+  (o meio é da conta); duas figuras do mesmo bloco em posições diferentes.`
+      : `- figuras: 0 a 2 por bloco, cada uma ligada a UMA palavra que o professor fala naquele bloco (copie a palavra exatamente como está na fala).
+  tipo "emoji" (um emoji só) ou "desenho" (use SÓ nomes exatos da lista abaixo). posicao: alto_esquerda, alto_direita, meio_esquerda, meio_direita ou centro.`;
     const prompt = `Você é editor de vídeos curtos (Reels) de matemática do professor Delmão (@delmaosimplifica), com mascote.
 Tema do vídeo: "${item.conteudo.tema}". Abaixo, o que o professor FALOU em cada bloco. Monte a cena de cada bloco para o vídeo prender a atenção,
 sem poluir. Regras:
-- layout: "cheia" (professor falando, use no gancho e no final), "dividida" (conta em cima, professor embaixo), "circulo" (conta grande + professor num círculo),
-  "canto" (conta ocupando a tela + rosto no canto), "mascote" (só o mascote apresentando com lousa; a voz é do professor), "mascote_fundo" (mascote na frente, professor ao fundo),
-  "alternar" (alterna professor e mascote a cada frase). Varie: no máximo 2 blocos com mascote em destaque; nunca dois blocos seguidos com o mesmo layout de conta.
-- conta: o texto curto da lousa/quadro (até 24 caracteres, símbolos Unicode como × ÷ ² √ %), só quando o layout mostra conta ou lousa; senão "".
+${regrasLayout}
   A conta tem de ser MATEMATICAMENTE CERTA e igual ao que o professor fala (confira duas vezes; ex.: "25% = 1/4" está certo, "25% de 8 = 1/4" está errado).
   Se a resposta só aparece depois, use "?" (ex.: "8% de 25 = ?").
 - titulo: frase curtíssima em CAIXA ALTA (até 22 caracteres) que resume o bloco; o do gancho tem de prender. Pode ser "" se não precisar.
 - cor_titulo: laranja, navy, branco, amarelo ou sem. transicao: nenhuma, zoom, esmaecer, deslizar, subir, flash ou desfoque (prefira zoom; varie com moderação).
 - pose do mascote: explicando, ideia, resolvendo, pensando, desafiando, confiante, estudando ou joinha (combine com o que é falado).
 - mascote_canto: true se o mascote pequeno no canto ajuda naquele bloco (não use em blocos com layout de mascote).
-- figuras: 0 a 2 por bloco, cada uma ligada a UMA palavra que o professor fala naquele bloco (copie a palavra exatamente como está na fala).
-  tipo "emoji" (um emoji só) ou "desenho" (use SÓ nomes exatos da lista abaixo). posicao: alto_esquerda, alto_direita, meio_esquerda, meio_direita ou centro.
+${regrasFig}
 Desenhos disponíveis (nome = o que mostra):
 ${desenhos}
 
@@ -1129,11 +1216,11 @@ BLOCOS:
 ${textoBlocos}`;
     const E = (...v) => ({type: 'STRING', enum: v});
     const esquema = {type: 'OBJECT', properties: {blocos: {type: 'ARRAY', items: {type: 'OBJECT', properties: {
-      bloco: {type: 'INTEGER'}, layout: E('cheia', 'dividida', 'circulo', 'canto', 'mascote', 'mascote_fundo', 'alternar'),
+      bloco: {type: 'INTEGER'}, layout: semVideo ? E(...SEM_CAMERA) : E('cheia', 'dividida', 'circulo', 'canto', 'mascote', 'mascote_fundo', 'alternar'),
       pose: E(...Object.keys(POSES)), mascote_canto: {type: 'BOOLEAN'}, titulo: {type: 'STRING'}, cor_titulo: E(...Object.keys(CORES_TITULO)),
       conta: {type: 'STRING'}, transicao: E(...Object.keys(TRANSICOES)),
       figuras: {type: 'ARRAY', items: {type: 'OBJECT', properties: {tipo: E('emoji', 'desenho'), valor: {type: 'STRING'}, palavra: {type: 'STRING'},
-        posicao: E('alto_esquerda', 'alto_direita', 'meio_esquerda', 'meio_direita', 'centro')}, required: ['tipo', 'valor', 'palavra', 'posicao']}}},
+        posicao: semVideo ? E('alto_esquerda', 'alto_direita', 'baixo_esquerda', 'baixo_direita') : E('alto_esquerda', 'alto_direita', 'meio_esquerda', 'meio_direita', 'centro')}, required: ['tipo', 'valor', 'palavra', 'posicao']}}},
       required: ['bloco', 'layout', 'pose', 'mascote_canto', 'titulo', 'cor_titulo', 'conta', 'transicao', 'figuras']}}}, required: ['blocos']};
     const r = await chamarGemini(JSON.stringify({contents: [{parts: [{text: prompt}]}],
       generationConfig: {responseMimeType: 'application/json', responseSchema: esquema, temperature: 0.7}}), t => aviso('✨ ' + t));
@@ -1141,12 +1228,14 @@ ${textoBlocos}`;
     const c0 = item.conteudo;
     item.antesIA = JSON.parse(JSON.stringify({estilo: item.estilo || [], texto_capa: c0.texto_capa, gancho_quadro: c0.gancho_quadro || '',
       blocos: c0.blocos.map(b => ({texto_tela: b.texto_tela, quadro: b.quadro}))}));
-    const POS = {alto_esquerda: [0.24, 0.3], alto_direita: [0.76, 0.3], meio_esquerda: [0.22, 0.5], meio_direita: [0.78, 0.5], centro: [0.5, 0.46]};
+    const POS = {alto_esquerda: [0.24, 0.3], alto_direita: [0.76, 0.3], meio_esquerda: [0.22, 0.5], meio_direita: [0.78, 0.5], centro: [0.5, 0.46],
+      baixo_esquerda: [0.25, 0.58], baixo_direita: [0.75, 0.58]};
     let nFig = 0;
     for (const x of r.blocos || []) {
       const k = x.bloco - 1; if (!(k >= 0 && k < blocos.length)) continue;
       const e = est(k);
-      Object.assign(e, {layout: x.layout, pose: x.pose, mascoteCanto: !!x.mascote_canto && !COM_MASCOTE.includes(x.layout), corTitulo: x.cor_titulo});
+      const lay = semImagem(k) && !SEM_CAMERA.includes(x.layout) ? 'visual' : x.layout;
+      Object.assign(e, {layout: lay, pose: x.pose, mascoteCanto: !!x.mascote_canto && !COM_MASCOTE.includes(lay), corTitulo: x.cor_titulo});
       if (k > 0) e.transicao = x.transicao;
       setTexto(k, 'texto_tela', (x.titulo || '').slice(0, 40));
       if (x.conta) setTexto(k, 'quadro', x.conta.slice(0, 40));
@@ -1162,6 +1251,7 @@ ${textoBlocos}`;
       }
     }
     opcoes().seco = false;
+    item.montouIA = true;
     await salvar(item);
     aviso(''); ocupado = false;
     selecionar(sel);
@@ -1237,7 +1327,7 @@ ${textoBlocos}`;
       const ctx = g('ecanvas').getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
       return;
     }
-    p.innerHTML = `<label class="echeck eseco"><input id="eseco" type="checkbox" ${op.seco ? 'checked' : ''}>
+    p.innerHTML = `<label class="echeck eseco" ${c.soVoz ? 'hidden' : ''}><input id="eseco" type="checkbox" ${op.seco ? 'checked' : ''}>
         <span><b>🎬 Vídeo seco</b> — só os cortes, sem título, legenda, mascote nem efeitos (vale para o vídeo todo)</span></label>
       <h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
       <div class="ebot eiab"><button id="eia">✨ Montar com IA <small>(cena, mascote e figuras pela sua fala)</small></button>
@@ -1265,8 +1355,8 @@ ${textoBlocos}`;
       <label class="echeck"><input id="elvoz" type="checkbox" ${op.legendaVoz ? 'checked' : ''}> Legenda pela minha voz (senão, usa o texto do roteiro)</label>
       </div>
       <div class="eaba" data-aba="visual">
-      <label>Layout deste bloco</label>
-      <div class="ebot" style="flex-wrap:wrap">${Object.keys(LAYOUTS).map(x => `<button data-l="${x}" style="flex:1 0 30%">${LAYOUTS[x]}</button>`).join('')}</div>
+      <label>Layout deste bloco${c.soVoz ? ' <small>(gravado só com a voz: layouts sem câmera)</small>' : ''}</label>
+      <div class="ebot" style="flex-wrap:wrap">${Object.keys(LAYOUTS).filter(x => !c.soVoz || SEM_CAMERA.includes(x)).map(x => `<button data-l="${x}" style="flex:1 0 30%">${LAYOUTS[x]}</button>`).join('')}</div>
       <label class="echeck"><input id="ecanto" type="checkbox" ${est(k).mascoteCanto ? 'checked' : ''}> 🦸 Mascote no canto (em qualquer layout)</label>
       <div id="eposew"><label>Pose do mascote</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div>

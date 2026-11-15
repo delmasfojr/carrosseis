@@ -22,9 +22,25 @@ const Roteiro = (() => {
   }))});
   ESQUEMA.propertyOrdering = ['prova_citada', 'roteiros'];
 
+  // Reels "só com visual": o professor só grava a voz; o app monta com mascote, contas, desenhos e emojis
+  const SO_VISUAL = `
+
+VÍDEO SÓ COM VISUAL (vale acima da parte "GRAVAÇÃO"; o professor NÃO aparece)
+Este Reels será montado só com elementos visuais: o mascote Delmão apresentando, a conta grande na tela,
+desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A VOZ.
+- cena: sempre "tela".
+- fala: narração para quem está OLHANDO A TELA ("olha essa conta", "repara nesse número").
+  Nada de "olha pra mim", "aqui no quadro", "na minha mão", "vou escrever".
+- Use objetos concretos e fáceis de desenhar quando ajudarem (pizza, dinheiro, relógio, celular, carro, prova, calendário...):
+  cada um vira uma figura na tela na hora em que é falado.
+- quadro: em TODOS os blocos, a conta ou o número que aparece grande na tela (até 24 caracteres),
+  avançando a conta passo a passo de um bloco para o outro; no bloco que pede para pausar, a conta com "?".
+- texto_tela: título curto em todos os blocos.`;
+  const soVisual = () => !!(document.querySelector('#visual') && document.querySelector('#visual').checked);
+
   async function pedir(link, inicio, fim) {
     const video = {fileData: {fileUri: link}};
-    let prompt = PROMPT_R;
+    let prompt = PROMPT_R + (soVisual() ? SO_VISUAL : '');
     if (inicio != null) {
       video.videoMetadata = {startOffset: `${inicio}s`, endOffset: `${fim}s`};
       prompt += `\n\nATENÇÃO: você recebeu só um TRECHO de um vídeo longo (de ${mmss(inicio)} até ${mmss(fim)}). Use apenas este trecho.`;
@@ -44,9 +60,10 @@ const Roteiro = (() => {
       let roteiros;
       try { roteiros = await pedir(link, longo ? inicio : null, longo ? inicio + BLOCO : null); }
       catch (e) { if (!e.trecho) throw e; roteiros = await pedir(link, null, null); }
-      const agora = Date.now();
+      const agora = Date.now(), visual = soVisual();
       for (const [k, conteudo] of roteiros.entries())
-        await salvarR({id: `${agora}-${k}`, criado: new Date().toISOString(), link, conteudo, gancho: 0});
+        await salvarR({id: `${agora}-${k}`, criado: new Date().toISOString(), link, conteudo, gancho: 0,
+          ...(visual ? {visual: true, edicao: {soVoz: true}} : {})});
       marcarUsado(link);
       aviso('');
       alert(`Pronto! ${roteiros.length} roteiro(s) novo(s).`);
@@ -67,7 +84,7 @@ const Roteiro = (() => {
     document.querySelectorAll('.nroteiros').forEach(e => e.textContent = itens.length ? `(${itens.length})` : '');
     $('#ritens').innerHTML = itens.map(i => `<button class="rcartao ${i.gravado ? 'postado' : ''}" data-id="${i.id}">
       <span class="nota">${fogo(i.conteudo.nota_viral)} ${i.conteudo.nota_viral}/10</span>
-      <b>${esc(i.conteudo.tema)}</b>
+      <b>${i.visual ? '🎨 ' : ''}${esc(i.conteudo.tema)}</b>
       <small>${esc(i.conteudo.ganchos[i.gancho] || '')}</small>
       <small>${esc(i.conteudo.duracao)} · ${new Date(i.criado).toLocaleDateString('pt-BR')}${i.gravado ? ' · gravado ✓' : ''}</small></button>`).join('');
     $('#ritens').querySelectorAll('.rcartao').forEach(b => b.onclick = () => abrir(b.dataset.id));
@@ -99,7 +116,8 @@ const Roteiro = (() => {
     $('#rvideo').href = atual.link;
     // gravação e vídeo pronto
     const nt = (atual.takes || []).filter(Boolean).length, nb = c.blocos.length + 1;
-    $('#rgravar').textContent = atual.video ? '🎥 Regravar ou remontar' : nt ? `🎥 Continuar a gravação (${nt} de ${nb} blocos)` : '🎥 Gravar o vídeo';
+    const vz = atual.edicao && atual.edicao.soVoz;
+    $('#rgravar').textContent = atual.video ? '🎥 Regravar ou remontar' : nt ? `🎥 Continuar a gravação (${nt} de ${nb} blocos)` : vz ? '🎙 Gravar a voz (vídeo só com visual)' : '🎥 Gravar o vídeo';
     $('#rdenovo').hidden = !(nt || atual.video);
     if (urlVideo) { URL.revokeObjectURL(urlVideo); urlVideo = null; }
     if (atual.video) {

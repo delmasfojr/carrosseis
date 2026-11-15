@@ -297,7 +297,10 @@ async function iniciar() {
   document.querySelectorAll('[data-meus]').forEach(b => b.onclick = () => tela(b.dataset.meus));
   $('#engrenagem').onclick = () => tela('config');
   const modo = () => (document.querySelector('input[name=modo]:checked') || {}).value || 'carrossel';
-  const textoBotao = () => { $('#gerar').textContent = {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()]; };
+  const textoBotao = () => {
+    $('#gerar').textContent = {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()];
+    if ($('#visualw')) $('#visualw').hidden = modo() === 'carrossel';
+  };
   document.querySelectorAll('input[name=modo]').forEach(r => r.onchange = textoBotao); textoBotao();
   $('#gerar').onclick = async () => {
     const link = linkPadrao($('#link').value);
