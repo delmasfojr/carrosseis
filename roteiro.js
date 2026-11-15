@@ -53,6 +53,41 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
     return limparProvas(await chamarGemini(corpo, aviso, inicio != null), 'roteiros');
   }
 
+  // sem vídeo: o Gemini cria os roteiros a partir de um assunto que o professor escreveu (sempre só com visual)
+  async function pedirAssunto(assunto) {
+    const prompt = PROMPT_R + SO_VISUAL + `
+
+NÃO HÁ VÍDEO DO YOUTUBE NESTE PEDIDO (vale acima de tudo o que fala em "vídeo enviado")
+Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
+"""${assunto}"""
+- Se ele deu uma ideia, um exemplo ou um macete, use-o; se deu só o tema, escolha você os macetes,
+  pegadinhas e curiosidades que mais prendem a atenção nesse tema.
+- Faça 3 roteiros com ângulos DIFERENTES (ex.: um macete, uma pegadinha, um desafio).
+- prova_citada: "" e não cite prova nenhuma, a não ser que o assunto acima cite.`;
+    const corpo = JSON.stringify({
+      contents: [{parts: [{text: prompt}]}],
+      generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.9},
+    });
+    return limparProvas(await chamarGemini(corpo, aviso), 'roteiros');
+  }
+  async function gerarAssunto(assunto) {
+    if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
+    $('#gerar').disabled = true;
+    try {
+      aviso('Escrevendo os roteiros…');
+      const roteiros = await pedirAssunto(assunto);
+      const agora = Date.now();
+      for (const [k, conteudo] of roteiros.entries())
+        await salvarR({id: `${agora}-${k}`, criado: new Date().toISOString(), link: '', assunto, conteudo, gancho: 0, visual: true, edicao: {soVoz: true}});
+      aviso('');
+      alert(`Pronto! ${roteiros.length} roteiro(s) só com visual. Abra um e toque em 🎙 Gravar a voz.`);
+      tela('roteiros');
+    } catch (e) {
+      aviso('');
+      alert('Deu erro: ' + e.message);
+    } finally { $('#gerar').disabled = false; }
+  }
+
   async function gerar(link, inicio = 0, longo = false) {
     if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
     $('#gerar').disabled = true;
@@ -113,7 +148,7 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
     $('#rcorpo').querySelectorAll('input[name=gancho]').forEach(r => r.onchange = async () => { atual.gancho = Number(r.value); await salvarR(atual); });
     $('#rlegenda').value = (c.legenda || '').replace(/\\n/g, '\n');
     $('#rmarcar').textContent = atual.gravado ? 'Desmarcar gravado' : 'Marcar como gravado';
-    $('#rvideo').href = atual.link;
+    $('#rvideo').href = atual.link || '#'; $('#rvideo').hidden = !atual.link;  // roteiro por assunto não tem vídeo de origem
     // gravação e vídeo pronto
     const nt = (atual.takes || []).filter(Boolean).length, nb = c.blocos.length + 1;
     const vz = atual.edicao && atual.edicao.soVoz;
@@ -347,5 +382,5 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
       alert(r.ok ? 'A chave do YouTube funciona! ✅' : `A chave não funcionou (${r.status}).`);
     };
   }
-  return {iniciar, gerar, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
+  return {iniciar, gerar, gerarAssunto, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
 })();

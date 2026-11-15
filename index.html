@@ -126,8 +126,18 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
 
   <section class="tela" id="novo" hidden>
     <h2>Criar <span>conteúdo</span></h2>
-    <label for="link">1. Cole o link do vídeo do YouTube</label>
-    <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+    <label>1. De onde vem a ideia?</label>
+    <div class="seg" id="fonte"><button class="on" data-fonte="youtube">▶️ Vídeo do YouTube</button><button data-fonte="assunto">✏️ Um assunto meu</button></div>
+    <div id="fonteyt">
+      <label for="link">Cole o link do vídeo do YouTube</label>
+      <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+    </div>
+    <div id="fonteas" hidden>
+      <label for="assunto">Sobre o que é o vídeo?</label>
+      <textarea id="assunto" style="min-height:90px" placeholder="ex.: desconto de 25% de cabeça&#10;ou: por que 0,999… = 1&#10;ou: regra de três em 10 segundos"></textarea>
+      <p class="dica">Sai <b>Reels só com visual</b>: o mascote, as contas, os desenhos e os emojis montam o vídeo e você grava só a voz. Pode escrever só o tema ou já dar a ideia/exemplo que quer.</p>
+    </div>
+    <div id="modosw">
     <label>2. O que gerar</label>
     <div class="modos">
       <label><input type="radio" name="modo" value="carrossel" checked><i>🖼️</i>Carrossel</label>
@@ -143,8 +153,9 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
         <input id="minuto" type="number" inputmode="numeric" min="0" value="0">
       </div>
     </details>
+    </div>
     <button id="gerar" class="principal">Gerar carrosséis</button>
-    <p class="dica">Sai <b>um post para cada ideia</b> do vídeo, já com legenda. Leva de 1 a 5 minutos: deixe o app aberto até terminar. Sem link? Procure em <b>🔥 Ideias</b>.</p>
+    <p class="dica" id="dicayt">Sai <b>um post para cada ideia</b> do vídeo, já com legenda. Leva de 1 a 5 minutos: deixe o app aberto até terminar. Sem link? Procure em <b>🔥 Ideias</b>.</p>
     <div id="fila"></div>
   </section>
 

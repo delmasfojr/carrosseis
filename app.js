@@ -297,12 +297,29 @@ async function iniciar() {
   document.querySelectorAll('[data-meus]').forEach(b => b.onclick = () => tela(b.dataset.meus));
   $('#engrenagem').onclick = () => tela('config');
   const modo = () => (document.querySelector('input[name=modo]:checked') || {}).value || 'carrossel';
+  // de onde vem a ideia: link do YouTube ou um assunto escrito (este gera Reels só com visual)
+  let fonte = 'youtube';
+  try { if (localStorage.getItem('fonte') === 'assunto') fonte = 'assunto'; } catch {}
   const textoBotao = () => {
-    $('#gerar').textContent = {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()];
+    $('#gerar').textContent = fonte === 'assunto' ? '🎨 Gerar Reels só com visual' :
+      {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()];
     if ($('#visualw')) $('#visualw').hidden = modo() === 'carrossel';
+    if ($('#fonte')) {
+      document.querySelectorAll('[data-fonte]').forEach(b => b.classList.toggle('on', b.dataset.fonte === fonte));
+      $('#fonteyt').hidden = fonte !== 'youtube'; $('#modosw').hidden = fonte !== 'youtube'; $('#fonteas').hidden = fonte !== 'assunto';
+      if ($('#dicayt')) $('#dicayt').hidden = fonte !== 'youtube';
+    }
   };
+  document.querySelectorAll('[data-fonte]').forEach(b => b.onclick = () => {
+    fonte = b.dataset.fonte; try { localStorage.setItem('fonte', fonte); } catch {} textoBotao();
+  });
   document.querySelectorAll('input[name=modo]').forEach(r => r.onchange = textoBotao); textoBotao();
   $('#gerar').onclick = async () => {
+    if (fonte === 'assunto') {
+      const assunto = $('#assunto').value.trim();
+      if (assunto.length < 3) return alert('Escreva o assunto do vídeo.');
+      return Roteiro.gerarAssunto(assunto);
+    }
     const link = linkPadrao($('#link').value);
     if (!link) return alert('Cole um link do YouTube.');
     const inicio = Math.max(0, Number($('#minuto').value || 0)) * 60, longo = $('#longo').checked;
