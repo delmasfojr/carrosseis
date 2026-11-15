@@ -718,29 +718,140 @@ Se não houver fala, devolva a lista vazia.`;
     ctx.fillStyle = corTexto;
     linhas.forEach((l, k) => ctx.fillText(l, W / 2, yc - h / 2 + 22 + alt * (k + 0.5)));
   }
-  function conta(ctx, txt, yc, larg, maxTam) {  // texto grande da conta (layouts com fundo creme)
-    if (!txt) return;
-    let tam = maxTam; ctx.font = `${tam}px Anton, Impact, sans-serif`;
-    let linhas = quebrar(ctx, txt, larg);
-    while ((linhas.length > 3 || Math.max(...linhas.map(l => ctx.measureText(l).width)) > larg) && tam > 56) {
-      tam -= 8; ctx.font = `${tam}px Anton, Impact, sans-serif`; linhas = quebrar(ctx, txt, larg);
-    }
-    ctx.fillStyle = NAVY; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    linhas.forEach((l, n) => ctx.fillText(l, W / 2, yc + (n - (linhas.length - 1) / 2) * tam * 1.15));
+  function medirCaixa(ctx, txt, tam) {  // largura e altura da caixa do título (mesma conta de caixa())
+    ctx.font = `${tam}px Anton, Impact, sans-serif`;
+    const linhas = quebrar(ctx, String(txt).toUpperCase(), W - 220);
+    return [Math.max(...linhas.map(l => ctx.measureText(l).width)) + 70, linhas.length * tam * 1.12 + 44];
   }
-  function lousa(ctx, txt, yc) {  // quadro-negro com a conta escrita a giz
-    if (!txt) return;
-    let tam = 110; ctx.font = `${tam}px Anton, Impact, sans-serif`;
-    let linhas = quebrar(ctx, txt, W - 220);
-    while ((linhas.length > 3 || Math.max(...linhas.map(l => ctx.measureText(l).width)) > W - 220) && tam > 54) {
-      tam -= 8; ctx.font = `${tam}px Anton, Impact, sans-serif`; linhas = quebrar(ctx, txt, W - 220);
+
+  /* ---------------------------------------------------------------- conta que vai sendo escrita no ritmo da fala */
+  // A conta é quebrada em pedaços (números, símbolos, palavras). Cada pedaço aparece, pulando, no instante em que
+  // a voz fala aquilo ("6 ÷ 3 = 2": o 6 entra no "seis", o ÷ no "dividido", ...). O lugar de cada pedaço é o da conta
+  // inteira desde o começo, então nada pula de posição e as figuras já desviam do espaço todo.
+  const SIMB = '×÷+\\-−=≈<>≤≥→?()√/:·';
+  const RE_TOK = new RegExp(`(\\d+(?:[.,]\\d+)*[%²³]?|[${SIMB}]|[^\\s\\d${SIMB}]+)`, 'g'), RE_SIMB = new RegExp(`^[${SIMB}]$`);
+  function tokensConta(txt) {
+    const out = []; let m; RE_TOK.lastIndex = 0;
+    while ((m = RE_TOK.exec(txt))) out.push({s: m[0], esp: m.index > 0 && /\s/.test(txt[m.index - 1]), op: RE_SIMB.test(m[0])});
+    return out;
+  }
+  const EXTENSO = {0: 'zero', 1: 'um uma', 2: 'dois duas meio metade', 3: 'tres terco', 4: 'quatro quarto', 5: 'cinco quinto', 6: 'seis sexto',
+    7: 'sete setimo', 8: 'oito oitavo', 9: 'nove nono', 10: 'dez decimo', 11: 'onze', 12: 'doze', 13: 'treze', 14: 'quatorze catorze', 15: 'quinze',
+    16: 'dezesseis', 17: 'dezessete', 18: 'dezoito', 19: 'dezenove', 20: 'vinte', 30: 'trinta', 40: 'quarenta', 50: 'cinquenta', 60: 'sessenta',
+    70: 'setenta', 80: 'oitenta', 90: 'noventa', 100: 'cem cento', 200: 'duzentos', 300: 'trezentos', 400: 'quatrocentos', 500: 'quinhentos',
+    600: 'seiscentos', 700: 'setecentos', 800: 'oitocentos', 900: 'novecentos', 1000: 'mil'};
+  const FALA_SIMB = {'×': 'vezes multiplicado multiplica x', '÷': 'dividido divide dividir por', '/': 'sobre dividido por', ':': 'dividido por',
+    '+': 'mais soma', '-': 'menos tira', '−': 'menos tira', '=': 'igual e da sao vale fica resulta', '≈': 'aproximadamente quase cerca',
+    '<': 'menor', '>': 'maior', '≤': 'menor', '≥': 'maior', '√': 'raiz', '→': 'entao logo quer'};
+  function chavesToken(tk) {  // jeitos de falar este pedaço da conta
+    const s = tk.s;
+    if (/^\d/.test(s)) {
+      const num = s.replace(/[%²³]$/, ''), n = parseFloat(num.replace(/\.(?=\d{3})/g, '').replace(',', '.'));
+      const ks = [normal(num), normal(s)];
+      const ext = EXTENSO[n] || (n > 20 && n < 100 ? EXTENSO[Math.floor(n / 10) * 10] : n > 100 && n < 1000 ? EXTENSO[Math.floor(n / 100) * 100] : n > 1000 && n < 1e6 ? EXTENSO[Math.floor(n / 1000)] : '');
+      if (ext) ks.push(...ext.split(' '));
+      return ks;
     }
-    const h = linhas.length * tam * 1.15 + 90;
+    if (FALA_SIMB[s]) return FALA_SIMB[s].split(' ');
+    return [normal(s)].filter(Boolean);
+  }
+  const cacheTempos = new Map();
+  function temposConta(k, toks) {  // segundos (dentro do bloco) em que cada pedaço da conta aparece
+    const c = takes()[k], pal = palavrasDe(k), dur = tamanho(k);
+    const chave_ = [toks.map(t => t.s).join(' '), pal.map(p => p.w + p.a.toFixed(2)).join(' '), c.ini, vel(c)].join('|');
+    const ant = cacheTempos.get(k);
+    if (ant && ant.chave === chave_) return ant.ts;
+    const loc = p => Math.max(0, (p.a - c.ini) / vel(c));
+    const ts = toks.map(() => null);
+    let j = 0;
+    toks.forEach((tk, i) => {  // casa cada pedaço com a próxima palavra falada que combina (sempre para a frente)
+      const ks = chavesToken(tk), jan = tk.op ? 4 : 12;
+      for (let m = j; m < Math.min(pal.length, j + jan); m++) {
+        const w = normal(pal[m].w), w2 = w.replace(/%$/, '');
+        if (w && ks.some(x => x === w || x === w2 || (x.length >= 4 && w.startsWith(x)))) { ts[i] = loc(pal[m]); j = m + 1; break; }
+      }
+    });
+    const ok = ts.map((t, i) => t == null ? -1 : i).filter(i => i >= 0);
+    const iniFala = pal.length ? loc(pal[0]) : 0.2, fimFala = pal.length ? loc(pal[pal.length - 1]) : dur * 0.7;
+    if (!ok.length)  // a fala não cita a conta: ela vai sendo escrita ao longo da fala
+      toks.forEach((_, i) => { ts[i] = iniFala + Math.max(0.3, (fimFala - iniFala) * 0.8) * i / Math.max(1, toks.length); });
+    else for (let i = 0; i < toks.length; i++) if (ts[i] == null) {  // pedaço não falado: entre os vizinhos
+      const a = ok.filter(x => x < i).pop(), b = ok.find(x => x > i);
+      if (a != null && b != null) ts[i] = ts[a] + (ts[b] - ts[a]) * (i - a) / (b - a);
+      else if (b != null) ts[i] = Math.max(0, ts[b] - 0.2 * (b - i));
+      else ts[i] = ts[a] + 0.2 * (i - a);
+    }
+    for (let i = 0; i < ts.length; i++) ts[i] = Math.min(Math.max(ts[i], i ? ts[i - 1] : 0), Math.max(0, dur - 0.6));  // completa antes do fim
+    cacheTempos.set(k, {chave: chave_, ts});
+    return ts;
+  }
+  function arrumarConta(ctx, txt, larg, maxTam, minTam = 56) {  // quebra em linhas e acha o tamanho da letra
+    const toks = tokensConta(String(txt));
+    let tam = maxTam, linhas = [];
+    const montar = () => {
+      ctx.font = `${tam}px Anton, Impact, sans-serif`;
+      const sp = ctx.measureText(' ').width;
+      // não cabe numa linha? quebra de preferência antes do "→" ("6 ÷ 3 = 2" / "→ 3 × 2 = 6")
+      const cabe = toks.reduce((a, tk, i) => a + ctx.measureText(tk.s).width + (i && tk.esp ? sp : 0), 0) <= larg;
+      linhas = []; let lin = null;
+      toks.forEach((tk, i) => {
+        const w = ctx.measureText(tk.s).width, gap = lin && lin.itens.length && tk.esp ? sp : 0;
+        if (!lin || (gap && lin.w + gap + w > larg) || (!cabe && tk.s === '→' && lin.itens.length)) { lin = {itens: [], w: 0}; linhas.push(lin); }
+        const g2 = lin.itens.length && tk.esp ? sp : 0;
+        lin.itens.push({i, x: lin.w + g2, w}); lin.w += g2 + w;
+      });
+    };
+    montar();
+    while ((linhas.length > 3 || Math.max(0, ...linhas.map(l => l.w)) > larg) && tam > minTam) { tam -= 8; montar(); }
+    return {toks, tam, linhas, alto: linhas.length * tam * 1.15, larg: Math.max(0, ...linhas.map(l => l.w))};
+  }
+  let revelarTudo = false;  // prévia parada do editor: mostra a conta inteira para dar para conferir
+  function contaViva(ctx, k, txt, yc, larg, maxTam, local, cor = NAVY, corSimb = LAR, minTam) {
+    if (!txt) return null;
+    const L = arrumarConta(ctx, txt, larg, maxTam, minTam);
+    const ts = est(k).animConta && !revelarTudo ? temposConta(k, L.toks) : null;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    L.linhas.forEach((lin, n) => {
+      const y = yc + (n - (L.linhas.length - 1) / 2) * L.tam * 1.15, x0 = W / 2 - lin.w / 2;
+      for (const it of lin.itens) {
+        const tk = L.toks[it.i];
+        let esc = 1, alfa = 1, dy = 0;
+        if (ts) {
+          const q = (local - ts[it.i] + 0.06) / 0.35;
+          if (q <= 0) continue;
+          if (q < 1) { esc = Math.max(0.01, 1 - Math.cos(q * Math.PI * 2.5) * Math.exp(-q * 5)); alfa = Math.min(1, q * 2.5); dy = (1 - q) * (1 - q) * L.tam * 0.3; }
+        }
+        ctx.save(); ctx.globalAlpha = alfa; ctx.translate(x0 + it.x + it.w / 2, y + dy); ctx.scale(esc, esc);
+        ctx.fillStyle = tk.op ? corSimb : cor; ctx.fillText(tk.s, 0, 0); ctx.restore();
+      }
+    });
+    return L;
+  }
+  // onde fica a conta em cada layout com fundo creme: altura do centro (fração da tela), largura e letra máxima
+  const CONTA_POS = {circulo: [0.36, W - 160, 120], dividida: [0.3, W - 140, 120], canto: [0.38, W - 140, 140], visual: [0.42, W - 140, 150]};
+  function conta(ctx, k, lay, local) {
+    const [y, larg, tam] = CONTA_POS[lay];
+    return contaViva(ctx, k, blocos[k].quadro, H * y, larg, tam, local);
+  }
+  const LOUSA_Y = 0.36;
+  const alturaLousa = (ctx, txt) => arrumarConta(ctx, txt, W - 220, 110, 54).alto + 90;
+  function lousa(ctx, k, local) {  // quadro-negro com a conta escrita a giz
+    const txt = blocos[k].quadro, yc = H * LOUSA_Y;
+    if (!txt) return;
+    const h = alturaLousa(ctx, txt);
+    // com a conta animada, a lousa só entra (pulando) um instante antes do primeiro pedaço ser falado: nada de lousa vazia
+    let esc = 1;
+    if (est(k).animConta && !revelarTudo) {
+      const t0 = temposConta(k, arrumarConta(ctx, txt, W - 220, 110, 54).toks)[0] - 0.4, q = (local - t0) / 0.4;
+      if (q <= 0) return;
+      if (q < 1) esc = Math.max(0.01, 1 - Math.cos(q * Math.PI * 2.5) * Math.exp(-q * 5));
+    }
+    ctx.save(); ctx.translate(W / 2, yc); ctx.scale(esc, esc); ctx.translate(-W / 2, -yc);
     ctx.save(); ctx.shadowColor = '#0007'; ctx.shadowBlur = 30;
     ctx.fillStyle = '#1E3A2F'; retangulo(ctx, 60, yc - h / 2, W - 120, h, 28); ctx.fill(); ctx.restore();
     ctx.lineWidth = 14; ctx.strokeStyle = '#8B5A2B'; retangulo(ctx, 60, yc - h / 2, W - 120, h, 28); ctx.stroke();
-    ctx.fillStyle = '#F4F1E8'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    linhas.forEach((l, n) => ctx.fillText(l, W / 2, yc + (n - (linhas.length - 1) / 2) * tam * 1.15));
+    contaViva(ctx, k, txt, yc, W - 220, 110, local, '#F4F1E8', '#FFB45C', 54);
+    ctx.restore();
   }
   // o mascote balança enquanto a voz fala (pela legenda) e respira quando está em silêncio
   // Animação do mascote (feita com as poses, sem arquivo de animação):
@@ -828,6 +939,7 @@ Se não houver fala, devolva a lista vazia.`;
     if (!e.tamTitulo) e.tamTitulo = b.gancho ? 'G' : 'M';
     if (!e.posTitulo) e.posTitulo = 'alto';
     if (e.animTitulo == null) e.animTitulo = true;
+    if (e.animConta == null) e.animConta = true;
     if (!e.pose) e.pose = 'explicando';
     if (e.tamMascote == null) e.tamMascote = 1;
     if (!e.ladoMascote) e.ladoMascote = 'esq';
@@ -839,6 +951,90 @@ Se não houver fala, devolva a lista vazia.`;
     return e;
   }
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
+
+  /* ---------------------------------------------------------------- cada coisa no seu lugar (nada em cima de nada) */
+  // Espaços ocupados no bloco (título, conta, lousa, câmera no círculo, mascote, legenda). Valem para o bloco todo,
+  // com a conta já completa, para as figuras não ficarem pulando de lugar enquanto ela é escrita.
+  // No "alternar" conta o pior caso (a lousa e o mascote do lado do mascote).
+  const laySeguro = k => { const l = est(k).layout; return l === 'alternar' ? 'mascote_fundo' : l === 'auto' ? 'cheia' : l; };
+  function caixaMascote(k, lay) {  // [x, topo, largura, altura] do mascote nesse bloco, ou null
+    const e = est(k);
+    let h = 0, base = 0;
+    if (lay === 'visual') { h = 560 * e.tamMascote; base = H * 0.98; }
+    else if (lay === 'mascote' || lay === 'mascote_fundo') { h = ALTURA_MASCOTE * e.tamMascote; base = H * 0.97; }
+    else if (lay === 'escala' || lay === 'clipe') return null;
+    else if (e.mascoteCanto) { h = 430 * e.tamMascote; base = H * 0.95; }
+    else if (k === blocos.length - 1 && opcoes().mascote) { h = 400 * e.tamMascote; base = H * 0.95; }
+    else return null;
+    const nomes = e.trocaPose ? [e.pose, 'explicando', 'ideia', 'resolvendo', 'joinha'] : [e.pose, 'joinha'];
+    const w = Math.max(h * 0.75, ...nomes.map(n => poses.get(n)).filter(im => im && im.naturalWidth).map(im => im.naturalWidth * h / im.naturalHeight));
+    return [e.ladoMascote === 'dir' ? W - w - 20 : 20, base - h * 1.03, w, h * 1.03];
+  }
+  function yLegenda(k, lay) {  // a legenda sobe para não passar na frente da cabeça do mascote
+    const m = caixaMascote(k, lay), y = H * (lay === 'circulo' ? 0.71 : 0.68);  // no círculo, um pouco abaixo da câmera
+    return m && m[1] < y + 70 ? Math.max(H * 0.5, m[1] - 75) : y;
+  }
+  function zonasDoBloco(ctx, k, lay) {
+    const e = est(k), b = blocos[k], z = [[0, 0, W, 120]];  // faixa do @ e da barra de progresso
+    const add = (x, y, w, h, m = 24) => z.push([x - m, y - m, w + 2 * m, h + 2 * m]);
+    if (b.texto_tela) {
+      const [lg, h] = medirCaixa(ctx, b.texto_tela, TAM_TITULO[e.tamTitulo] || 80), y = H * (POS_TITULO[e.posTitulo] || 0.17);
+      add((W - lg * 1.06) / 2, y - h * 0.53, lg * 1.06, h * 1.06);
+    }
+    if (b.quadro && CONTA_POS[lay]) {
+      const [y, larg, tam] = CONTA_POS[lay], L = arrumarConta(ctx, b.quadro, larg, tam);
+      add(W / 2 - L.larg / 2, H * y - L.alto / 2, L.larg, L.alto);
+    }
+    if (b.quadro && (lay === 'mascote' || lay === 'mascote_fundo')) { const h = alturaLousa(ctx, b.quadro); add(60, H * LOUSA_Y - h / 2, W - 120, h, 10); }
+    if (lay === 'circulo') add(W / 2 - 200, H * 0.53 + 30 - 200, 400, 400, 16);
+    if (lay === 'canto') add(W - 340, H * 0.56 - 150, 300, 300, 16);
+    if (lay === 'dividida') add(0, H * 0.48, W, H * 0.52, 0);
+    const m = caixaMascote(k, lay);
+    if (m) add(m[0], m[1], m[2], m[3], 10);
+    if (opcoes().legenda) { const y = yLegenda(k, lay); add(50, y - 62, W - 100, 124, 8); }
+    return z;
+  }
+  // Figuras: ficam onde foram pedidas se ali estiver livre; senão vão para o lugar livre mais perto
+  // (e diminuem um pouco se precisar). Figura que você arrastou na prévia (fixa) fica onde você pôs.
+  const cacheFigs = new Map();
+  let posFigs = new Map();  // id → {cx, cy, s}: onde cada figura foi desenhada (para tocar nela no editor)
+  function posicionarFigs(ctx, k, lay) {
+    const e = est(k), b = blocos[k], op = opcoes();
+    const medidas = e.figs.map(f => caixaFig(f));
+    const assin = JSON.stringify([lay, b.quadro, b.texto_tela, e.tamTitulo, e.posTitulo, e.tamMascote, e.ladoMascote, e.mascoteCanto, e.pose,
+      op.legenda, op.mascote, poses.size, e.figs.map((f, n) => [f.id, f.x, f.y, f.ini, f.fim, f.fixa, medidas[n]])]);
+    const ant = cacheFigs.get(k);
+    if (ant && ant.assin === assin) return ant.pos;
+    const zonas = zonasDoBloco(ctx, k, lay), pos = new Map(), postas = [];
+    const bate = (r, lista) => lista.some(z => r[0] < z[0] + z[2] && z[0] < r[0] + r[2] && r[1] < z[1] + z[3] && z[1] < r[1] + r[3]);
+    const ordem = e.figs.map((f, n) => [f, medidas[n]]).sort(([a], [b2]) => (b2.fixa ? 1 : 0) - (a.fixa ? 1 : 0) || a.ini - b2.ini);
+    for (const [f, [w0, h0]] of ordem) {
+      const ret = (cx, cy, s) => [cx - w0 * s / 2 - 12, cy - h0 * s / 2 - 12, w0 * s + 24, h0 * s + 24];
+      const juntas = postas.filter(o => o.f.ini < f.fim && f.ini < o.f.fim).map(o => o.r);  // aparecem ao mesmo tempo
+      const qx = f.x * W, qy = f.y * H;
+      let lugar = null;
+      if (f.fixa) lugar = {cx: qx, cy: qy, s: 1};
+      else {
+        const obst = [...zonas, ...juntas];
+        for (const s of [1, 0.85, 0.72, 0.6, 0.5]) {
+          let melhor = null, dist = Infinity;
+          const testa = (cx, cy) => {
+            const r = ret(cx, cy, s);
+            if (r[0] < 0 || r[1] < 0 || r[0] + r[2] > W || r[1] + r[3] > H || bate(r, obst)) return;
+            const d = Math.hypot(cx - qx, (cy - qy) * 1.2);
+            if (d < dist) { dist = d; melhor = {cx, cy, s}; }
+          };
+          testa(qx, qy);
+          if (!melhor) for (let cy = H * 0.07; cy <= H * 0.95; cy += H * 0.02) for (let cx = W * 0.1; cx <= W * 0.9; cx += W * 0.04) testa(cx, cy);
+          if (melhor) { lugar = melhor; break; }
+        }
+        if (!lugar) lugar = {cx: qx, cy: qy, s: 0.5};  // não há lugar livre: fica menor onde foi pedida
+      }
+      pos.set(f.id, lugar); postas.push({f, r: ret(lugar.cx, lugar.cy, lugar.s)});
+    }
+    cacheFigs.set(k, {assin, pos});
+    return pos;
+  }
   function desenhar(ctx, v, k, grupos, t, decorrido, total) {
     if (opcoes().seco && !semImagem(k)) {  // vídeo seco: só a câmera, sem título, legenda, mascote, filtro nem efeito
       ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -863,21 +1059,21 @@ Se não houver fala, devolva a lista vazia.`;
     if (creme) { ctx.fillStyle = CREME; ctx.fillRect(0, 0, W, H); }
     ctx.filter = filtro;
     if (lay === 'circulo') {  // conta grande e o professor num círculo
-      ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.36, W - 160, 120); ctx.filter = filtro;
+      ctx.filter = 'none'; conta(ctx, k, lay, local); ctx.filter = filtro;
       circulo(ctx, v, W / 2, H * 0.53 + 30, 200);
     } else if (lay === 'dividida') {  // conta em cima, câmera embaixo
-      ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.3, W - 140, 120); ctx.filter = filtro;
+      ctx.filter = 'none'; conta(ctx, k, lay, local); ctx.filter = filtro;
       ctx.save(); ctx.beginPath(); ctx.rect(0, H * 0.48, W, H * 0.52); ctx.clip(); cobrir(ctx, v, 0, H * 0.48, W, H * 0.52); ctx.restore();
       ctx.save(); ctx.filter = 'none'; ctx.fillStyle = LAR; ctx.fillRect(0, H * 0.48 - 6, W, 12); ctx.restore();
     } else if (lay === 'canto') {  // conta ocupando a tela e o rosto pequeno no canto
-      ctx.filter = 'none'; conta(ctx, b.quadro, H * 0.38, W - 140, 140); ctx.filter = filtro;
+      ctx.filter = 'none'; conta(ctx, k, lay, local); ctx.filter = filtro;
       circulo(ctx, v, W - 190, H * 0.56, 150);
     } else if (lay === 'visual') {  // sem câmera: folha de caderno, conta grande no meio e o mascote embaixo apresentando
       ctx.filter = 'none';
       ctx.strokeStyle = '#0F1B2D14'; ctx.lineWidth = 3;
       for (let x = 60; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
       for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-      conta(ctx, b.quadro, H * 0.42, W - 140, 150);
+      conta(ctx, k, lay, local);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.98, 560 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
     } else if (lay === 'escala') {  // zoom contínuo por uma sequência de desenhos (casa → cidade → … → galáxia)
       ctx.filter = 'none'; desenharEscala(ctx, e, local, tamanho(k));
@@ -894,11 +1090,11 @@ Se não houver fala, devolva a lista vazia.`;
         ctx.fillText(e.clipe ? 'CARREGANDO O VÍDEO…' : 'ESCOLHA O VÍDEO DE APOIO', W / 2, H / 2);
       }
     } else if (lay === 'mascote') {  // só o mascote apresentando, com a lousa; a voz é a sua
-      ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
+      ctx.filter = 'none'; lousa(ctx, k, local);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.97, ALTURA_MASCOTE * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
     } else if (lay === 'mascote_fundo') {  // você ao fundo (escurecido) e o mascote na frente apresentando
       ctx.save(); ctx.filter = `${filtro === 'none' ? '' : filtro} blur(3px) brightness(.5)`; cobrir(ctx, v, -20, -20, W + 40, H + 40); ctx.restore();
-      ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
+      ctx.filter = 'none'; lousa(ctx, k, local);
       // no "alternar", a entrada acontece a cada vez que o mascote volta (conta o tempo desde o começo da frase)
       const desde = est(k).layout === 'alternar' ? Math.max(0, (t - (cortados(c).filter(sg => sg[0] <= t + 0.05).pop() || [c.ini])[0]) / vel(c)) : local;
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.97, ALTURA_MASCOTE * e.tamMascote, falandoEm(grupos, t), desde, e.entradaMascote);
@@ -922,13 +1118,13 @@ Se não houver fala, devolva a lista vazia.`;
       caixa(ctx, b.texto_tela, y, fundo, TAM_TITULO[e.tamTitulo] || 80, corT);
       ctx.restore();
     }
-    desenharFigs(ctx, k, local);
+    desenharFigs(ctx, k, local, laySeguro(k));
     const temMascote = COM_MASCOTE.includes(lay) || (e.layout === 'alternar' && lay === 'mascote_fundo');
     if (!temMascote && e.mascoteCanto)  // mascote pequeno no canto, em qualquer layout
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.95, 430 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
     else if (!temMascote && k === blocos.length - 1 && opcoes().mascote)  // joinha no final do vídeo
       boneco(ctx, 'joinha', e.ladoMascote, H * 0.95, 400 * e.tamMascote, falandoEm(grupos, t), local, 'pulo');
-    legenda(ctx, grupos, t, H * 0.68);
+    legenda(ctx, grupos, t, yLegenda(k, laySeguro(k)));
   }
 
   /* ---------------------------------------------------------------- 🔭 zoom de escala */
@@ -1233,7 +1429,9 @@ Se não houver fala, devolva a lista vazia.`;
     const im = imgFig(f);
     return im && im.naturalWidth ? [im.naturalWidth * f.tam / im.naturalHeight, f.tam] : [f.tam, f.tam];
   }
-  function desenharFigs(ctx, k, local) {
+  function desenharFigs(ctx, k, local, lay) {
+    const pos = posicionarFigs(ctx, k, lay);
+    posFigs = pos;
     for (const f of est(k).figs) {
       const sel = marcarSel && figSel === f.id;
       if (!sel && (local < f.ini - 0.01 || local > f.fim)) continue;
@@ -1243,12 +1441,13 @@ Se não houver fala, devolva a lista vazia.`;
       else if (f.anim === 'flutua') { dy = Math.sin(local * 2.4) * 14; alfa = Math.min(1, q * 1.4); }
       if (f.anim !== 'nenhuma') esc *= 1 - sai;
       if (sel) { esc = 1; alfa = 1; dy = 0; }
-      const [w, h] = caixaFig(f), cx = f.x * W, cy = f.y * H;
-      ctx.save(); ctx.globalAlpha = alfa; ctx.translate(cx, cy + dy); ctx.scale(Math.max(0.01, esc), Math.max(0.01, esc));
+      const lugar = pos.get(f.id) || {cx: f.x * W, cy: f.y * H, s: 1}, s = lugar.s;
+      const [w0, h0] = caixaFig(f), w = w0 * s, h = h0 * s, cx = lugar.cx, cy = lugar.cy;
+      ctx.save(); ctx.globalAlpha = alfa; ctx.translate(cx, cy + dy); ctx.scale(Math.max(0.01, esc * s), Math.max(0.01, esc * s));
       if (f.tipo === 'emoji') {
         ctx.font = `${f.tam}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(f.valor, 0, f.tam * 0.05);
-      } else { const im = imgFig(f); if (im && im.naturalWidth) ctx.drawImage(im, -w / 2, -h / 2, w, h); }
+      } else { const im = imgFig(f); if (im && im.naturalWidth) ctx.drawImage(im, -w0 / 2, -h0 / 2, w0, h0); }
       ctx.restore();
       if (sel) {
         ctx.save(); ctx.setLineDash([18, 12]); ctx.lineWidth = 6; ctx.strokeStyle = LAR;
@@ -1320,11 +1519,13 @@ Se não houver fala, devolva a lista vazia.`;
       const [px, py] = ponto(ev), local = (tQuadro - c.ini) / vel(c);
       const toque = [...e.figs].reverse().find(f => {
         if (f.id !== figSel && (local < f.ini || local > f.fim)) return false;
-        const [w, h] = caixaFig(f);
-        return Math.abs(px * W - f.x * W) < w / 2 + 20 && Math.abs(py * H - f.y * H) < h / 2 + 20;
+        const [w0, h0] = caixaFig(f), l = posFigs.get(f.id) || {cx: f.x * W, cy: f.y * H, s: 1};
+        return Math.abs(px * W - l.cx) < w0 * l.s / 2 + 20 && Math.abs(py * H - l.cy) < h0 * l.s / 2 + 20;
       });
-      if (toque) { figSel = toque.id; arrastando = {f: toque, dx: toque.x - px, dy: toque.y - py}; lista(); }
-      else if (figSel) { const f = e.figs.find(x => x.id === figSel); if (f) { f.x = px; f.y = py; arrastando = {f, dx: 0, dy: 0}; } }
+      // figura que você mexe fica onde você pôs (sai do posicionamento automático)
+      const fixar = f => { const l = posFigs.get(f.id); if (l && !f.fixa) { f.x = l.cx / W; f.y = l.cy / H; f.tam = Math.round(f.tam * l.s); } f.fixa = true; };
+      if (toque) { fixar(toque); figSel = toque.id; arrastando = {f: toque, dx: toque.x - px, dy: toque.y - py}; lista(); }
+      else if (figSel) { const f = e.figs.find(x => x.id === figSel); if (f) { f.fixa = true; f.x = px; f.y = py; arrastando = {f, dx: 0, dy: 0}; } }
       if (arrastando) { cv.setPointerCapture(ev.pointerId); ev.preventDefault(); mostrarQuadro(k, tQuadro); }
     };
     cv.onpointermove = ev => {
@@ -1506,9 +1707,9 @@ ${textoBlocos}`;
     const dec = antes(k) + Math.max(0, alvoT - c.ini) / vel(c);
     await carregarFigs();
     if (tocando) return;
-    tQuadro = alvoT; marcarSel = true;
-    desenhar(g('ecanvas').getContext('2d'), v, k, gruposDe(k), alvoT, dec, totalDur());
-    marcarSel = false;
+    tQuadro = alvoT; marcarSel = true; revelarTudo = t == null;  // quadro parado ao abrir o bloco: conta inteira, para conferir
+    try { desenhar(g('ecanvas').getContext('2d'), v, k, gruposDe(k), alvoT, dec, totalDur()); }
+    finally { marcarSel = false; revelarTudo = false; }
     g('etempo').textContent = `${seg(dec)} / ${seg(totalDur())}`;
   }
   function desenharTimeline() {
@@ -1596,7 +1797,7 @@ ${textoBlocos}`;
       <div class="ebot"><button data-lm="esq">◀ Esquerda</button><button data-lm="dir">Direita ▶</button></div>
       <label>Como o mascote entra</label>
       <div class="ebot">${Object.entries({pulo: 'Pulando', desliza: 'Deslizando', gira: 'Girando', nenhuma: 'Parado'}).map(([x, n]) => `<button data-em="${x}">${n}</button>`).join('')}</div></div>
-      <div id="econtaw"><label for="econta">Conta / texto grande (vai na lousa nos layouts do mascote)</label><input id="econta" type="text" value="${esc(b.quadro || '')}" placeholder="ex.: 8% de 25 = 25% de 8"></div>
+      <div id="econtaw"><label for="econta">Conta / texto grande (vai na lousa nos layouts do mascote)</label><input id="econta" type="text" value="${esc(b.quadro || '')}" placeholder="ex.: 8% de 25 = 25% de 8"><label class="echeck"><input id="eanimc" type="checkbox" ${est(k).animConta ? 'checked' : ''}> ✍️ Conta vai aparecendo junto com a fala</label></div>
       </div>
       <div class="eaba" data-aba="figuras">
       <label>Pôr na tela <small>(toque num emoji)</small></label>
@@ -1726,6 +1927,7 @@ ${textoBlocos}`;
     g('etamm').onchange = guardar;
     mostrarConta();
     g('eanim').onchange = () => { e.animTitulo = g('eanim').checked; guardar(); };
+    g('eanimc').onchange = () => { e.animConta = g('eanimc').checked; guardar(); previa([k]); };
     g('econta').oninput = () => { setTexto(k, 'quadro', g('econta').value); mostrarQuadro(k); };
     g('econta').onchange = guardar;
     if (k > 0) {
