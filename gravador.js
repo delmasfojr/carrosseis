@@ -16,7 +16,7 @@ const Gravador = (() => {
   const CENA = {camera: '🎥 CÂMERA', quadro: '🧑‍🏫 QUADRO', tela: '📱 TELA'};
   const espera = ms => new Promise(r => setTimeout(r, ms));
   const seg = s => `${Number(s).toFixed(1).replace('.', ',')} s`;
-  let item, salvar, aoFim, blocos, i = 0, sel = 0, stream = null, facing = 'user', rec = null, gravando = false, revendo = false;
+  let item, salvar, salvarBruto, aoFim, blocos, i = 0, sel = 0, stream = null, facing = 'user', rec = null, gravando = false, revendo = false;
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
@@ -98,6 +98,9 @@ const Gravador = (() => {
 .eprev{position:relative;flex:none;height:40dvh;background:#000;display:flex;justify-content:center;padding-top:env(safe-area-inset-top)}
 #ecanvas{height:100%;aspect-ratio:9/16}
 #eplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50% !important;background:#000a;color:#fff;font-size:26px}
+#ehist{position:absolute;left:10px;top:calc(8px + env(safe-area-inset-top));display:flex;gap:8px}
+#grav #ehist button{width:44px;height:44px;border-radius:50% !important;background:#ffffff2e;border:2px solid #ffffff55;color:#fff;font-size:22px;padding:0;line-height:1}
+#grav #ehist button:disabled{opacity:.3}
 #etempo{position:absolute;right:10px;bottom:8px;background:#000a;color:#fff;font-size:12px;padding:2px 8px;border-radius:8px}
 #etl{display:flex;gap:4px;overflow-x:auto;padding:10px 12px;background:#0F1B2D;flex:none}
 #etl button{flex:none;height:46px;padding:0 6px;background:#33415a;color:#fff;font-size:12px;border:3px solid transparent;border-radius:8px !important;text-align:left;line-height:1.15}
@@ -174,7 +177,8 @@ const Gravador = (() => {
         </div>
       </div>
       <div id="gedit" hidden>
-        <div class="eprev"><canvas id="ecanvas" width="${W}" height="${H}"></canvas><button id="eplay">▶</button><div id="etempo"></div></div>
+        <div class="eprev"><canvas id="ecanvas" width="${W}" height="${H}"></canvas><button id="eplay">▶</button><div id="etempo"></div>
+          <div id="ehist"><button id="edesf" title="Desfazer (Ctrl+Z)" aria-label="Desfazer">↶</button><button id="erefaz" title="Refazer (Ctrl+Y)" aria-label="Refazer">↷</button></div></div>
         <div id="etl"></div>
         <div class="eabas" id="eabas">${ABAS_ED.map(([id, ic, nome]) => `<button data-aba="${id}"><i>${ic}</i>${nome}</button>`).join('')}</div>
         <div id="epainel"></div>
@@ -207,6 +211,15 @@ const Gravador = (() => {
     };
     g('eplay').onclick = () => tocando ? pararPrevia() : previa();
     g('esair').onclick = fechar;
+    g('edesf').onclick = () => voltarHist(-1);
+    g('erefaz').onclick = () => voltarHist(1);
+    document.addEventListener('keydown', ev => {  // no PC: Ctrl+Z desfaz, Ctrl+Y (ou Ctrl+Shift+Z) refaz
+      if (ui.hidden || g('gedit').hidden || !(ev.ctrlKey || ev.metaKey)) return;
+      if (/^(INPUT|TEXTAREA)$/.test((ev.target || {}).tagName || '') && (ev.target.type || '') !== 'range' && (ev.target.type || '') !== 'checkbox') return;
+      const kk = ev.key.toLowerCase();
+      if (kk === 'z' && !ev.shiftKey) { ev.preventDefault(); voltarHist(-1); }
+      else if (kk === 'y' || (kk === 'z' && ev.shiftKey)) { ev.preventDefault(); voltarHist(1); }
+    });
     g('egravar').onclick = () => irGravar(sel);
     g('eexportar').onclick = () => exportar().catch(e => { aviso(''); ocupado = false; alert('Não consegui exportar: ' + e.message); });
   }
@@ -473,10 +486,12 @@ const Gravador = (() => {
   async function abrir(it, salvarFn, aoTerminar) {
     if (!(navigator.mediaDevices && window.MediaRecorder)) return alert('Este navegador não grava vídeo. Use o Chrome (Android) ou o Safari (iPhone) atualizados.');
     criarUI();
-    item = it; salvar = salvarFn; aoFim = aoTerminar; blocos = montarBlocos(it);
+    item = it; salvarBruto = salvarFn; aoFim = aoTerminar; blocos = montarBlocos(it);
+    salvar = x => { anotarHist(); return salvarBruto(x); };  // toda alteração guardada vira um passo do ↶ desfazer
     ui.hidden = false; document.documentElement.style.overflow = 'hidden';
     if (navigator.wakeLock) navigator.wakeLock.request('screen').then(t => { trava = t; }).catch(() => {});
     for (const c of takes()) if (c && c.ini == null) await analisar(c);  // takes da versão anterior
+    zerarHist();
     const falta = blocos.findIndex((_, k) => !takes()[k]);
     if (falta < 0) return abrirEditor(0);  // já tem tudo gravado: abre a edição
     await irGravar(falta);
@@ -617,7 +632,7 @@ Se não houver fala, devolva a lista vazia.`;
       c.ini = Math.max(0, c.transcricao[0].a - 0.15);
       c.fim = Math.min(c.dur, c.transcricao[c.transcricao.length - 1].b + 0.35);
     }
-    await salvar(item);
+    await salvarBruto(item);
   }
   // O Gemini acerta as PALAVRAS, mas o relógio dele costuma vir comprimido ou deslocado. Então: as palavras são dele,
   // a duração relativa de cada uma também, e o tempo real vem dos trechos com voz medidos no próprio áudio
@@ -1690,6 +1705,71 @@ ${textoBlocos}`;
     await salvar(item); selecionar(sel);
   }
 
+  /* ---------------------------------------------------------------- ↶ desfazer / ↷ refazer
+     Cada vez que o editor guarda uma alteração, a "foto" anterior vai para a pilha. Vídeos, áudios e imagens (Blob)
+     entram por referência (não duplica memória); o resto é copiado em JSON. */
+  const HIST_MAX = 60;
+  let hist = {antes: [], depois: [], atual: null};
+  const idBlob = new WeakMap(); let nBlob = 0;
+  function foto() {
+    blocos.forEach((_, k) => est(k));  // completa os padrões antes (senão abrir um bloco já pareceria uma alteração)
+    const blobs = {};
+    const s = JSON.stringify({estilo: item.estilo || [], conteudo: item.conteudo, edicao: item.edicao || {}, takes: takes(),
+      musica: item.musica || null, musicaNome: item.musicaNome || null, clipes: item.clipes || {}, antesIA: item.antesIA || null, montouIA: !!item.montouIA},
+    (k, v) => {
+      if (v instanceof Blob) { if (!idBlob.has(v)) idBlob.set(v, ++nBlob); const id = idBlob.get(v); blobs[id] = v; return {__blob: id}; }
+      return v;
+    });
+    return {s, blobs};
+  }
+  function zerarHist() { hist = {antes: [], depois: [], atual: foto()}; botoesHist(); }
+  function anotarHist() {  // chamada antes de cada salvar: se algo mudou desde a última foto, vira um passo
+    if (!hist.atual) return zerarHist();
+    const f = foto();
+    if (f.s === hist.atual.s) return;
+    hist.antes.push(hist.atual); if (hist.antes.length > HIST_MAX) hist.antes.shift();
+    hist.atual = f; hist.depois = [];
+    botoesHist();
+  }
+  function botoesHist() {
+    if (!ui) return;
+    g('edesf').disabled = !hist.antes.length; g('erefaz').disabled = !hist.depois.length;
+  }
+  function aplicarFoto(f) {
+    const d = JSON.parse(f.s, (k, v) => v && typeof v === 'object' && v.__blob ? f.blobs[v.__blob] : v);
+    const tAgora = takes();
+    // a legenda feita pela voz não é alteração sua: se a foto é de antes dela, a legenda continua
+    d.takes.forEach((c, n) => {
+      const a = tAgora[n];
+      if (c && a && a.blob === c.blob && !(c.transcricao && c.transcricao.length) && a.transcricao && a.transcricao.length) c.transcricao = a.transcricao;
+    });
+    item.estilo = d.estilo; item.conteudo = d.conteudo;
+    const op = item.edicao || (item.edicao = {});  // mesmo objeto (outras partes guardam a referência)
+    for (const k of Object.keys(op)) delete op[k];
+    Object.assign(op, d.edicao);
+    tAgora.length = 0; tAgora.push(...d.takes);
+    if (d.musica) { item.musica = d.musica; item.musicaNome = d.musicaNome; } else { delete item.musica; delete item.musicaNome; }
+    item.clipes = d.clipes;
+    if (d.antesIA) item.antesIA = d.antesIA; else delete item.antesIA;
+    item.montouIA = d.montouIA;
+    blocos = montarBlocos(item);
+  }
+  async function voltarHist(dir) {
+    if (ocupado || gravando) return;
+    anotarHist();  // o que foi mexido e ainda não guardado (ex.: texto sendo digitado) também conta
+    const de = dir < 0 ? hist.antes : hist.depois, para = dir < 0 ? hist.depois : hist.antes;
+    if (!de.length) return;
+    pararPrevia();
+    para.push(hist.atual);
+    hist.atual = de.pop();
+    aplicarFoto(hist.atual);
+    hist.atual = foto();  // refaz a foto (a legenda pela voz pode ter sido mantida)
+    try { await salvarBruto(item); } catch (e) { alert('Não consegui guardar: ' + e.message); }
+    botoesHist();
+    sel = Math.min(sel, blocos.length - 1);
+    selecionar(sel);
+  }
+
   /* ---------------------------------------------------------------- modo EDITAR */
   const quadros = new Map();  // vídeo de cada take só para mostrar um quadro parado (sem som)
   let tQuadro = 0;  // instante do take mostrado parado na prévia
@@ -1741,6 +1821,7 @@ ${textoBlocos}`;
   function selecionar(k) {
     pararPrevia();
     sel = k;
+    botoesHist();
     desenharTimeline();
     const b = blocos[k], c = takes()[k], op = opcoes();
     const p = g('epainel');
