@@ -20,7 +20,7 @@ const Gravador = (() => {
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
-  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false, soVoz: false};
+  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false, soVoz: false, ritmo: 'normal'};
   const opcoes = () => {  // completa o que faltar SEM trocar o objeto (quem já tem a referência continua valendo)
     const op = item.edicao || (item.edicao = {});
     for (const [k, v] of Object.entries(PADRAO)) if (!(k in op)) op[k] = v;
@@ -169,7 +169,7 @@ const Gravador = (() => {
           </div>
           <div id="gzoomw" hidden>🔍 <input id="gzoom" type="range"> <span id="gzoomv"></span></div>
           <div id="gtl"></div>
-          <div class="glinha" style="margin-top:6px"><button id="gmodo"></button><button id="gruido" style="font-size:12px;padding:6px 10px"></button></div>
+          <div class="glinha" style="margin-top:6px;flex-wrap:wrap;gap:6px"><button id="gmodo"></button><button id="gruido" style="font-size:12px;padding:6px 10px"></button><button id="gritmo" style="font-size:12px;padding:6px 10px"></button></div>
           <div id="ginfo"></div>
         </div>
       </div>
@@ -189,6 +189,11 @@ const Gravador = (() => {
     g('gruido').onclick = async () => {
       opcoes().ruido = !opcoes().ruido; salvar(item).catch(() => {});
       const lado = facing; pararCamera(); await ligarCamera(lado).catch(erroCamera);
+    };
+    g('gritmo').onclick = () => {  // devagar → normal → rápida → devagar
+      const ord = Object.keys(RITMOS), at = Math.max(0, ord.indexOf(opcoes().ritmo));
+      opcoes().ritmo = ord[(at + 1) % ord.length]; salvar(item).catch(() => {});
+      atualizarGravar();
     };
     g('gmodo').onclick = async () => {
       opcoes().soVoz = !opcoes().soVoz; salvar(item).catch(() => {});
@@ -219,12 +224,15 @@ const Gravador = (() => {
     const peso = pal.map(w => Math.max(1, silabas(w)));
     const pausa = pal.map((w, k) => k === pal.length - 1 ? 0 : /[.!?…:]$/.test(w) ? 2 : /[,;—–)]$/.test(w) ? 1 : 0);
     const total = peso.reduce((x, y) => x + y, 0) + pausa.reduce((x, y) => x + y, 0);
-    const dur = Math.max(meta, pal.length / 3.2) - 0.25;  // nunca mais rápido que ~3 palavras por segundo
+    // velocidade de leitura escolhida no botão 🐢/🐇 (palavras por segundo); a meta do roteiro só deixa mais devagar
+    const vel = (RITMOS[opcoes().ritmo] || RITMOS.normal).v;
+    const dur = Math.max(meta, pal.length / vel);
     const ini = [];
-    let acc = 0.15;
+    let acc = 0.4;  // respiro depois do 3‑2‑1
     for (let k = 0; k < pal.length; k++) { ini.push(acc); acc += (peso[k] + pausa[k]) / total * dur; }
     return ini;  // segundo (desde o começo da gravação) em que cada palavra começa
   }
+  const RITMOS = {devagar: {v: 1.8, nome: '🐢 Leitura: devagar'}, normal: {v: 2.2, nome: '🚶 Leitura: normal'}, rapido: {v: 2.7, nome: '🐇 Leitura: rápida'}};
   function colorirFala(s) {
     const els = g('gfala').querySelectorAll('.gp');
     if (!els.length) return;
@@ -263,6 +271,9 @@ const Gravador = (() => {
     g('gruido').textContent = opcoes().ruido ? '🎙 Reduzir ruído: LIGADO' : '🎙 Reduzir ruído: desligado';
     g('gruido').title = opcoes().ruido ? 'Bom para lugar barulhento' : 'Voz mais natural (lugar silencioso)';
     g('gruido').disabled = gravando || abrindo;
+    g('gritmo').textContent = (RITMOS[opcoes().ritmo] || RITMOS.normal).nome;
+    g('gritmo').title = 'Velocidade em que as palavras do teleprompter vão ficando laranja';
+    g('gritmo').disabled = gravando;
     g('gmodo').textContent = soVoz() ? '🎙 Só a voz (sem câmera)' : '🎥 Com câmera';
     g('gmodo').title = 'Tocar para trocar entre gravar com câmera e gravar só a voz';
     g('gmodo').classList.toggle('on', soVoz());
