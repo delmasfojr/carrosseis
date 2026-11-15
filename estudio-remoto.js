@@ -17,13 +17,30 @@ function lerCodigo() {
     return c;
   } catch (e) { return novoCodigo(); }
 }
-const linkAparelho = () => new URL('aparelho.html', location.href).href + '#' + codigo;
+const STUN = [{urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302']}, {urls: 'stun:stun.cloudflare.com:3478'}];
+let iceServers = STUN;
+const lerTurn = () => { try { return localStorage.getItem('estudio-turn') || ''; } catch (e) { return ''; } };
+const b64 = v => btoa(encodeURIComponent(v)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const linkAparelho = () => new URL('aparelho.html', location.href).href + '#' + codigo + (lerTurn() ? '~' + b64(lerTurn()) : '');
+/* servidor de retransmissão (TURN): link da API do Metered (https://...) ou a lista em JSON */
+async function carregarTurn() {
+  const v = lerTurn().trim();
+  iceServers = STUN;
+  if (!v) return '';
+  try {
+    let lista = /^https:\/\//.test(v) ? await (await fetch(v)).json() : JSON.parse(v);
+    if (lista && !Array.isArray(lista)) lista = lista.iceServers || [lista];
+    if (!Array.isArray(lista) || !lista.length) throw new Error('vazio');
+    iceServers = STUN.concat(lista);
+    return '✅ Servidor de retransmissão ativo (' + lista.length + ' endereços).';
+  } catch (e) { return '⚠️ Não consegui ler o servidor: ' + e.message; }
+}
 
 function estadoPeer(t) { $('#estadopeer').textContent = t; }
 
 function ligarPeer() {
   if (!window.Peer) { estadoPeer('Sem a biblioteca de conexão (sem internet?)'); return; }
-  peer = new window.Peer('delmao-estudio-' + codigo, {debug: 0});
+  peer = new window.Peer('delmao-estudio-' + codigo, {debug: 0, config: {iceServers}});
   peer.on('open', () => estadoPeer('✅ Pronto. Esperando o aparelho…'));
   peer.on('error', e => {
     if (e.type === 'unavailable-id') { // esse código já está aberto em outra aba
@@ -34,6 +51,8 @@ function ligarPeer() {
   });
   peer.on('disconnected', () => { estadoPeer('Reconectando…'); setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 2000); });
   peer.on('connection', conn => {
+    E.info('📱 ' + ((conn.metadata || {}).nome || 'Aparelho') + ' tentando conectar…');
+    setTimeout(() => { if (!conn.open) E.info('⚠️ O aparelho achou o PC, mas a rede não deixou conectar. Veja "A câmera não conecta?" em Conectar aparelho.'); }, 16000);
     conn.on('open', () => {
       const m = conn.metadata || {};
       const r = E.remotos.get(conn.peer) || {};
@@ -263,10 +282,19 @@ export function iniciar(estudio) {
     $('#modal').classList.remove('hide');
     if (!peer || peer.destroyed) ligarPeer();
   };
+  $('#turn').value = lerTurn();
+  $('#salvarturn').onclick = async () => {
+    try { localStorage.setItem('estudio-turn', $('#turn').value.trim()); } catch (e) {}
+    $('#turnestado').textContent = 'Testando…';
+    $('#turnestado').textContent = (await carregarTurn()) || 'Sem servidor de retransmissão.';
+    if (peer && !peer.destroyed) peer.destroy();
+    setTimeout(ligarPeer, 600);
+    $('#conectar').onclick(); // refaz o QR com o servidor novo
+  };
   $('#fecharmodal').onclick = () => $('#modal').classList.add('hide');
   $('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').classList.add('hide'); };
   setInterval(() => { if (E.gravando) avisar(); }, 1000);
   iniciarPastaRec();
-  ligarPeer(); // já fica esperando: o aparelho pareado antes conecta sozinho
+  carregarTurn().then(t => { $('#turnestado').textContent = t; ligarPeer(); }); // já fica esperando: o aparelho pareado antes conecta sozinho
   window.estudioRemoto = {get codigo() { return codigo; }, get peer() { return peer; }};
 }

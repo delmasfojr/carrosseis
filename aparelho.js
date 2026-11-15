@@ -5,7 +5,23 @@ import {desenharTraco, reconhecer, formaArrasto, novoId} from './tinta.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const W = 1920, H = 1080;
-const codigo = (location.hash.slice(1) || '').replace(/[^a-z0-9]/g, '');
+const [hashCod, hashTurn] = (location.hash.slice(1) || '').split('~');
+const codigo = (hashCod || '').replace(/[^a-z0-9]/g, '');
+/* servidores de rede: STUN público + o servidor de retransmissão (TURN) que o professor cadastrou no PC */
+const STUN = [{urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302']}, {urls: 'stun:stun.cloudflare.com:3478'}];
+let iceServers = STUN, temTurn = false;
+async function carregarTurn() {
+  if (!hashTurn) return;
+  try {
+    const v = decodeURIComponent(atob(hashTurn.replace(/-/g, '+').replace(/_/g, '/')));
+    let lista = null;
+    if (/^https:\/\//.test(v)) lista = await (await fetch(v)).json();
+    else lista = JSON.parse(v);
+    if (lista && !Array.isArray(lista)) lista = lista.iceServers || [lista];
+    if (Array.isArray(lista) && lista.length) { iceServers = STUN.concat(lista); temTurn = true; }
+  } catch (e) { console.warn('turn', e); }
+}
+const turnPronto = carregarTurn();
 const pcId = 'delmao-estudio-' + codigo;
 
 const ua = navigator.userAgent;
@@ -15,7 +31,10 @@ const nome = ehIpad ? 'iPad' : /iPhone/.test(ua) ? 'iPhone'
 
 let peer = null, conn = null, modo = null, chamada = null;
 
-function status(t, erro) { const s = $('#status'); s.textContent = t; s.classList.toggle('erro', !!erro); }
+function status(t, erro) {
+  const s = $('#status'); s.textContent = t; s.classList.toggle('erro', !!erro);
+  if (modo === 'camera') $('#camaviso').textContent = t; // na tela da câmera o aviso fica em cima do vídeo
+}
 function mostrar(id) { $$('.tela').forEach(t => t.classList.toggle('hide', t.id !== id)); }
 
 /* tela sempre acesa enquanto usa */
@@ -26,10 +45,11 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 function ligarPeer() {
   return new Promise(ok => {
     if (peer && !peer.destroyed && peer.open) return ok(true);
-    peer = new Peer({debug: 0});
+    peer = new Peer({debug: 0, config: {iceServers}});
     peer.on('open', () => ok(true));
     peer.on('error', e => {
       if (e.type === 'peer-unavailable') status('O Estúdio não está aberto no PC (ou o código mudou). Abra o Estúdio e leia o QR code de novo.', true);
+      else if (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') status('Sem internet no aparelho (ou o servidor de pareamento caiu). Confira o Wi-Fi.', true);
       else status('Erro de conexão: ' + e.type, true);
       ok(false);
     });
@@ -45,8 +65,43 @@ function conectar(tipo) {
     conn.on('data', receber);
     conn.on('close', () => caiu());
     conn.on('error', () => caiu());
-    setTimeout(() => { if (!feito) ok(false); }, 12000);
+    const c = conn;
+    const espiar = setInterval(() => { // mostra em que pé está a conexão
+      const pc = c.peerConnection;
+      if (feito || !pc) return;
+      const st = pc.iceConnectionState;
+      if (st === 'checking') status('Achei o PC. Abrindo o caminho pela rede…');
+      if (st === 'failed') { clearInterval(espiar); diagnosticar(pc).then(t => status(t, true)); }
+    }, 700);
+    setTimeout(async () => {
+      clearInterval(espiar);
+      if (feito) return;
+      if (c.peerConnection) status(await diagnosticar(c.peerConnection), true);
+      ok(false);
+    }, 15000);
   });
+}
+
+/* por que não conectou? olha os caminhos que cada lado ofereceu */
+async function diagnosticar(pc) {
+  const loc = [], rem = [];
+  try {
+    (await pc.getStats()).forEach(r => {
+      if (r.type === 'local-candidate') loc.push(r);
+      if (r.type === 'remote-candidate') rem.push(r);
+    });
+  } catch (e) {}
+  if (!rem.length) return 'O PC não respondeu. Confira se o Estúdio está aberto no PC (só em uma aba) e leia o QR code de novo.';
+  const rede = c => (c.address || c.ip || '').split('.').slice(0, 3).join('.');
+  const hostL = loc.filter(c => c.candidateType === 'host' && /^\d+\./.test(c.address || c.ip || '')).map(rede);
+  const hostR = rem.filter(c => c.candidateType === 'host' && /^\d+\./.test(c.address || c.ip || '')).map(rede);
+  const mesma = hostL.some(r => hostR.includes(r));
+  const relay = loc.some(c => c.candidateType === 'relay');
+  if (temTurn && !relay) return 'O servidor de retransmissão não respondeu. Confira o link dele no PC (Conectar aparelho → A câmera não conecta?).';
+  if (hostL.length && hostR.length && !mesma)
+    return 'O celular e o PC estão em redes diferentes (' + hostL[0] + '.x e ' + hostR[0] + '.x). Ponha os dois no mesmo Wi-Fi, ou cadastre o servidor de retransmissão no PC.';
+  if (!hostL.length) return 'O celular parece estar nos dados móveis. Ligue o Wi-Fi (o mesmo do PC), ou cadastre o servidor de retransmissão no PC.';
+  return 'O roteador não deixou o celular falar direto com o PC (comum em Wi-Fi de visitas ou com "isolamento"). Cadastre o servidor de retransmissão no PC: Conectar aparelho → A câmera não conecta?';
 }
 
 let religando = false;
@@ -54,9 +109,10 @@ async function caiu() {
   if (religando || !modo) return;
   religando = true;
   $('#desconectado').classList.remove('hide');
-  $('#camaviso').textContent = 'Conexão caiu. Tentando de novo…';
+  const antes = $('#camaviso').textContent;
+  if (!/redes diferentes|dados móveis|roteador|retransmissão|não respondeu/.test(antes)) $('#camaviso').textContent = 'Conexão caiu. Tentando de novo…';
   while (modo) {
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, 4000));
     if (!(await ligarPeer())) continue;
     if (await conectar(modo)) {
       if (modo === 'camera') ligarChamada();
@@ -117,7 +173,7 @@ function ligarChamada() {
   const pc = chamada.peerConnection;
   pc.addEventListener('connectionstatechange', () => {
     if (pc.connectionState === 'connected') { $('#camaviso').textContent = '✅ Câmera ligada no PC'; qualidade(); }
-    if (pc.connectionState === 'failed') { $('#camaviso').textContent = 'Não conectou. O celular e o PC estão no mesmo Wi-Fi?'; }
+    if (pc.connectionState === 'failed') diagnosticar(pc).then(t => { $('#camaviso').textContent = t; });
   });
   chamada.on('close', () => caiu());
 }
@@ -127,7 +183,15 @@ async function qualidade() { // bitrate alto: no Wi-Fi de casa dá para mandar a
   try {
     const p = s.getParameters();
     if (!p.encodings || !p.encodings.length) p.encodings = [{}];
-    p.encodings[0].maxBitrate = alta ? 8e6 : 4e6;
+    // passando pelo servidor de retransmissão (plano grátis tem pouca franquia): imagem mais leve
+    let relay = false;
+    try {
+      const st = await chamada.peerConnection.getStats(); let par = null;
+      st.forEach(r => { if (r.type === 'transport' && r.selectedCandidatePairId) par = st.get(r.selectedCandidatePairId); });
+      if (par) relay = [st.get(par.localCandidateId), st.get(par.remoteCandidateId)].some(c => c && c.candidateType === 'relay');
+    } catch (e) {}
+    if (relay) $('#camaviso').textContent = '✅ Câmera ligada (pelo servidor de retransmissão, imagem mais leve)';
+    p.encodings[0].maxBitrate = relay ? 2.5e6 : alta ? 8e6 : 4e6;
     p.encodings[0].maxFramerate = 30;
     p.degradationPreference = 'maintain-resolution';
     await s.setParameters(p);
@@ -140,7 +204,9 @@ $('#modocam').onclick = async () => {
   catch (e) { status(explicarErro(e), true); modo = null; $('#modocam').querySelector('small').textContent = 'Toque aqui para tentar de novo.'; return; }
   mostrar('cam');
   manterAcesa();
-  if (!(await ligarPeer()) || !(await conectar('camera'))) { $('#camaviso').textContent = 'Não achei o Estúdio no PC.'; caiu(); return; }
+  status('Procurando o PC…');
+  await turnPronto;
+  if (!(await ligarPeer()) || !(await conectar('camera'))) { caiu(); return; }
   ligarChamada();
 };
 $('#trocacam').onclick = () => { frente = !frente; abrirCamera().catch(e => alert(explicarErro(e))); };
@@ -373,6 +439,7 @@ $('#mdedo').onclick = () => { dedo = !dedo; $('#mdedo').classList.toggle('on', d
 $('#modomesa').onclick = async () => {
   modo = 'mesa';
   status('Conectando…');
+  await turnPronto;
   if (!(await ligarPeer()) || !(await conectar('mesa'))) { modo = null; if (!$('#status').classList.contains('erro')) status('Não achei o Estúdio no PC. Ele está aberto?', true); return; }
   mostrar('mesa');
   ajustar();
@@ -386,7 +453,7 @@ if (!codigo) {
   status('Abra esta página pelo QR code do Estúdio, no PC.', true);
   $('#modocam').disabled = $('#modomesa').disabled = true;
 } else {
-  ligarPeer().then(ok => { if (ok) status(`Pronto para conectar (${nome}). Escolha:`); });
+  turnPronto.then(ligarPeer).then(ok => { if (ok) status(`Pronto para conectar (${nome}). Escolha:`); });
 }
 window.aparelho = {get est() { return est; }, get modo() { return modo; }, get conn() { return conn; }};
 })();

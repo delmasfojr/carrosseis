@@ -89,6 +89,11 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
 #modal .fechar{position:absolute;right:10px;top:10px;background:none;font-size:18px}
 #modal .link{font-size:12px;opacity:.8;word-break:break-all}
 #modal .peer{font-size:12px;color:var(--lar)}
+#modal .caixa{max-height:94vh;overflow:auto}
+#modal .turn{text-align:left;font-size:12px;margin-top:8px;opacity:.95}
+#modal .turn summary{cursor:pointer;font-weight:700;color:#ffd2a6}
+#modal .turn ol{padding-left:18px;margin:6px 0}
+#modal .turn input{width:100%;margin:6px 0;padding:8px;border-radius:8px;border:1px solid var(--linha);background:#0b1422;color:#fff;font-size:12px}
 .aparelho{display:flex;align-items:center;gap:8px;background:var(--navy);border-radius:10px;padding:8px 10px;margin-top:6px;font-size:13px}
 .aparelho b{flex:1}
 .aparelho small{opacity:.7}
@@ -230,9 +235,21 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
     <button id="fecharmodal" class="fechar">✕</button>
     <h2>CONECTAR <span>APARELHO</span></h2>
     <div id="qr"></div>
-    <p>Aponte a câmera do <b>celular</b> ou do <b>tablet</b> para o código.<br>Os dois precisam estar no <b>mesmo Wi-Fi</b>.</p>
+    <p>Aponte a câmera do <b>celular</b> ou do <b>tablet</b> para o código.<br>Os dois precisam estar no <b>mesmo Wi-Fi</b>.<br>Abra o link no <b>Chrome</b> (ou Safari), não dentro do leitor de QR.</p>
     <p class="link">ou abra: <code id="linkaparelho"></code></p>
     <p id="estadopeer" class="peer"></p>
+    <details class="turn">
+      <summary>A câmera não conecta? (servidor de retransmissão)</summary>
+      <p>Quando o roteador não deixa o celular falar direto com o PC (ou o celular está nos dados móveis), o vídeo precisa passar por um servidor de retransmissão. É grátis:</p>
+      <ol>
+        <li>Crie uma conta em <b>metered.ca</b> → <b>TURN Server</b> (plano grátis).</li>
+        <li>No painel, crie uma credencial e copie o link <b>"API … /turn/credentials?apiKey=…"</b>.</li>
+        <li>Cole aqui, salve e leia o QR code de novo no celular.</li>
+      </ol>
+      <input id="turn" placeholder="https://SEUAPP.metered.live/api/v1/turn/credentials?apiKey=..." autocomplete="off" spellcheck="false">
+      <button id="salvarturn">Salvar e refazer o QR</button>
+      <p id="turnestado" class="peer"></p>
+    </details>
   </div>
 </div>
 <script src="vendor/peerjs.min.js"></script>
