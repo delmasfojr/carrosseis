@@ -531,10 +531,14 @@ function desenharCover(cx, f, x, y, w, h, espelho) {
   else cx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
   cx.restore();
 }
-/* ---------- recorte: só a pessoa, sem o cenário (MediaPipe, roda no próprio PC) ---------- */
+/* ---------- recorte: só a pessoa, sem o cenário (MediaPipe, roda no próprio PC) ----------
+   1) o modelo acha a pessoa numa janela em volta dela (não no quadro todo), o que dá mais resolução na borda;
+   2) um shader (WebGL) refina a máscara seguindo as cores da imagem (borda do cabelo/ombro sem "auréola"). */
 let segmentador = null, carregandoSeg = false, segFalhou = false, recortePronto = false, ultimoSeg = 0, mascaraAnt = null;
+let caixaSeg = null, nSeg = 0, custoSeg = 0;
 const corCam = document.createElement('canvas'), ctxCor = corCam.getContext('2d', {willReadFrequently: false});
-const recorte = document.createElement('canvas'), ctxRecorte = recorte.getContext('2d');
+const segIn = document.createElement('canvas'), ctxSegIn = segIn.getContext('2d');
+let recorte = document.createElement('canvas'), ctxRecorte = recorte.getContext('2d');
 const branco = document.createElement('canvas'), ctxBranco = branco.getContext('2d');
 const mascara = document.createElement('canvas'), ctxMascara = mascara.getContext('2d');
 recorte.width = 16; recorte.height = 9;
@@ -547,10 +551,10 @@ async function carregarSeg() {
   try {
     const {FilesetResolver, ImageSegmenter} = await import('./vendor/mediapipe/vision_bundle.mjs');
     const fs = await FilesetResolver.forVisionTasks(new URL('vendor/mediapipe/wasm', location.href).href);
-    const criar = delegate => ImageSegmenter.createFromOptions(fs, {
-      baseOptions: {modelAssetPath: new URL('vendor/mediapipe/selfie_segmenter_landscape.tflite', location.href).href, delegate},
+    const criar = (modelo, delegate) => ImageSegmenter.createFromOptions(fs, {
+      baseOptions: {modelAssetPath: new URL('vendor/mediapipe/' + modelo, location.href).href, delegate},
       runningMode: 'VIDEO', outputCategoryMask: false, outputConfidenceMasks: true});
-    segmentador = await criar('GPU').catch(() => criar('CPU'));
+    segmentador = await criar('selfie_segmenter_landscape.tflite', 'GPU').catch(() => criar('selfie_segmenter_landscape.tflite', 'CPU'));
     recorteInfo('');
   } catch (e) {
     console.error(e);
@@ -559,40 +563,155 @@ async function carregarSeg() {
   }
   carregandoSeg = false;
 }
+
+/* ---- refinamento da borda na placa de vídeo ---- */
+let gl = null, glProg = null, glTexCam = null, glTexMask = null, glU = {}, glFalhou = false;
+const glCanvas = document.createElement('canvas');
+function iniciarGL() {
+  if (gl || glFalhou) return !!gl;
+  try {
+    gl = glCanvas.getContext('webgl2', {premultipliedAlpha: true, alpha: true, preserveDrawingBuffer: true});
+    if (!gl) throw new Error('sem webgl2');
+    const vs = `#version 300 es
+in vec2 p; out vec2 uv;
+void main(){ uv = vec2(p.x*.5+.5, .5-p.y*.5); gl_Position = vec4(p,0.,1.); }`;
+    const fs = `#version 300 es
+precision highp float;
+uniform sampler2D cam, mask; uniform vec4 caixa; uniform vec2 tamMask; uniform float lod, ini, fim;
+in vec2 uv; out vec4 o;
+float m(vec2 q){ vec2 r = (q - caixa.xy) / caixa.zw; if (r.x<0. || r.y<0. || r.x>1. || r.y>1.) return 0.; return texture(mask, r).r; }
+void main(){
+  vec3 c = texture(cam, uv).rgb;
+  vec3 cb = textureLod(cam, uv, lod).rgb;
+  vec2 px = caixa.zw / tamMask;
+  float sw = 0., sm = 0.;
+  for (int j=-2; j<=2; j++) for (int i=-2; i<=2; i++) {
+    vec2 q = uv + vec2(float(i), float(j)) * px;
+    vec3 d = mix(c, cb, .5) - textureLod(cam, q, lod).rgb;
+    float w = exp(-dot(d,d)*28.) * exp(-float(i*i+j*j)/5.);
+    sw += w; sm += w * m(q);
+  }
+  float a = smoothstep(ini, fim, sm / max(sw, 1e-4));
+  o = vec4(c * a, a);
+}`;
+    const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    glProg = gl.createProgram();
+    gl.attachShader(glProg, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(glProg, sh(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(glProg);
+    if (!gl.getProgramParameter(glProg, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(glProg));
+    gl.useProgram(glProg);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const lp = gl.getAttribLocation(glProg, 'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp, 2, gl.FLOAT, false, 0, 0);
+    for (const n of ['cam', 'mask', 'caixa', 'tamMask', 'lod', 'ini', 'fim']) glU[n] = gl.getUniformLocation(glProg, n);
+    const tex = (unid, mip) => {
+      const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0 + unid); gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      return t;
+    };
+    glTexCam = tex(0, true); glTexMask = tex(1, false);
+    gl.uniform1i(glU.cam, 0); gl.uniform1i(glU.mask, 1);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    return true;
+  } catch (e) { console.warn('recorte sem WebGL:', e); gl = null; glFalhou = true; return false; }
+}
+let mask8 = null;
+function refinarGL(cw, ch, mw, mh, cx0) {
+  if (glCanvas.width !== cw || glCanvas.height !== ch) { glCanvas.width = cw; glCanvas.height = ch; }
+  gl.viewport(0, 0, cw, ch);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, glTexCam);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, corCam);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, glTexMask);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, mw, mh, 0, gl.RED, gl.UNSIGNED_BYTE, mask8);
+  gl.uniform4f(glU.caixa, cx0.x, cx0.y, cx0.w, cx0.h);
+  gl.uniform2f(glU.tamMask, mw, mh);
+  gl.uniform1f(glU.lod, Math.max(0, Math.log2(cw * cx0.w / mw)));
+  const centro = .62 - (pref.borda ?? 50) / 100 * .24; // 0 = mais justo, 100 = mais folgado
+  gl.uniform1f(glU.ini, centro - .12); gl.uniform1f(glU.fim, centro + .12);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+/* caixa (em fração do quadro) em volta da pessoa, a partir da máscara anterior */
+function caixaPessoa(arr, mw, mh, base) {
+  let x0 = mw, y0 = mh, x1 = -1, y1 = -1;
+  for (let y = 0; y < mh; y += 2) for (let x = 0; x < mw; x += 2) {
+    if (arr[y * mw + x] > .5) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  }
+  if (x1 < 0) return null;
+  return {x: base.x + x0 / mw * base.w, y: base.y + y0 / mh * base.h, w: (x1 - x0 + 1) / mw * base.w, h: (y1 - y0 + 1) / mh * base.h};
+}
 function atualizarRecorte() {
   if (pref.formato !== 'recorte' || !camFonte || !camFonte.img || !camFonte.w) return;
   const precisa = cena === 'camera' || (pref.camvis && ['slide', 'quadro', 'tela'].includes(cena));
   if (!precisa) return;
   if (!segmentador) { carregarSeg(); return; }
   const agora = performance.now();
-  if (agora - ultimoSeg < 30) return;
+  // computador mais fraco: recorta menos vezes por segundo (o vídeo continua a 30 quadros)
+  if (agora - ultimoSeg < Math.max(30, custoSeg * 2)) return;
   ultimoSeg = agora;
   const cw = Math.min(1280, camFonte.w), ch = Math.round(cw * camFonte.h / camFonte.w);
-  if (corCam.width !== cw || corCam.height !== ch) { corCam.width = recorte.width = branco.width = cw; corCam.height = recorte.height = branco.height = ch; }
+  if (corCam.width !== cw || corCam.height !== ch) { corCam.width = branco.width = cw; corCam.height = branco.height = ch; caixaSeg = null; }
   ctxCor.drawImage(camFonte.img, 0, 0, cw, ch);
+  // região que vai para o modelo: um quadrado folgado em volta da pessoa (de vez em quando, o quadro todo)
+  nSeg++;
+  let reg = {x: 0, y: 0, w: 1, h: 1};
+  if (caixaSeg && nSeg % 20) { // janela 16:9 (formato do modelo) bem folgada em volta da pessoa
+    let rh = Math.max(caixaSeg.h * ch * 1.3, caixaSeg.w * cw * 1.3 * 9 / 16, ch * .45);
+    rh = Math.min(rh, ch); let rw = Math.min(rh * 16 / 9, cw); rh = rw * 9 / 16;
+    let px = (caixaSeg.x + caixaSeg.w / 2) * cw - rw / 2, py = caixaSeg.y * ch - rh * .12;
+    px = Math.max(0, Math.min(cw - rw, px)); py = Math.max(0, Math.min(ch - rh, py));
+    reg = {x: px / cw, y: py / ch, w: rw / cw, h: rh / ch};
+  }
+  if (segIn.width !== 512) { segIn.width = 512; segIn.height = 288; }
+  ctxSegIn.drawImage(corCam, reg.x * cw, reg.y * ch, reg.w * cw, reg.h * ch, 0, 0, 512, 288);
+  const entrada = segIn;
+  let mw = 0, mh = 0, ok = false;
   try {
-    segmentador.segmentForVideo(corCam, agora, r => {
-      const m = r.confidenceMasks && r.confidenceMasks[0];
-      if (!m) return;
-      const arr = m.getAsFloat32Array(), mw = m.width, mh = m.height;
-      if (mascara.width !== mw || mascara.height !== mh) { mascara.width = mw; mascara.height = mh; mascaraAnt = null; }
-      const img = ctxMascara.createImageData(mw, mh), d = img.data;
+    segmentador.segmentForVideo(entrada, agora, r => {
+      const ms = r.confidenceMasks;
+      if (!ms || !ms[0]) return;
+      const arr = ms[0].getAsFloat32Array(); mw = ms[0].width; mh = ms[0].height;
       if (!mascaraAnt || mascaraAnt.length !== arr.length) mascaraAnt = new Float32Array(arr.length);
+      if (!mask8 || mask8.length !== arr.length) mask8 = new Uint8Array(arr.length);
+      const mudouReg = !mascaraAnt.ultima || mascaraAnt.ultima.x !== reg.x || mascaraAnt.ultima.w !== reg.w || mascaraAnt.ultima.y !== reg.y;
+      const k = mudouReg ? 0 : .3; // suaviza o tremido entre quadros (sem arrastar quando a janela mexe)
       for (let i = 0; i < arr.length; i++) {
-        const v = mascaraAnt[i] = mascaraAnt[i] * .35 + arr[i] * .65; // suaviza o tremido entre quadros
-        const a = Math.max(0, Math.min(1, (v - .3) / .4));
-        d[i * 4 + 3] = a * 255;
+        const p = arr[i];
+        const v = mascaraAnt[i] = mascaraAnt[i] * k + p * (1 - k);
+        mask8[i] = v * 255;
       }
-      ctxMascara.putImageData(img, 0, 0);
+      mascaraAnt.ultima = reg;
+      const nova = caixaPessoa(mascaraAnt, mw, mh, reg);
+      if (nova) caixaSeg = caixaSeg ? {x: caixaSeg.x * .5 + nova.x * .5, y: caixaSeg.y * .5 + nova.y * .5, w: caixaSeg.w * .5 + nova.w * .5, h: caixaSeg.h * .5 + nova.h * .5} : nova;
+      else caixaSeg = null;
+      ok = true;
     });
   } catch (e) { console.warn(e); return; }
-  ctxRecorte.globalCompositeOperation = 'copy';
-  ctxRecorte.drawImage(corCam, 0, 0);
-  ctxRecorte.globalCompositeOperation = 'destination-in';
-  ctxRecorte.filter = 'blur(2px)';
-  ctxRecorte.drawImage(mascara, 0, 0, cw, ch);
-  ctxRecorte.filter = 'none';
-  ctxRecorte.globalCompositeOperation = 'source-over';
+  if (!ok) return;
+  const tSeg = performance.now() - agora;
+  if (iniciarGL()) {
+    refinarGL(cw, ch, mw, mh, reg);
+    recorte = glCanvas;
+  } else { // sem WebGL: máscara simples desfocada
+    if (recorte === glCanvas || recorte.width !== cw || recorte.height !== ch) { recorte = document.createElement('canvas'); recorte.width = cw; recorte.height = ch; ctxRecorte = recorte.getContext('2d'); }
+    if (mascara.width !== mw || mascara.height !== mh) { mascara.width = mw; mascara.height = mh; }
+    const img = ctxMascara.createImageData(mw, mh), d = img.data;
+    for (let i = 0; i < mask8.length; i++) d[i * 4 + 3] = Math.max(0, Math.min(255, (mask8[i] - 77) * 2.5));
+    ctxMascara.putImageData(img, 0, 0);
+    ctxRecorte.globalCompositeOperation = 'copy';
+    ctxRecorte.drawImage(corCam, 0, 0);
+    ctxRecorte.globalCompositeOperation = 'destination-in';
+    ctxRecorte.filter = 'blur(2px)';
+    ctxRecorte.drawImage(mascara, 0, 0, mw, mh, reg.x * cw, reg.y * ch, reg.w * cw, reg.h * ch);
+    ctxRecorte.filter = 'none';
+    ctxRecorte.globalCompositeOperation = 'source-over';
+  }
+  const gasto = performance.now() - agora;
+  if (nSeg > 3) custoSeg = custoSeg ? custoSeg * .9 + gasto * .1 : gasto; // os primeiros quadros incluem o aquecimento do modelo
+  window.estudioSeg = {custo: custoSeg, seg: tSeg, total: gasto, reg, gl: !!gl};
   if (pref.contorno) { // silhueta branca para o contorno "adesivo"
     ctxBranco.globalCompositeOperation = 'copy';
     ctxBranco.drawImage(recorte, 0, 0);
@@ -641,6 +760,7 @@ $('#tamanho').oninput = e => { pref.tam = +e.target.value; salvarPref(); };
 $('#formato').onchange = e => { pref.formato = e.target.value; salvarPref(); };
 $('#espelho').onchange = e => { pref.espelho = e.target.checked; salvarPref(); };
 $('#contornocam').onchange = e => { pref.contorno = e.target.checked; salvarPref(); };
+$('#borda').oninput = e => { pref.borda = +e.target.value; salvarPref(); };
 $('#camvis').onchange = e => { pref.camvis = e.target.checked; salvarPref(); };
 $('#marcadagua').onchange = e => { pref.marcadagua = e.target.checked; salvarPref(); };
 $('#faixa').onchange = e => { pref.faixa = e.target.checked; salvarPref(); };
@@ -1087,6 +1207,7 @@ function aplicarPref() {
   $('#forma').value = pref.forma;
   $('#lembrar').checked = pref.lembrar;
   $('#contornocam').checked = pref.contorno;
+  $('#borda').value = pref.borda ?? 50;
   $$('.cor').forEach(c => c.classList.toggle('on', c.dataset.cor === pref.cor));
   $('#formato').value = pref.formato; $('#tamanho').value = pref.tam;
   $('#espelho').checked = pref.espelho; $('#camvis').checked = pref.camvis;
