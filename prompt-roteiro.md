@@ -41,6 +41,11 @@ O QUE FAZ UM VÍDEO DE MATEMÁTICA VIRALIZAR (siga TODAS as regras)
    sem a pessoa perceber. Ex.: termina em "…e é por isso que" e o gancho começa com "99% das pessoas erra essa conta".
 6. CHAMADA PARA COMENTAR (comentário é o que o algoritmo mais valoriza): peça a resposta, peça para
    marcar alguém, ou faça uma pergunta de "qual você usa?". Curta, no último bloco.
+6b. CHAMADA PARA SEGUIR (obrigatória em TODO roteiro): no último bloco, depois da chamada para comentar,
+   chame quem assistiu para seguir a página, numa frase curta e natural, variando o jeito de falar
+   (ex.: "Segue o Delmão Simplifica pra mais macete assim.", "Me segue que amanhã tem outro truque.").
+   Na fala escreva "Delmão Simplifica" por extenso (nada de @ na fala); o texto_tela desse bloco é "SIGA @DELMAOSIMPLIFICA".
+   A frase que fecha o loop vem por último, logo depois da chamada para seguir.
 7. Duração total entre 20 e 45 segundos (cerca de 2,5 palavras faladas por segundo: 50 a 110 palavras de fala).
 
 CONTEÚDO
@@ -66,10 +71,10 @@ FORMATO DE CADA ROTEIRO
 - blocos: 4 a 7 blocos, em ordem, SEM incluir o gancho (o gancho é sempre o começo). Cada bloco tem:
   - tempo: trecho aproximado, ex.: "3–8 s" (o gancho ocupa 0–3 s).
   - cena: "camera", "quadro" ou "tela".
-  - fala: o que o professor fala, palavra por palavra (até 160 caracteres).
+  - fala: o que o professor fala, palavra por palavra (até 160 caracteres; o último bloco pode ter até 220).
   - quadro: o que aparece escrito no quadro ou na tela nesse bloco (conta, número), ou "" se nada.
   - texto_tela: legenda grande que a edição põe na tela (até 32 caracteres), ou "".
-  O ÚLTIMO bloco tem a chamada para comentar e a frase que fecha o loop.
+  O ÚLTIMO bloco tem, nesta ordem: a chamada para comentar, a chamada para SEGUIR a página e a frase que fecha o loop.
 - comentario_fixado: pergunta ou desafio para o professor fixar nos comentários (até 120 caracteres).
 - duracao: duração total estimada, ex.: "35 s".
 - legenda: a legenda do post, pronta para colar:

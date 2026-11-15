@@ -70,6 +70,9 @@ const Gravador = (() => {
 #gmodo.on{background:#FF7A00 !important}
 #gfala{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 16px 40px;background:linear-gradient(#000d 70%,#0000);font-weight:700;line-height:1.3;text-align:center}
 #gfala small{display:block;color:#FF7A00;font-size:12px;letter-spacing:1px;margin-bottom:4px}
+#gfala .gp{transition:color .1s}
+#gfala .gp.lida{color:#fff9}
+#gfala .gp.agora{color:#FF7A00;text-shadow:0 0 10px #FF7A0088}
 #gfala .gq{display:block;font-size:.66em;font-weight:600;color:#ffe2bf;margin-top:6px}
 #gconta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:140px 'Anton',Impact,sans-serif;text-shadow:0 0 24px #000;pointer-events:none;text-align:center}
 #gconta.peq{font:700 20px 'Open Sans',sans-serif;padding:0 30px}
@@ -198,12 +201,43 @@ const Gravador = (() => {
   const contador = (t, peq) => { g('gconta').textContent = t; g('gconta').classList.toggle('peq', !!peq); };
 
   /* ---------------------------------------------------------------- modo GRAVAR */
+  /* teleprompter colorido (karaokê): durante a gravação, a palavra da vez fica laranja e as já lidas ficam apagadas,
+     no ritmo da meta do bloco. O tempo de cada palavra é proporcional às sílabas (vogais), com pausa na pontuação. */
+  const palavrasFala = f => String(f).split(/\s+/).filter(Boolean);
+  function ritmo(fala, meta) {
+    const pal = palavrasFala(fala);
+    const silabas = w => /\d/.test(w)  // número se fala por extenso: "10%" = dez por cento
+      ? (w.match(/\d/g).length * 1.5 + (/%/.test(w) ? 2 : 0))
+      : (w.normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[aeiouy]+/gi) || []).length;
+    const peso = pal.map(w => Math.max(1, silabas(w)));
+    const pausa = pal.map((w, k) => k === pal.length - 1 ? 0 : /[.!?…:]$/.test(w) ? 2 : /[,;—–)]$/.test(w) ? 1 : 0);
+    const total = peso.reduce((x, y) => x + y, 0) + pausa.reduce((x, y) => x + y, 0);
+    const dur = Math.max(meta, pal.length / 3.2) - 0.25;  // nunca mais rápido que ~3 palavras por segundo
+    const ini = [];
+    let acc = 0.15;
+    for (let k = 0; k < pal.length; k++) { ini.push(acc); acc += (peso[k] + pausa[k]) / total * dur; }
+    return ini;  // segundo (desde o começo da gravação) em que cada palavra começa
+  }
+  function colorirFala(s) {
+    const els = g('gfala').querySelectorAll('.gp');
+    if (!els.length) return;
+    const ini = ritmo(blocos[i].fala, alvo(blocos[i]));
+    let atual = -1;
+    if (s != null) for (let k = 0; k < ini.length; k++) if (ini[k] <= s) atual = k;
+    const fim = s != null && s > ini[ini.length - 1] + 0.9;  // depois da última palavra, tudo "lido"
+    els.forEach((el, k) => {
+      el.classList.toggle('lida', s != null && (k < atual || fim));
+      el.classList.toggle('agora', !fim && k === atual);
+    });
+  }
+
   function atualizarGravar() {
     const b = blocos[i], tk = takes()[i], a = alvo(b);
     const fonte = b.fala.length > 120 ? 19 : b.fala.length > 70 ? 22 : 25;
     g('gfala').style.fontSize = fonte + 'px';
-    g('gfala').innerHTML = `<small>BLOCO ${i + 1} DE ${blocos.length} · ${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)} · ${a} s</small>${esc(b.fala)}` +
+    g('gfala').innerHTML = `<small>BLOCO ${i + 1} DE ${blocos.length} · ${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)} · ${a} s</small>${palavrasFala(b.fala).map(w => `<span class="gp">${esc(w)}</span>`).join(' ')}` +
       (b.cena !== 'camera' && b.quadro ? `<span class="gq">${b.cena === 'quadro' ? 'No quadro' : 'Na tela'}: ${esc(b.quadro)}</span>` : '');
+    if (gravando && t0) colorirFala((Date.now() - t0) / 1000);
     if (!gravando) {
       g('gtempo').textContent = tk ? `✓ ${seg(tk.fim - tk.ini)} (meta ${a} s)` : `meta: ${a} s`;
       g('gtempo').classList.remove('passou');
@@ -391,8 +425,9 @@ const Gravador = (() => {
       g('gtempo').textContent = `${seg(s)} / ${a} s`;
       g('gtempo').classList.toggle('passou', s > a);
       g('ganel').style.strokeDashoffset = 245 * (1 - Math.min(1, s / a));
+      colorirFala(s);
       if (s >= a && !vibrou) { vibrou = true; if (navigator.vibrate) navigator.vibrate(60); }
-    }, 100);
+    }, 50);
     atualizarGravar();
   }
   function parar() { if (rec && rec.state !== 'inactive') rec.stop(); }

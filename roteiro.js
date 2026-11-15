@@ -36,6 +36,21 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
 - quadro: em TODOS os blocos, a conta ou o número que aparece grande na tela (até 24 caracteres),
   avançando a conta passo a passo de um bloco para o outro; no bloco que pede para pausar, a conta com "?".
 - texto_tela: título curto em todos os blocos.`;
+  // todo roteiro termina chamando para seguir a página (se o Gemini esquecer, o app acrescenta um bloco)
+  const SEGUIR = /(^|[^\p{L}])(segue|siga|seguir|sigam)(?![\p{L}])/iu;  // não pega 'consegue'
+  const FALAS_SEGUIR = ['Segue o Delmão Simplifica pra mais macete assim!', 'Me segue que amanhã tem outro truque!',
+    'Segue o Delmão Simplifica e nunca mais erra essa!', 'Gostou? Segue o Delmão Simplifica pra não perder o próximo!'];
+  function garantirSeguir(roteiros) {
+    for (const [n, r] of roteiros.entries()) {
+      const bl = r.blocos || (r.blocos = []), ult = bl[bl.length - 1];
+      if (ult && SEGUIR.test(ult.fala || '')) { if (!ult.texto_tela) ult.texto_tela = 'SIGA @DELMAOSIMPLIFICA'; continue; }
+      const nums = ult ? String(ult.tempo).match(/\d+(?:[.,]\d+)?/g) : null;
+      const ini = nums ? Math.round(parseFloat(nums[nums.length - 1].replace(',', '.'))) : 30;
+      bl.push({tempo: `${ini}–${ini + 3} s`, cena: ult && ult.cena === 'tela' ? 'tela' : 'camera',
+        fala: FALAS_SEGUIR[n % FALAS_SEGUIR.length], quadro: ult && ult.cena === 'tela' ? (ult.quadro || '') : '', texto_tela: 'SIGA @DELMAOSIMPLIFICA'});
+    }
+    return roteiros;
+  }
   const soVisual = () => !!(document.querySelector('#visual') && document.querySelector('#visual').checked);
 
   async function pedir(link, inicio, fim) {
@@ -50,7 +65,7 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
       generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.8,
         ...(inicio != null ? {mediaResolution: 'MEDIA_RESOLUTION_LOW'} : {})},
     });
-    return limparProvas(await chamarGemini(corpo, aviso, inicio != null), 'roteiros');
+    return garantirSeguir(limparProvas(await chamarGemini(corpo, aviso, inicio != null), 'roteiros'));
   }
 
   // sem vídeo: o Gemini cria os roteiros a partir de um assunto que o professor escreveu (sempre só com visual)
@@ -68,7 +83,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       contents: [{parts: [{text: prompt}]}],
       generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.9},
     });
-    return limparProvas(await chamarGemini(corpo, aviso), 'roteiros');
+    return garantirSeguir(limparProvas(await chamarGemini(corpo, aviso), 'roteiros'));
   }
   async function gerarAssunto(assunto) {
     if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
