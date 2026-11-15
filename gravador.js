@@ -16,7 +16,7 @@ const Gravador = (() => {
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
-  const PADRAO = {legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false};
+  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false};
   const opcoes = () => {  // completa o que faltar SEM trocar o objeto (quem já tem a referência continua valendo)
     const op = item.edicao || (item.edicao = {});
     for (const [k, v] of Object.entries(PADRAO)) if (!(k in op)) op[k] = v;
@@ -108,6 +108,10 @@ const Gravador = (() => {
 .ebarra{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0F1B2D}
 .ebarra button{flex:1;padding:13px 6px;background:#33415a;color:#fff}
 #eexportar{background:#FF7A00 !important;flex:1.4}
+.eseco{background:#FFF0DD;border:2px solid #FF7A00;border-radius:12px;padding:10px 12px;margin:0 0 10px !important;font-size:14px !important;align-items:flex-start !important}
+.eseco input{margin-top:2px;flex:none}
+.eaviso2{background:#E6F1FF;border-radius:10px;padding:8px 12px;font-size:13px;margin:6px 0}
+.eaba.apagada{opacity:.4}
 #eaviso{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:18px;padding:30px;color:#fff;z-index:2}`;
     document.head.appendChild(st);
     ui = document.createElement('div'); ui.id = 'grav'; ui.hidden = true;
@@ -685,6 +689,11 @@ Se não houver fala, devolva a lista vazia.`;
   }
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
   function desenhar(ctx, v, k, grupos, t, decorrido, total) {
+    if (opcoes().seco) {  // vídeo seco: só a câmera, sem título, legenda, mascote, filtro nem efeito
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      if (v.videoWidth / v.videoHeight > 0.8) caber(ctx, v); else cobrir(ctx, v, 0, 0, W, H);
+      return;
+    }
     const c = takes()[k], b = blocos[k], op = opcoes(), e = est(k);
     let lay = layoutDe(k, v);
     const local = Math.max(0, (t - c.ini) / vel(c));  // segundos desde o começo deste bloco no vídeo final
@@ -821,7 +830,7 @@ Se não houver fala, devolva a lista vazia.`;
     const voz = op.voz ? cadeiaVoz(ac(), saida) : null, entradaVoz = voz ? voz.entrada : saida;
     // música de fundo: toca só enquanto o vídeo anda, em volume baixo, e recomeça se acabar
     let musica = null, fonteM = null;
-    if (item.musica) {
+    if (item.musica && !op.seco) {
       musica = document.createElement('audio'); musica.src = URL.createObjectURL(item.musica); musica.loop = true;
       await new Promise(ok => { musica.oncanplay = ok; musica.onerror = ok; setTimeout(ok, 3000); });
       fonteM = ac().createMediaElementSource(musica);
@@ -843,6 +852,7 @@ Se não houver fala, devolva a lista vazia.`;
     const T = 0.4, suave = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
     function compor(k, v, grupos, t, dec) {
       const c = takes()[k], tr = est(k).transicao, local = Math.max(0, (t - c.ini) / vel(c));
+      if (opcoes().seco) { desenhar(ctx, v, k, grupos, t, dec, total); return; }
       const cruzada = ['esmaecer', 'deslizar', 'subir', 'desfoque'].includes(tr) && temFoto && k > 0 && local < T;
       if (!cruzada) {
         desenhar(ctx, v, k, grupos, t, dec, total);
@@ -960,7 +970,10 @@ Se não houver fala, devolva a lista vazia.`;
       const ctx = g('ecanvas').getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
       return;
     }
-    p.innerHTML = `<h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
+    p.innerHTML = `<label class="echeck eseco"><input id="eseco" type="checkbox" ${op.seco ? 'checked' : ''}>
+        <span><b>🎬 Vídeo seco</b> — só os cortes, sem título, legenda, mascote nem efeitos (vale para o vídeo todo)</span></label>
+      <h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
+      <p id="esecoaviso" class="eaviso2" ${op.seco ? '' : 'hidden'}>No vídeo seco só valem o corte, a velocidade e o som da voz. O resto fica guardado para quando você desligar.</p>
       <div class="eaba" data-aba="cortar">
       <label>✂️ Começa em <b id="vini"></b></label><input id="rini" type="range" min="0" max="${c.dur}" step="0.05" value="${c.ini}">
       <label>✂️ Termina em <b id="vfim"></b> <small>(take de ${seg(c.dur)})</small></label><input id="rfim" type="range" min="0" max="${c.dur}" step="0.05" value="${c.fim}">
@@ -1013,6 +1026,13 @@ Se não houver fala, devolva a lista vazia.`;
       <div class="ebot" style="margin-top:22px"><button id="etudo" style="color:#b00;border-color:#e8b4b4 !important">🔁 Regravar tudo do início</button></div>
       </div>`;
     mostrarAba();
+    const aplicarSeco = () => {
+      g('eexportar').textContent = op.seco ? '⬇ Exportar vídeo seco' : '⬇ Exportar vídeo';
+      g('esecoaviso').hidden = !op.seco;
+      g('epainel').querySelectorAll('.eaba:not([data-aba="cortar"])').forEach(d => d.classList.toggle('apagada', !!op.seco));
+    };
+    aplicarSeco();
+    g('eseco').onchange = () => { op.seco = g('eseco').checked; salvar(item).catch(() => {}); aplicarSeco(); mostrarQuadro(k); };
     const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
     mostrarCorte();
     const guardar = () => salvar(item).catch(() => {});
@@ -1134,7 +1154,7 @@ Se não houver fala, devolva a lista vazia.`;
       return alert(`Falta gravar o bloco ${k + 1}.`);
     }
     pararPrevia(); ocupado = true;
-    if (opcoes().legenda && opcoes().legendaVoz && chave()) {
+    if (!opcoes().seco && opcoes().legenda && opcoes().legendaVoz && chave()) {
       const faltam = blocos.map((_, k) => k).filter(k => !takes()[k].transcricao);
       for (const [n, k] of faltam.entries()) {
         aviso(`Fazendo a legenda pela sua voz… (${n + 1} de ${faltam.length})`);
