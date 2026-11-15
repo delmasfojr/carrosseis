@@ -208,7 +208,9 @@ $('#fecharaulas').onclick = async () => {
   $('#nomeaula').textContent = 'Aulas fechadas. Escolha a pasta para abrir de novo.';
   const c = $('#cola'); c.getContext('2d').clearRect(0, 0, c.width, c.height);
   atualizarPagina(); sujar(); enviarFundo();
+  desenharCola().catch(er => console.warn(er));
 };
+$('#abrircola').onclick = abrirJanelaCola;
 $('#filtro').oninput = mostrarLista;
 $('#avulso').onclick = () => $('#avulsoinput').click();
 $('#avulsoinput').onchange = e => {
@@ -277,26 +279,63 @@ function renderizar(n) {
   return p;
 }
 
-async function desenharCola() {
-  const c = $('#cola'), cx = c.getContext('2d');
-  const tem = !!docCola;
-  c.classList.toggle('hide', !tem);
-  $('#colainfo').innerHTML = tem ? 'Resolução deste slide (versão do professor). <b>Não entra no vídeo.</b>'
-    : tipoAberto === 'aluno' ? 'Essa aula não tem versão do professor na pasta.'
-    : 'Abra a versão <b>Aluno</b>: aqui aparece a resolução do mesmo slide, só para você. <b>Não entra no vídeo.</b>';
-  if (!tem || pagina > docCola.numPages) return;
-  const d = docCola, n = pagina;
+/* a cola: versão do professor do mesmo slide, só para o professor (painel lateral e janela à parte) */
+const tarefas = new WeakMap();
+async function pintarCola(alvo, n) { // desenha a página n da versão do professor no canvas alvo (de qualquer janela)
+  // as fontes do PDF só existem neste documento: renderiza num canvas daqui e copia a imagem para o alvo
+  const d = docCola;
+  if (!d || n < 1 || n > d.numPages) { const cx = alvo.getContext('2d'); cx.fillStyle = '#0F1B2D'; cx.fillRect(0, 0, alvo.width, alvo.height); return; }
   const pg = await d.getPage(n);
-  if (d !== docCola || n !== pagina) return;
+  if (d !== docCola) return;
+  const c = document.createElement('canvas'); c.width = alvo.width; c.height = alvo.height;
+  const cx = c.getContext('2d');
   const v1 = pg.getViewport({scale: 1});
-  const v = pg.getViewport({scale: Math.min(c.width / v1.width, c.height / v1.height)});
-  if (colaTarefa) colaTarefa.cancel();
+  const esc = Math.min(c.width / v1.width, c.height / v1.height), v = pg.getViewport({scale: esc});
+  tarefas.get(alvo)?.cancel();
   cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
-  const t = colaTarefa = pg.render({canvasContext: cx, viewport: v});
-  await t.promise.catch(() => {});
-  if (colaTarefa === t) colaTarefa = null;
+  const t = pg.render({canvasContext: cx, viewport: v, transform: [1, 0, 0, 1, Math.round((c.width - v.width) / 2), Math.round((c.height - v.height) / 2)]});
+  tarefas.set(alvo, t);
+  try { await t.promise; } catch (e) { return; } // cancelada por uma página mais nova
+  if (tarefas.get(alvo) !== t) return;
+  tarefas.delete(alvo);
+  alvo.getContext('2d').drawImage(c, 0, 0);
 }
-let colaTarefa = null;
+const textoSemCola = () => !doc ? 'Abra uma aula (versão <b>Aluno</b>) no Estúdio.'
+  : tipoAberto === 'aluno' ? 'Essa aula não tem versão do professor na pasta.'
+  : tipoAberto === 'professor' ? 'Você abriu a versão <b>Professor</b>: ela mesma já está no vídeo. Abra a versão <b>Aluno</b> para a resolução ficar só aqui.'
+  : 'Abra a versão <b>Aluno</b>: aqui aparece a resolução do mesmo slide, só para você.';
+async function desenharCola() {
+  const tem = !!docCola;
+  $('#cola').classList.toggle('hide', !tem);
+  $('#colainfo').innerHTML = tem ? 'Resolução deste slide (versão do professor). <b>Não entra no vídeo.</b>' : textoSemCola() + ' <b>Não entra no vídeo.</b>';
+  const w = janelaCola && !janelaCola.closed ? janelaCola : null;
+  if (w) {
+    const q = id => w.document.getElementById(id);
+    q('nome').textContent = aula ? aula.base : '–';
+    q('pag').textContent = doc ? `${pagina} / ${nPag}` : '–';
+    q('msg').innerHTML = tem ? '' : textoSemCola();
+    q('msg').classList.toggle('hide', tem);
+    q('atual').style.visibility = tem ? '' : 'hidden';
+  }
+  const n = pagina;
+  await Promise.all([
+    tem ? pintarCola($('#cola'), n) : null,
+    w && tem ? pintarCola(w.document.getElementById('atual'), n) : null,
+    w ? pintarCola(w.document.getElementById('prox'), tem && n < nPag ? n + 1 : 0) : null,
+  ]);
+}
+let janelaCola = null;
+function abrirJanelaCola() {
+  if (janelaCola && !janelaCola.closed) { janelaCola.focus(); return; }
+  janelaCola = window.open('cola.html', 'cola-professor', 'popup,width=1200,height=720');
+  if (!janelaCola) alert('O navegador bloqueou a janela. Clique no ícone de janela bloqueada na barra de endereço e permita pop-ups deste site.');
+}
+addEventListener('pagehide', () => { if (janelaCola && !janelaCola.closed) janelaCola.close(); });
+window.estudioCola = { // usado pela cola.html
+  registrar(w) { janelaCola = w; desenharCola().catch(e => console.warn(e)); },
+  proximo: () => proximo(), anterior: () => anterior(),
+  tempo: () => ({texto: gravador ? $('#tempo').textContent : '', gravando: !!gravador}),
+};
 
 function irPara(n) {
   if (cena === 'quadro') { qPag = Math.max(1, n); atualizarPagina(); sujar(); enviarFundo(); return; }
