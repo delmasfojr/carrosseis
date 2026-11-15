@@ -2,7 +2,7 @@
    Slides do PDF (lidos da pasta do professor, sem sair do computador) + caneta + câmera no canto
    + compartilhar tela, tudo montado num canvas 1920×1080 que é gravado com o MediaRecorder. */
 import * as pdfjs from './vendor/pdfjs/pdf.min.mjs';
-import {desenharTraco, contorno, reconhecer, formaArrasto, novoId, limparCache} from './tinta.js';
+import {desenharTraco, contorno, pontosReais, mult, IDENT, matrizOk, reconhecer, formaArrasto, novoId, limparCache} from './tinta.js';
 pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
 
 const W = 1920, H = 1080;
@@ -358,7 +358,7 @@ function distSeg(px, py, a, b) {
 function apagarEm(x, y) {
   const ts = tracos();
   for (let i = ts.length - 1; i >= 0; i--) {
-    const p = contorno(ts[i]), raio = 18 + ts[i].esp / 2;
+    const p = pontosReais(ts[i]), raio = 18 + ts[i].esp / 2;
     const toca = p.length === 1 ? Math.hypot(x - p[0][0], y - p[0][1]) < raio
       : p.some((q, j) => j > 0 && distSeg(x, y, p[j - 1], q) < raio);
     if (toca) { historico().push({del: ts[i], i}); ts.splice(i, 1); sujar(); }
@@ -438,10 +438,25 @@ const soltar = () => {
 tela.addEventListener('pointerup', soltar);
 tela.addEventListener('pointercancel', soltar);
 
+/* mover/girar/escalar traços (seleção feita no tablet) */
+function moverTracos(ids, m) {
+  m = matrizOk(m);
+  if (!m || !Array.isArray(ids)) return;
+  const quais = new Set(ids.map(String)), movs = [];
+  for (const t of tracos()) if (quais.has(t.id)) { movs.push([t, t.m || null]); t.m = mult(m, t.m || IDENT); }
+  if (movs.length) { historico().push({movs}); sujar(); }
+}
+function apagarIds(ids) {
+  if (!Array.isArray(ids)) return;
+  const quais = new Set(ids.map(String)), ts = tracos();
+  for (let i = ts.length - 1; i >= 0; i--) if (quais.has(ts[i].id)) { historico().push({del: ts[i], i}); ts.splice(i, 1); }
+  sujar();
+}
 function desfazer() {
   const h = historico().pop();
   if (!h) return;
   const ts = tracos();
+  if (h.movs) { for (const [t, m] of h.movs) t.m = m; sujar(); return; }
   if (h.add) { const i = ts.lastIndexOf(h.add); if (i >= 0) ts.splice(i, 1); }
   else ts.splice(Math.min(h.i, ts.length), 0, h.del);
   sujar();
@@ -1267,7 +1282,7 @@ import('./estudio-remoto.js').then(m => m.iniciar({
   get aula() { return aula ? tituloAula() : ''; }, get gravando() { return !!gravador; }, get pausado() { return pausado; },
   get tempo() { return gravador ? acumulado + (pausado ? 0 : performance.now() - inicio) : 0; },
   get pastaRec() { return pastaRec; }, set pastaRec(h) { pastaRec = h; },
-  tracos, chaveRisco, podeRiscar, sujar, historico, apagarEm, laser: p => laser.push(p),
+  tracos, chaveRisco, podeRiscar, sujar, historico, apagarEm, moverTracos, apagarIds, laser: p => laser.push(p),
   renderizar, telaFonte: () => telaFonte, quadriculado,
   proximo, anterior, trocarCena, desfazer, limparSlide, gravar, pausar, parar,
   camvis: () => { pref.camvis = !pref.camvis; $('#camvis').checked = pref.camvis; salvarPref(); avisarMesas(); },

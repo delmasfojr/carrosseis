@@ -161,7 +161,7 @@ function tracos(forcar) {
   const agora = performance.now();
   if (!forcar && agora - ultimosTracos < 70) return false;
   ultimosTracos = agora;
-  const lista = E.podeRiscar() ? E.tracos().map(t => ({id: t.id, tipo: t.tipo, cor: t.cor, esp: t.esp, pr: !!t.pr, fim: !!t.fim,
+  const lista = E.podeRiscar() ? E.tracos().map(t => ({id: t.id, tipo: t.tipo, cor: t.cor, esp: t.esp, pr: !!t.pr, fim: !!t.fim, m: t.m || null,
     f: t.f || null, pts: t.tipo === 'forma' ? [] : t.pts.map(p => [Math.round(p[0]), Math.round(p[1]), Math.round((p[2] ?? .5) * 100) / 100])})) : [];
   enviar({t: 'tracos', chave: E.chaveRisco(), lista});
   return true;
@@ -205,6 +205,8 @@ function receber(conn, d) {
     }
     case 'laser': if (Array.isArray(d.pts)) for (const p of d.pts) E.laser([+p[0], +p[1], performance.now()]); break;
     case 'apaga': if (Array.isArray(d.pts)) for (const p of d.pts) E.apagarEm(+p[0], +p[1]); break;
+    case 'mover': if (E.podeRiscar()) { E.moverTracos(d.ids, d.m); tracos(true); } break;
+    case 'apagaIds': if (E.podeRiscar()) { E.apagarIds(d.ids); tracos(true); } break;
     case 'cmd': comando(d.c, d.v); break;
   }
 }

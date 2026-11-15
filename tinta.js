@@ -30,8 +30,22 @@ function cabecaSeta(cx, a, b, esp) {
   cx.lineTo(b[0] - l * Math.cos(ang + .45), b[1] - l * Math.sin(ang + .45));
   cx.stroke();
 }
+/* matriz 2D [a,b,c,d,e,f]: x' = a·x + c·y + e, y' = b·x + d·y + f (mover/girar/escalar um traço já feito) */
+export const IDENT = [1, 0, 0, 1, 0, 0];
+export function mult(A, B) {
+  return [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3],
+    A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
+}
+export const aplicar = (m, p) => [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+export function matrizOk(m) { return Array.isArray(m) && m.length === 6 && m.every(v => Number.isFinite(+v)) ? m.map(Number) : null; }
+/* pontos do traço já com a transformação (borracha, seleção) */
+export function pontosReais(t) {
+  const p = contorno(t);
+  return t.m ? p.map(q => aplicar(t.m, q)) : p;
+}
 export function desenharTraco(cx, t) {
   cx.save();
+  if (t.m) cx.transform(t.m[0], t.m[1], t.m[2], t.m[3], t.m[4], t.m[5]);
   cx.lineCap = cx.lineJoin = 'round';
   cx.strokeStyle = cx.fillStyle = t.cor;
   cx.lineWidth = t.esp;

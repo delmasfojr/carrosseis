@@ -1,6 +1,6 @@
 /* Aparelho do Estúdio: celular como câmera ou tablet como mesa de escrever.
    Abre por aparelho.html#código (QR code mostrado no PC). */
-import {desenharTraco, reconhecer, formaArrasto, novoId} from './tinta.js';
+import {desenharTraco, reconhecer, formaArrasto, novoId, pontosReais, mult, aplicar, IDENT} from './tinta.js';
 (() => {
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -232,7 +232,7 @@ function receber(d) {
     const antes = est.chave;
     est = {...est, ...d};
     tempoBase = d.tempo || 0; tempoEm = performance.now();
-    if (est.chave !== antes) minhas.clear();
+    if (est.chave !== antes) { minhas.clear(); if (sel) { sel = null; atualizarBotaoLimpar(); } }
     if (d.contagem) { const c = $('#contagem'); c.textContent = d.contagem; c.classList.remove('hide'); clearTimeout(c._t); c._t = setTimeout(() => c.classList.add('hide'), 900); }
     atualizarTopo();
     sujo = true;
@@ -312,8 +312,10 @@ function desenhar() {
   }
   if (podeRiscar) {
     cx.setTransform(e, 0, 0, e, 0, 0);
-    if (listaChave === est.chave) for (const t of listaPC) desenharTraco(cx, t);
-    for (const t of minhas.values()) desenharTraco(cx, t);
+    const emSel = t => sel && sel.ids.has(t.id) && sel.m !== IDENT ? {...t, m: mult(sel.m, t.m || IDENT)} : t;
+    if (listaChave === est.chave) for (const t of listaPC) desenharTraco(cx, emSel(t));
+    for (const t of minhas.values()) desenharTraco(cx, emSel(t));
+    desenharSelecao();
     // laser
     const agora = performance.now();
     laser = laser.filter(p => agora - p[2] < 700);
@@ -331,6 +333,113 @@ function desenhar() {
   }
 }
 requestAnimationFrame(desenhar);
+
+/* =========== SELECIONAR: laço → mover, girar, aumentar/diminuir =========== */
+let sel = null; // {ids, base:[x0,y0,x1,y1], acc: matriz já aplicada, m: matriz do arrasto atual}
+function todosTracos() {
+  const r = listaChave === est.chave ? [...listaPC] : [];
+  for (const t of minhas.values()) if (t !== atual && !r.some(x => x.id === t.id)) r.push(t);
+  return r;
+}
+function dentro(p, poli) { // ponto dentro do polígono (laço)
+  let d = false;
+  for (let i = 0, j = poli.length - 1; i < poli.length; j = i++) {
+    const [xi, yi] = poli[i], [xj, yj] = poli[j];
+    if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) d = !d;
+  }
+  return d;
+}
+function caixaDe(ids) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const t of todosTracos()) if (ids.has(t.id)) for (const p of pontosReais(t)) {
+    const r = t.esp / 2; x0 = Math.min(x0, p[0] - r); y0 = Math.min(y0, p[1] - r); x1 = Math.max(x1, p[0] + r); y1 = Math.max(y1, p[1] + r);
+  }
+  return x0 === Infinity ? null : [x0 - 14, y0 - 14, x1 + 14, y1 + 14];
+}
+function selecionarLaco(laco) {
+  sel = null;
+  if (laco.length < 3) { atualizarBotaoLimpar(); return; }
+  const ids = new Set();
+  for (const t of todosTracos()) {
+    const p = pontosReais(t);
+    const passo = Math.max(1, Math.floor(p.length / 40));
+    let n = 0, k = 0;
+    for (let i = 0; i < p.length; i += passo) { n++; if (dentro(p[i], laco)) k++; }
+    if (n && k / n >= .5) ids.add(t.id);
+  }
+  const base = ids.size && caixaDe(ids);
+  if (base) sel = {ids, base, acc: IDENT, m: IDENT};
+  atualizarBotaoLimpar();
+}
+function cantosSel() {
+  const [x0, y0, x1, y1] = sel.base, M = mult(sel.m, sel.acc);
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(p => aplicar(M, p));
+}
+function alcasSel() {
+  const c = cantosSel(), topo = [(c[0][0] + c[1][0]) / 2, (c[0][1] + c[1][1]) / 2];
+  const lado = Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]) || 1;
+  const nx = (c[1][1] - c[0][1]) / lado, ny = (c[0][0] - c[1][0]) / lado; // normal para "cima"
+  const centro = [(c[0][0] + c[2][0]) / 2, (c[0][1] + c[2][1]) / 2];
+  return {c, girar: [topo[0] + nx * 70, topo[1] + ny * 70], topo, escala: c[2], centro};
+}
+function desenharSelecao() {
+  if (atual && atual.laco) {
+    cx.save(); cx.setLineDash([14, 10]); cx.strokeStyle = '#1F6FEB'; cx.lineWidth = 4;
+    cx.beginPath(); atual.laco.forEach((p, i) => i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1])); cx.stroke(); cx.restore();
+  }
+  if (!sel) return;
+  const a = alcasSel();
+  cx.save();
+  cx.strokeStyle = '#1F6FEB'; cx.lineWidth = 4; cx.setLineDash([16, 10]);
+  cx.beginPath(); a.c.forEach((p, i) => i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1])); cx.closePath(); cx.stroke();
+  cx.setLineDash([]);
+  cx.beginPath(); cx.moveTo(a.topo[0], a.topo[1]); cx.lineTo(a.girar[0], a.girar[1]); cx.stroke();
+  cx.fillStyle = '#fff';
+  cx.beginPath(); cx.arc(a.girar[0], a.girar[1], 22, 0, 7); cx.fill(); cx.stroke();
+  cx.fillStyle = '#1F6FEB'; cx.font = 'bold 28px sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText('⟳', a.girar[0], a.girar[1] + 1);
+  cx.fillStyle = '#fff';
+  cx.beginPath(); cx.rect(a.escala[0] - 18, a.escala[1] - 18, 36, 36); cx.fill(); cx.stroke();
+  cx.fillStyle = '#1F6FEB'; cx.fillText('⤡', a.escala[0], a.escala[1] + 1);
+  cx.restore();
+}
+function iniciarSel(p) {
+  if (sel) {
+    const a = alcasSel(), perto = (q, r) => Math.hypot(p[0] - q[0], p[1] - q[1]) < r;
+    if (perto(a.girar, 55)) return {arraste: 'girar', p0: p, centro: a.centro};
+    if (perto(a.escala, 50)) return {arraste: 'escala', p0: p, centro: a.centro};
+    if (dentro(p, a.c)) return {arraste: 'mover', p0: p};
+  }
+  sel = null; atualizarBotaoLimpar();
+  return {laco: [p]};
+}
+function arrastarSel(p, shift) {
+  const g = atual;
+  if (g.laco) { const u = g.laco[g.laco.length - 1]; if (Math.hypot(p[0] - u[0], p[1] - u[1]) > 6) g.laco.push(p); return; }
+  if (!sel) return;
+  if (g.arraste === 'mover') { sel.m = [1, 0, 0, 1, p[0] - g.p0[0], p[1] - g.p0[1]]; return; }
+  const [cx0, cy0] = g.centro;
+  let ang = 0, esc = 1;
+  if (g.arraste === 'girar') {
+    ang = Math.atan2(p[1] - cy0, p[0] - cx0) - Math.atan2(g.p0[1] - cy0, g.p0[0] - cx0);
+    const passo = Math.PI / 12, perto = Math.round(ang / passo) * passo; // gruda em múltiplos de 15°
+    if (Math.abs(ang - perto) < .05) ang = perto;
+  } else {
+    esc = Math.max(.15, Math.min(8, Math.hypot(p[0] - cx0, p[1] - cy0) / Math.max(10, Math.hypot(g.p0[0] - cx0, g.p0[1] - cy0))));
+  }
+  const a = esc * Math.cos(ang), b = esc * Math.sin(ang);
+  sel.m = [a, b, -b, a, cx0 - (a * cx0 - b * cy0), cy0 - (b * cx0 + a * cy0)];
+}
+function soltarSel() {
+  const g = atual;
+  if (g.laco) { selecionarLaco(g.laco); return; }
+  if (!sel || sel.m === IDENT) return;
+  const m = sel.m, ids = [...sel.ids];
+  for (const t of todosTracos()) if (sel.ids.has(t.id)) t.m = mult(m, t.m || IDENT); // já mostra no lugar novo
+  enviar({t: 'mover', ids, m});
+  sel.acc = mult(m, sel.acc); sel.m = IDENT;
+}
+function atualizarBotaoLimpar() { $('#mlimpar').textContent = sel ? '🗑️ Apagar seleção' : '🗑️'; }
 
 function ponto(ev) {
   const r = cv.getBoundingClientRect();
@@ -362,6 +471,8 @@ cv.addEventListener('pointerdown', e => {
   cv.setPointerCapture(e.pointerId);
   const p = ponto(e);
   const f = (e.buttons & 32) ? 'borracha' : ferr;
+  if (f === 'selecao') { atual = iniciarSel(p); sujo = true; return; }
+  if (sel) { sel = null; atualizarBotaoLimpar(); }
   if (f === 'borracha') { atual = {borracha: true}; enviar({t: 'apaga', pts: [p]}); return; }
   if (f === 'laser') { atual = {laser: true}; laser.push([...p, performance.now()]); enviar({t: 'laser', pts: [p]}); return; }
   const id = novoId();
@@ -382,6 +493,7 @@ cv.addEventListener('pointermove', e => {
   const novos = [];
   for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) {
     const p = ponto(ev);
+    if (atual.laco || atual.arraste) { arrastarSel(p, e.shiftKey); sujo = true; continue; }
     if (atual.laser) { laser.push([...p, performance.now()]); novos.push(p); continue; }
     if (atual.borracha) { novos.push(p); continue; }
     if (atual.ini) { atual.f = formaArrasto(formaSel, atual.ini, p); continue; }
@@ -392,6 +504,7 @@ cv.addEventListener('pointermove', e => {
     if (Math.hypot(p[0] - u[0], p[1] - u[1]) > 3) armarForma(atual);
     novos.push(p);
   }
+  if (atual.laco || atual.arraste) return;
   if (atual.ini || atual.formado) { enviar({t: 'forma', id: atual.id, f: atual.f}); sujo = true; return; }
   if (!novos.length) return;
   if (atual.laser) enviar({t: 'laser', pts: novos});
@@ -401,6 +514,7 @@ cv.addEventListener('pointermove', e => {
 });
 const soltar = () => {
   clearTimeout(seguraTimer);
+  if (atual && (atual.laco || atual.arraste)) { soltarSel(); atual = null; sujo = true; return; }
   if (atual && atual.id) { atual.fim = true; delete atual.ini; enviar({t: 'fim', id: atual.id}); sujo = true; }
   atual = null;
 };
@@ -411,8 +525,11 @@ document.addEventListener('touchmove', e => e.preventDefault(), {passive: false}
 const cmd = (c, v) => enviar({t: 'cmd', c, v});
 $('#mant').onclick = () => cmd('ant');
 $('#mprox').onclick = () => cmd('prox');
-$('#mdesfazer').onclick = () => cmd('desfazer');
-$('#mlimpar').onclick = () => cmd('limpar');
+$('#mdesfazer').onclick = () => { if (sel) { sel = null; atualizarBotaoLimpar(); sujo = true; } cmd('desfazer'); };
+$('#mlimpar').onclick = () => {
+  if (sel) { enviar({t: 'apagaIds', ids: [...sel.ids]}); sel = null; atualizarBotaoLimpar(); sujo = true; return; }
+  cmd('limpar');
+};
 $('#mcamvis').onclick = () => cmd('camvis');
 $('#mgravar').onclick = () => cmd('gravar');
 $('#mpausar').onclick = () => cmd('pausar');
@@ -421,6 +538,7 @@ $('#mcenas').onclick = () => $('#cenas').classList.toggle('hide');
 $$('#cenas [data-cena]').forEach(b => b.onclick = () => { cmd('cena', b.dataset.cena); $('#cenas').classList.add('hide'); });
 $$('[data-f]').forEach(b => b.onclick = () => {
   ferr = b.dataset.f; $$('[data-f]').forEach(x => x.classList.toggle('on', x === b));
+  if (ferr !== 'selecao' && sel) { sel = null; atualizarBotaoLimpar(); sujo = true; }
   $('#formas').classList.toggle('hide', ferr !== 'forma');
 });
 $$('#formas [data-forma]').forEach(b => b.onclick = () => {
@@ -455,5 +573,5 @@ if (!codigo) {
 } else {
   turnPronto.then(ligarPeer).then(ok => { if (ok) status(`Pronto para conectar (${nome}). Escolha:`); });
 }
-window.aparelho = {get est() { return est; }, get modo() { return modo; }, get conn() { return conn; }};
+window.aparelho = {get sel() { return sel; }, get lista() { return listaPC; }, get est() { return est; }, get modo() { return modo; }, get conn() { return conn; }};
 })();
