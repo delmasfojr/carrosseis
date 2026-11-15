@@ -112,6 +112,18 @@ const Gravador = (() => {
 .eseco input{margin-top:2px;flex:none}
 .eaviso2{background:#E6F1FF;border-radius:10px;padding:8px 12px;font-size:13px;margin:6px 0}
 .eaba.apagada{opacity:.4}
+.eiab button{background:linear-gradient(90deg,#FF7A00,#ff9a3c) !important;color:#fff !important;border:0 !important;font-size:15px}
+.eiab button small{display:block;font-weight:400;font-size:11px;opacity:.9}
+.efemo button{flex:1 0 16% !important;font-size:24px !important;padding:6px 0 !important}
+#edes{position:absolute;inset:0;background:#FFF6E6;z-index:3;display:flex;flex-direction:column}
+.edtopo{display:flex;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:#0F1B2D}
+.edtopo input{flex:1;font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:0}
+.edtopo button{background:#33415a;color:#fff;padding:0 16px}
+#edgrade{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px}
+#edgrade button{background:#fff;border:2px solid #D9DDE3 !important;padding:6px 2px;display:flex;flex-direction:column;align-items:center;font-size:10px;font-weight:600;color:#0F1B2D}
+#edgrade img{width:100%;aspect-ratio:1;object-fit:contain}
+#edgrade span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#ecanvas{touch-action:none}
 #eaviso{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:18px;padding:30px;color:#fff;z-index:2}`;
     document.head.appendChild(st);
     ui = document.createElement('div'); ui.id = 'grav'; ui.hidden = true;
@@ -421,13 +433,26 @@ const Gravador = (() => {
     if (atual.length) grupos.push(atual);
     return grupos;
   }
-  const gruposDe = k => {
-    const c = takes()[k], op = opcoes();
-    if (!op.legenda) return [];
-    if (op.legendaVoz && c.transcricao && c.transcricao.length)
-      return agrupar(c.transcricao.filter(p => p.b > c.ini - 0.05 && p.a < c.fim));
-    const pal = String(blocos[k].fala).split(/\s+/).filter(Boolean);  // pelo roteiro: mesmo encaixe por frases
-    return agrupar(alinhar(pal, pal.map(w => w.length + 2), cortados(c)));
+  // palavras do bloco com o instante de cada uma (pela voz, se tiver; senão pelo roteiro encaixado nas frases)
+  const palavrasDe = k => {
+    const c = takes()[k];
+    if (opcoes().legendaVoz && c.transcricao && c.transcricao.length) return c.transcricao.filter(p => p.b > c.ini - 0.05 && p.a < c.fim);
+    const pal = String(blocos[k].fala).split(/\s+/).filter(Boolean);
+    return alinhar(pal, pal.map(w => w.length + 2), cortados(c));
+  };
+  const gruposDe = k => opcoes().legenda ? agrupar(palavrasDe(k)) : [];
+  const normal = x => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9%]/g, '');
+  // segundos (dentro do bloco, no vídeo final) em que a palavra é falada; null se não achar
+  function quandoFala(k, palavra) {
+    const c = takes()[k], alvo = normal(palavra);
+    if (!alvo) return null;
+    const p = palavrasDe(k).find(x => normal(x.w) === alvo) || palavrasDe(k).find(x => normal(x.w).includes(alvo) || (alvo.length > 3 && alvo.includes(normal(x.w)) && normal(x.w).length > 2));
+    return p ? Math.max(0, (p.a - c.ini) / vel(c)) : null;
+  }
+  const palavraNoTempo = (k, local) => {  // a palavra falada nesse instante do bloco
+    const c = takes()[k], t = c.ini + local * vel(c);
+    const ps = palavrasDe(k).filter(x => x.a <= t + 0.05);
+    return ps.length ? ps[ps.length - 1].w.replace(/[.,!?…:;]+$/, '') : '';
   };
 
   /* ---------------------------------------------------------------- legenda pela voz real (Gemini) */
@@ -685,6 +710,7 @@ Se não houver fala, devolva a lista vazia.`;
     if (!e.entradaMascote) e.entradaMascote = 'pulo';
     if (e.trocaPose == null) e.trocaPose = true;
     if (e.mascoteCanto == null) e.mascoteCanto = false;
+    if (!e.figs) e.figs = [];
     return e;
   }
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
@@ -749,6 +775,7 @@ Se não houver fala, devolva a lista vazia.`;
       caixa(ctx, b.texto_tela, y, fundo, TAM_TITULO[e.tamTitulo] || 80, corT);
       ctx.restore();
     }
+    desenharFigs(ctx, k, local);
     const temMascote = COM_MASCOTE.includes(lay) || (e.layout === 'alternar' && lay === 'mascote_fundo');
     if (!temMascote && e.mascoteCanto)  // mascote pequeno no canto, em qualquer layout
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.95, 430 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
@@ -827,6 +854,7 @@ Se não houver fala, devolva a lista vazia.`;
   }
   async function tocar(ks, saida, gravador, controle, aoTempo) {
     const ctx = g('ecanvas').getContext('2d'), total = totalDur(), op = opcoes();
+    await carregarFigs();
     const voz = op.voz ? cadeiaVoz(ac(), saida) : null, entradaVoz = voz ? voz.entrada : saida;
     // música de fundo: toca só enquanto o vídeo anda, em volume baixo, e recomeça se acabar
     let musica = null, fonteM = null;
@@ -914,8 +942,242 @@ Se não houver fala, devolva a lista vazia.`;
     }
   }
 
+  /* ---------------------------------------------------------------- figuras na tela (emoji, desenho do banco, imagem do celular) */
+  const figImg = new Map();
+  let figSel = null, marcarSel = false;  // figura escolhida no editor (o contorno tracejado só aparece no editor)
+  function imgFig(f) {
+    const chave_ = f.tipo === 'desenho' ? 'd:' + f.valor : 'i:' + f.valor;
+    let im = figImg.get(chave_);
+    if (!im) {
+      const blob = f.tipo === 'imagem' ? (item.imagens || {})[f.valor] : null;
+      if (f.tipo === 'imagem' && !blob) return null;
+      im = new Image(); im.src = f.tipo === 'desenho' ? BASE + `desenhos/${f.valor}.webp` : URL.createObjectURL(blob);
+      figImg.set(chave_, im);
+    }
+    return im;
+  }
+  async function carregarFigs() {
+    const ps = [];
+    blocos.forEach((_, k) => est(k).figs.forEach(f => { const im = f.tipo !== 'emoji' && imgFig(f); if (im && !im.complete) ps.push(noMaximo(im.decode(), 2500)); }));
+    await Promise.all(ps);
+  }
+  function caixaFig(f) {  // largura e altura da figura (para desenhar e para tocar nela)
+    if (f.tipo === 'emoji') return [f.tam * 1.15, f.tam * 1.15];
+    const im = imgFig(f);
+    return im && im.naturalWidth ? [im.naturalWidth * f.tam / im.naturalHeight, f.tam] : [f.tam, f.tam];
+  }
+  function desenharFigs(ctx, k, local) {
+    for (const f of est(k).figs) {
+      const sel = marcarSel && figSel === f.id;
+      if (!sel && (local < f.ini - 0.01 || local > f.fim)) continue;
+      const q = Math.min(1, Math.max(0, (local - f.ini) / 0.35)), sai = Math.min(1, Math.max(0, (local - (f.fim - 0.2)) / 0.2));
+      let esc = 1, dy = 0, alfa = 1;
+      if (f.anim === 'pop') esc = q >= 1 ? 1 : Math.max(0.01, 1 - Math.cos(q * Math.PI * 2.5) * Math.exp(-q * 5));
+      else if (f.anim === 'flutua') { dy = Math.sin(local * 2.4) * 14; alfa = Math.min(1, q * 1.4); }
+      if (f.anim !== 'nenhuma') esc *= 1 - sai;
+      if (sel) { esc = 1; alfa = 1; dy = 0; }
+      const [w, h] = caixaFig(f), cx = f.x * W, cy = f.y * H;
+      ctx.save(); ctx.globalAlpha = alfa; ctx.translate(cx, cy + dy); ctx.scale(Math.max(0.01, esc), Math.max(0.01, esc));
+      if (f.tipo === 'emoji') {
+        ctx.font = `${f.tam}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(f.valor, 0, f.tam * 0.05);
+      } else { const im = imgFig(f); if (im && im.naturalWidth) ctx.drawImage(im, -w / 2, -h / 2, w, h); }
+      ctx.restore();
+      if (sel) {
+        ctx.save(); ctx.setLineDash([18, 12]); ctx.lineWidth = 6; ctx.strokeStyle = LAR;
+        ctx.strokeRect(cx - w / 2 - 10, cy - h / 2 - 10, w + 20, h + 20); ctx.restore();
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------- editor: aba Figuras */
+  function configurarFiguras(k, c) {
+    const e = est(k), dur = Math.max(0.5, tamanho(k)), guardar = () => salvar(item).catch(() => {});
+    const verNoTempo = local => mostrarQuadro(k, c.ini + Math.min(local, dur - 0.05) * vel(c));
+    const nova = (tipo, valor, tam) => {
+      const local = Math.max(0, Math.min(dur - 0.5, (tQuadro - c.ini) / vel(c)));
+      const f = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), tipo, valor, x: 0.5, y: 0.45, tam,
+        ini: +local.toFixed(2), fim: +Math.min(dur, local + 2.5).toFixed(2), anim: 'pop'};
+      e.figs.push(f); figSel = f.id; guardar(); lista(); verNoTempo(f.ini + 0.4);
+    };
+    ui.querySelectorAll('[data-emo]').forEach(b => b.onclick = () => nova('emoji', b.dataset.emo, 220));
+    g('efoutro').onclick = () => { const x = prompt('Digite ou cole o emoji:'); if (x && x.trim()) nova('emoji', x.trim().slice(0, 8), 220); };
+    g('efdes').onclick = () => escolherDesenho(nome => nova('desenho', nome, 300));
+    g('efimg').onclick = () => g('efarq').click();
+    g('efarq').onchange = async () => {
+      const f = g('efarq').files[0]; if (!f) return;
+      if (f.size > 12e6) return alert('Imagem grande demais (mais de 12 MB).');
+      const id = 'img' + Date.now().toString(36);
+      (item.imagens || (item.imagens = {}))[id] = f;
+      nova('imagem', id, 420);
+    };
+    function lista() {
+      g('eflista').innerHTML = e.figs.length ? '<label>Figuras deste bloco <small>(toque para ajustar)</small></label><div class="ebot" style="flex-wrap:wrap">' +
+        e.figs.map(f => `<button data-fig="${f.id}" class="${f.id === figSel ? 'on' : ''}" style="flex:0 0 auto">${f.tipo === 'emoji' ? esc(f.valor) : f.tipo === 'desenho' ? '🎨 ' + esc(f.valor) : '📷 imagem'}${f.ia ? ' ✨' : ''}</button>`).join('') + '</div>' : '';
+      g('eflista').querySelectorAll('[data-fig]').forEach(b => b.onclick = () => { figSel = b.dataset.fig; lista(); const f = e.figs.find(x => x.id === figSel); verNoTempo(f.ini + 0.4); });
+      configFig();
+    }
+    function configFig() {
+      const f = e.figs.find(x => x.id === figSel);
+      if (!f) { g('efcfg').innerHTML = e.figs.length ? '' : '<p class="eaviso2">Escolha um emoji, um desenho do banco ou uma imagem do celular (PNG recortado fica sem fundo). Depois toque ou arraste na prévia para mudar de lugar.</p>'; return; }
+      g('efcfg').innerHTML = `<p class="eaviso2">👆 Arraste a figura na prévia (ou toque onde ela deve ficar).</p>
+        <label>Tamanho</label><input id="eftam" type="range" min="80" max="900" step="10" value="${f.tam}">
+        <label>Aparece em <b id="vfini"></b></label><input id="efini" type="range" min="0" max="${dur.toFixed(2)}" step="0.05" value="${f.ini}">
+        <label>Some em <b id="vffim"></b></label><input id="effim" type="range" min="0" max="${dur.toFixed(2)}" step="0.05" value="${f.fim}">
+        <label>Animação</label><div class="ebot">${Object.entries({pop: 'Pula', flutua: 'Flutua', nenhuma: 'Parada'}).map(([x, n]) => `<button data-fa="${x}" class="${f.anim === x ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <div class="ebot"><button id="efok">✓ Pronto</button><button id="efdel" style="color:#b00">🗑 Apagar</button></div>`;
+      const tempos = () => {
+        g('vfini').textContent = `${seg(f.ini)}` + (palavraNoTempo(k, f.ini) ? ` — “${palavraNoTempo(k, f.ini)}”` : '');
+        g('vffim').textContent = seg(f.fim);
+      };
+      tempos();
+      g('eftam').oninput = () => { f.tam = Number(g('eftam').value); verNoTempo(f.ini + 0.4); };
+      g('efini').oninput = () => { f.ini = Math.min(Number(g('efini').value), f.fim - 0.3); g('efini').value = f.ini; tempos(); verNoTempo(f.ini + 0.05); };
+      g('effim').oninput = () => { f.fim = Math.max(Number(g('effim').value), f.ini + 0.3); g('effim').value = f.fim; tempos(); verNoTempo(f.fim - 0.05); };
+      g('eftam').onchange = g('efini').onchange = g('effim').onchange = guardar;
+      ui.querySelectorAll('[data-fa]').forEach(b => b.onclick = () => { f.anim = b.dataset.fa; guardar(); configFig(); previa([k]); });
+      g('efok').onclick = () => { figSel = null; lista(); mostrarQuadro(k, tQuadro); };
+      g('efdel').onclick = () => { e.figs = e.figs.filter(x => x !== f); figSel = null; guardar(); lista(); mostrarQuadro(k, tQuadro); };
+    }
+    lista();
+    // arrastar (ou tocar) na prévia
+    const cv = g('ecanvas');
+    const ponto = ev => {
+      const r = cv.getBoundingClientRect();
+      if (!(r.width > 0 && r.height > 0)) return [0.5, 0.45];  // prévia sem tamanho (tela escondida): não estraga a posição
+      return [Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height))];
+    };
+    let arrastando = null, pendente = false;
+    cv.onpointerdown = ev => {
+      if (tocando || abaEd !== 'figuras') return;
+      const [px, py] = ponto(ev), local = (tQuadro - c.ini) / vel(c);
+      const toque = [...e.figs].reverse().find(f => {
+        if (f.id !== figSel && (local < f.ini || local > f.fim)) return false;
+        const [w, h] = caixaFig(f);
+        return Math.abs(px * W - f.x * W) < w / 2 + 20 && Math.abs(py * H - f.y * H) < h / 2 + 20;
+      });
+      if (toque) { figSel = toque.id; arrastando = {f: toque, dx: toque.x - px, dy: toque.y - py}; lista(); }
+      else if (figSel) { const f = e.figs.find(x => x.id === figSel); if (f) { f.x = px; f.y = py; arrastando = {f, dx: 0, dy: 0}; } }
+      if (arrastando) { cv.setPointerCapture(ev.pointerId); ev.preventDefault(); mostrarQuadro(k, tQuadro); }
+    };
+    cv.onpointermove = ev => {
+      if (!arrastando) return;
+      const [px, py] = ponto(ev);
+      arrastando.f.x = Math.min(0.98, Math.max(0.02, px + arrastando.dx));
+      arrastando.f.y = Math.min(0.98, Math.max(0.02, py + arrastando.dy));
+      if (!pendente) { pendente = true; mostrarQuadro(k, tQuadro).finally(() => { pendente = false; }); }
+    };
+    cv.onpointerup = cv.onpointercancel = () => { if (arrastando) { arrastando = null; guardar(); mostrarQuadro(k, tQuadro); } };
+  }
+  function escolherDesenho(aoEscolher) {
+    let caixa_ = g('edes');
+    if (!caixa_) {
+      caixa_ = document.createElement('div'); caixa_.id = 'edes';
+      caixa_.innerHTML = `<div class="edtopo"><input id="edbusca" type="search" placeholder="Buscar desenho (ex.: relógio, dinheiro, pizza)"><button id="edfechar">✕</button></div><div id="edgrade"></div>`;
+      g('gedit').appendChild(caixa_);
+      g('edfechar').onclick = () => { caixa_.hidden = true; };
+    }
+    const nomes = Object.keys(typeof DESCRICOES !== 'undefined' ? DESCRICOES : {});
+    const mostrar = () => {
+      const q = normal(g('edbusca').value);
+      const achados = nomes.filter(n => !q || normal(n + ' ' + (DESCRICOES[n] || '') + ' ' + ((DESENHOS.get(n) || []).join(' '))).includes(q));
+      g('edgrade').innerHTML = achados.map(n => `<button data-d="${esc(n)}" title="${esc(DESCRICOES[n] || n)}"><img src="${BASE}desenhos/${encodeURIComponent(n)}.webp" loading="lazy" alt=""><span>${esc(n)}</span></button>`).join('') ||
+        '<p style="padding:20px">Nenhum desenho com esse nome.</p>';
+      g('edgrade').querySelectorAll('[data-d]').forEach(b => b.onclick = () => { caixa_.hidden = true; aoEscolher(b.dataset.d); });
+    };
+    g('edbusca').oninput = mostrar;
+    g('edbusca').value = ''; mostrar();
+    caixa_.hidden = false;
+  }
+
+  /* ---------------------------------------------------------------- ✨ Montar com IA */
+  async function montarComIA() {
+    if (!chave()) return alert('Para montar com IA, cole a chave do Gemini em "Chaves".');
+    if (blocos.some((_, k) => !takes()[k])) return alert('Grave todos os blocos antes de montar com IA.');
+    if (!confirm('A IA vai sugerir layout, mascote, título, transição e figuras para TODOS os blocos, pelo que você falou.\nDá para desfazer depois. Continuar?')) return;
+    pararPrevia(); ocupado = true;
+    if (opcoes().legendaVoz) {  // para a IA "ouvir" o que você falou de verdade
+      const faltam = blocos.map((_, k) => k).filter(k => !takes()[k].transcricao);
+      for (const [n, k] of faltam.entries()) {
+        aviso(`Ouvindo a sua voz… (${n + 1} de ${faltam.length})`);
+        if (transcrevendo.has(k)) while (transcrevendo.has(k)) await espera(300); else await transcreverFundo(k);
+      }
+    }
+    aviso('✨ A IA está montando as cenas…');
+    const desenhos = Object.entries(DESCRICOES || {}).map(([n, d]) => `${n} = ${d}`).join('\n');
+    const textoBlocos = blocos.map((b, k) => `BLOCO ${k + 1}${b.gancho ? ' (GANCHO, abre o vídeo)' : ''} — ${seg(tamanho(k))} — fala: "${palavrasDe(k).map(p => p.w).join(' ') || b.fala}"` +
+      (b.quadro ? ` — conta do roteiro: "${b.quadro}"` : '')).join('\n');
+    const prompt = `Você é editor de vídeos curtos (Reels) de matemática do professor Delmão (@delmaosimplifica), com mascote.
+Tema do vídeo: "${item.conteudo.tema}". Abaixo, o que o professor FALOU em cada bloco. Monte a cena de cada bloco para o vídeo prender a atenção,
+sem poluir. Regras:
+- layout: "cheia" (professor falando, use no gancho e no final), "dividida" (conta em cima, professor embaixo), "circulo" (conta grande + professor num círculo),
+  "canto" (conta ocupando a tela + rosto no canto), "mascote" (só o mascote apresentando com lousa; a voz é do professor), "mascote_fundo" (mascote na frente, professor ao fundo),
+  "alternar" (alterna professor e mascote a cada frase). Varie: no máximo 2 blocos com mascote em destaque; nunca dois blocos seguidos com o mesmo layout de conta.
+- conta: o texto curto da lousa/quadro (até 24 caracteres, símbolos Unicode como × ÷ ² √ %), só quando o layout mostra conta ou lousa; senão "".
+  A conta tem de ser MATEMATICAMENTE CERTA e igual ao que o professor fala (confira duas vezes; ex.: "25% = 1/4" está certo, "25% de 8 = 1/4" está errado).
+  Se a resposta só aparece depois, use "?" (ex.: "8% de 25 = ?").
+- titulo: frase curtíssima em CAIXA ALTA (até 22 caracteres) que resume o bloco; o do gancho tem de prender. Pode ser "" se não precisar.
+- cor_titulo: laranja, navy, branco, amarelo ou sem. transicao: nenhuma, zoom, esmaecer, deslizar, subir, flash ou desfoque (prefira zoom; varie com moderação).
+- pose do mascote: explicando, ideia, resolvendo, pensando, desafiando, confiante, estudando ou joinha (combine com o que é falado).
+- mascote_canto: true se o mascote pequeno no canto ajuda naquele bloco (não use em blocos com layout de mascote).
+- figuras: 0 a 2 por bloco, cada uma ligada a UMA palavra que o professor fala naquele bloco (copie a palavra exatamente como está na fala).
+  tipo "emoji" (um emoji só) ou "desenho" (use SÓ nomes exatos da lista abaixo). posicao: alto_esquerda, alto_direita, meio_esquerda, meio_direita ou centro.
+Desenhos disponíveis (nome = o que mostra):
+${desenhos}
+
+BLOCOS:
+${textoBlocos}`;
+    const E = (...v) => ({type: 'STRING', enum: v});
+    const esquema = {type: 'OBJECT', properties: {blocos: {type: 'ARRAY', items: {type: 'OBJECT', properties: {
+      bloco: {type: 'INTEGER'}, layout: E('cheia', 'dividida', 'circulo', 'canto', 'mascote', 'mascote_fundo', 'alternar'),
+      pose: E(...Object.keys(POSES)), mascote_canto: {type: 'BOOLEAN'}, titulo: {type: 'STRING'}, cor_titulo: E(...Object.keys(CORES_TITULO)),
+      conta: {type: 'STRING'}, transicao: E(...Object.keys(TRANSICOES)),
+      figuras: {type: 'ARRAY', items: {type: 'OBJECT', properties: {tipo: E('emoji', 'desenho'), valor: {type: 'STRING'}, palavra: {type: 'STRING'},
+        posicao: E('alto_esquerda', 'alto_direita', 'meio_esquerda', 'meio_direita', 'centro')}, required: ['tipo', 'valor', 'palavra', 'posicao']}}},
+      required: ['bloco', 'layout', 'pose', 'mascote_canto', 'titulo', 'cor_titulo', 'conta', 'transicao', 'figuras']}}}, required: ['blocos']};
+    const r = await chamarGemini(JSON.stringify({contents: [{parts: [{text: prompt}]}],
+      generationConfig: {responseMimeType: 'application/json', responseSchema: esquema, temperature: 0.7}}), t => aviso('✨ ' + t));
+    // guarda como estava, para desfazer
+    const c0 = item.conteudo;
+    item.antesIA = JSON.parse(JSON.stringify({estilo: item.estilo || [], texto_capa: c0.texto_capa, gancho_quadro: c0.gancho_quadro || '',
+      blocos: c0.blocos.map(b => ({texto_tela: b.texto_tela, quadro: b.quadro}))}));
+    const POS = {alto_esquerda: [0.24, 0.3], alto_direita: [0.76, 0.3], meio_esquerda: [0.22, 0.5], meio_direita: [0.78, 0.5], centro: [0.5, 0.46]};
+    let nFig = 0;
+    for (const x of r.blocos || []) {
+      const k = x.bloco - 1; if (!(k >= 0 && k < blocos.length)) continue;
+      const e = est(k);
+      Object.assign(e, {layout: x.layout, pose: x.pose, mascoteCanto: !!x.mascote_canto && !COM_MASCOTE.includes(x.layout), corTitulo: x.cor_titulo});
+      if (k > 0) e.transicao = x.transicao;
+      setTexto(k, 'texto_tela', (x.titulo || '').slice(0, 40));
+      if (x.conta) setTexto(k, 'quadro', x.conta.slice(0, 40));
+      e.figs = e.figs.filter(f => !f.ia);  // troca só as figuras que a IA tinha posto; as suas ficam
+      const dur = tamanho(k);
+      for (const fg of x.figuras || []) {
+        if (fg.tipo === 'desenho' && !(DESCRICOES || {})[fg.valor]) continue;
+        const ini = quandoFala(k, fg.palavra);
+        const [px, py] = POS[fg.posicao] || POS.centro;
+        const inicio = ini == null ? 0.3 : Math.max(0, ini - 0.1);
+        e.figs.push({id: 'ia' + Date.now().toString(36) + nFig++, tipo: fg.tipo, valor: fg.valor, x: px, y: py, tam: fg.tipo === 'emoji' ? 200 : 280,
+          ini: +inicio.toFixed(2), fim: +Math.min(dur, inicio + 2.4).toFixed(2), anim: 'pop', ia: true});
+      }
+    }
+    opcoes().seco = false;
+    await salvar(item);
+    aviso(''); ocupado = false;
+    selecionar(sel);
+    alert(`✨ Pronto! A IA montou ${r.blocos ? r.blocos.length : 0} blocos e pôs ${nFig} figuras. Veja na prévia (▶) e ajuste o que quiser. Não gostou? Toque em ↩ Desfazer.`);
+  }
+  async function desfazerIA() {
+    const a = item.antesIA; if (!a) return;
+    item.estilo = a.estilo; item.conteudo.texto_capa = a.texto_capa; item.conteudo.gancho_quadro = a.gancho_quadro;
+    a.blocos.forEach((b, n) => { if (item.conteudo.blocos[n]) Object.assign(item.conteudo.blocos[n], b); });
+    delete item.antesIA; blocos = montarBlocos(item);
+    await salvar(item); selecionar(sel);
+  }
+
   /* ---------------------------------------------------------------- modo EDITAR */
   const quadros = new Map();  // vídeo de cada take só para mostrar um quadro parado (sem som)
+  let tQuadro = 0;  // instante do take mostrado parado na prévia
   async function mostrarQuadro(k, t) {
     const c = takes()[k]; if (!c) return;
     await carregarMascote();
@@ -928,7 +1190,11 @@ Se não houver fala, devolva a lista vazia.`;
     await irAoTempo(v, alvoT);
     if (tocando) return;
     const dec = antes(k) + Math.max(0, alvoT - c.ini) / vel(c);
+    await carregarFigs();
+    if (tocando) return;
+    tQuadro = alvoT; marcarSel = true;
     desenhar(g('ecanvas').getContext('2d'), v, k, gruposDe(k), alvoT, dec, totalDur());
+    marcarSel = false;
     g('etempo').textContent = `${seg(dec)} / ${seg(totalDur())}`;
   }
   function desenharTimeline() {
@@ -940,7 +1206,8 @@ Se não houver fala, devolva a lista vazia.`;
     g('etl').querySelectorAll('button').forEach(bt => bt.onclick = () => selecionar(Number(bt.dataset.k)));
   }
   const ABAS_ED = [['cortar', '✂️', 'Cortar'], ['titulo', '🔤', 'Título'], ['legenda', '💬', 'Legenda'],
-    ['visual', '🎨', 'Layout'], ['efeitos', '✨', 'Efeitos'], ['som', '🎵', 'Som']];
+    ['visual', '🎨', 'Layout'], ['figuras', '🖼️', 'Figuras'], ['efeitos', '✨', 'Efeitos'], ['som', '🎵', 'Som']];
+  const EMOJIS = ['🔥', '✅', '❌', '⚠️', '💡', '🤯', '😱', '👉', '👆', '🎯', '💯', '🧠', '📌', '⏱️', '➕', '➖', '✖️', '➗', '🟰', '❓'];
   let abaEd = 'cortar';  // a aba fica a mesma ao trocar de bloco
   function mostrarAba() {
     ui.querySelectorAll('#eabas [data-aba]').forEach(b => {
@@ -973,6 +1240,8 @@ Se não houver fala, devolva a lista vazia.`;
     p.innerHTML = `<label class="echeck eseco"><input id="eseco" type="checkbox" ${op.seco ? 'checked' : ''}>
         <span><b>🎬 Vídeo seco</b> — só os cortes, sem título, legenda, mascote nem efeitos (vale para o vídeo todo)</span></label>
       <h4>Bloco ${k + 1} <span>${b.gancho ? 'GANCHO' : esc(CENA[b.cena] || b.cena)}</span></h4>
+      <div class="ebot eiab"><button id="eia">✨ Montar com IA <small>(cena, mascote e figuras pela sua fala)</small></button>
+        ${item.antesIA ? '<button id="eiadesf" style="flex:0 0 96px">↩ Desfazer</button>' : ''}</div>
       <p id="esecoaviso" class="eaviso2" ${op.seco ? '' : 'hidden'}>No vídeo seco só valem o corte, a velocidade e o som da voz. O resto fica guardado para quando você desligar.</p>
       <div class="eaba" data-aba="cortar">
       <label>✂️ Começa em <b id="vini"></b></label><input id="rini" type="range" min="0" max="${c.dur}" step="0.05" value="${c.ini}">
@@ -1008,6 +1277,14 @@ Se não houver fala, devolva a lista vazia.`;
       <div class="ebot">${Object.entries({pulo: 'Pulando', desliza: 'Deslizando', gira: 'Girando', nenhuma: 'Parado'}).map(([x, n]) => `<button data-em="${x}">${n}</button>`).join('')}</div></div>
       <div id="econtaw"><label for="econta">Conta / texto grande (vai na lousa nos layouts do mascote)</label><input id="econta" type="text" value="${esc(b.quadro || '')}" placeholder="ex.: 8% de 25 = 25% de 8"></div>
       </div>
+      <div class="eaba" data-aba="figuras">
+      <label>Pôr na tela <small>(toque num emoji)</small></label>
+      <div class="ebot efemo" style="flex-wrap:wrap">${EMOJIS.map(x => `<button data-emo="${x}">${x}</button>`).join('')}</div>
+      <div class="ebot"><button id="efoutro">😀 Outro emoji</button><button id="efdes">🎨 Desenho</button><button id="efimg">📷 Imagem</button></div>
+      <input id="efarq" type="file" accept="image/*" hidden>
+      <div id="eflista"></div>
+      <div id="efcfg"></div>
+      </div>
       <div class="eaba" data-aba="efeitos">
       ${k > 0 ? `<label>Transição para este bloco</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(TRANSICOES).map(x => `<button data-tr="${x}" style="flex:1 0 22%">${TRANSICOES[x]}</button>`).join('')}</div>
@@ -1032,6 +1309,9 @@ Se não houver fala, devolva a lista vazia.`;
       g('epainel').querySelectorAll('.eaba:not([data-aba="cortar"])').forEach(d => d.classList.toggle('apagada', !!op.seco));
     };
     aplicarSeco();
+    configurarFiguras(k, c);
+    g('eia').onclick = () => montarComIA().catch(e2 => { aviso(''); ocupado = false; alert('A IA não conseguiu montar agora: ' + e2.message); });
+    if (g('eiadesf')) g('eiadesf').onclick = desfazerIA;
     g('eseco').onchange = () => { op.seco = g('eseco').checked; salvar(item).catch(() => {}); aplicarSeco(); mostrarQuadro(k); };
     const mostrarCorte = () => { g('vini').textContent = seg(c.ini); g('vfim').textContent = seg(c.fim); };
     mostrarCorte();
