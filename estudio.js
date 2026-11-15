@@ -761,6 +761,8 @@ $('#formato').onchange = e => { pref.formato = e.target.value; salvarPref(); };
 $('#espelho').onchange = e => { pref.espelho = e.target.checked; salvarPref(); };
 $('#contornocam').onchange = e => { pref.contorno = e.target.checked; salvarPref(); };
 $('#borda').oninput = e => { pref.borda = +e.target.value; salvarPref(); };
+$('#editarparar').onchange = e => { pref.editarAoParar = e.target.checked; salvarPref(); };
+$('#editararq').onclick = editarArquivo;
 $('#camvis').onchange = e => { pref.camvis = e.target.checked; salvarPref(); };
 $('#marcadagua').onchange = e => { pref.marcadagua = e.target.checked; salvarPref(); };
 $('#faixa').onchange = e => { pref.faixa = e.target.checked; salvarPref(); };
@@ -1038,7 +1040,7 @@ function medirVu() {
    ===================================================================== */
 let gravarIniciando = false, pastaRec = null;
 let gravador = null, arquivo = null, escrita = Promise.resolve(), pedacos = [], bytes = 0;
-let inicio = 0, acumulado = 0, pausado = false, relTimer = null, nomeArq = '';
+let inicio = 0, acumulado = 0, pausado = false, relTimer = null, nomeArq = '', arqHandle = null, arqPasta = null;
 const telaRec = document.createElement('canvas'); telaRec.width = 1280; telaRec.height = 720;
 const ctxRec = telaRec.getContext('2d');
 
@@ -1058,7 +1060,7 @@ async function gravar(peloAparelho) {
   if (gravador || gravarIniciando) return;
   const {mime, ext} = escolherFormato();
   nomeArq = nomeSugerido(ext);
-  arquivo = null; pedacos = []; bytes = 0;
+  arquivo = null; pedacos = []; bytes = 0; arqHandle = null; arqPasta = null;
   // 1º caminho: pasta das gravações já escolhida (não pergunta nada; dá para começar pelo tablet)
   if (pastaRec) {
     let perm = await pastaRec.queryPermission({mode: 'readwrite'}).catch(() => 'denied');
@@ -1068,7 +1070,8 @@ async function gravar(peloAparelho) {
         let nome = nomeArq, n = 2;
         while (await pastaRec.getFileHandle(nome).then(() => true, () => false)) nome = nomeArq.replace(/(\.\w+)$/, ` (${n++})$1`);
         nomeArq = nome;
-        arquivo = await (await pastaRec.getFileHandle(nomeArq, {create: true})).createWritable();
+        arqHandle = await pastaRec.getFileHandle(nomeArq, {create: true}); arqPasta = pastaRec;
+        arquivo = await arqHandle.createWritable();
       } catch (e) { console.warn(e); arquivo = null; }
     }
   }
@@ -1077,7 +1080,7 @@ async function gravar(peloAparelho) {
     try {
       const h = await window.showSaveFilePicker({id: 'estudio-gravacoes', startIn: 'videos', suggestedName: nomeArq,
         types: [{description: 'Vídeo', accept: {[ext === 'mp4' ? 'video/mp4' : 'video/webm']: ['.' + ext]}}]});
-      nomeArq = h.name;
+      nomeArq = h.name; arqHandle = h;
       arquivo = await h.createWritable();
     } catch (e) { if (e.name === 'AbortError') return; console.warn(e); }
   }
@@ -1097,7 +1100,8 @@ async function gravar(peloAparelho) {
   const stream = new MediaStream([video, ...destino.stream.getAudioTracks()]);
   try {
     gravador = new MediaRecorder(stream, {mimeType: mime || undefined,
-      videoBitsPerSecond: pref.qualidade === '720' ? 5e6 : 10e6, audioBitsPerSecond: 192000});
+      videoBitsPerSecond: pref.qualidade === '720' ? 5e6 : 10e6, audioBitsPerSecond: 192000,
+      videoKeyFrameIntervalDuration: 500}); // quadro-chave a cada 0,5 s: o editor corta com precisão
   } catch (e) {
     alert('O navegador não conseguiu começar a gravar: ' + e.message);
     if (arquivo) await arquivo.abort?.();
@@ -1137,6 +1141,7 @@ async function finalizar() {
     await escrita;
     await arquivo.close();
     info(`✅ Salvo: ${nomeArq} (${fmt(total)}, ${mb} MB)`);
+    if (pref.editarAoParar !== false && arqHandle) editar(await arqHandle.getFile(), nomeArq, arqPasta, arqHandle);
   } else {
     const blob = new Blob(pedacos, {type: pedacos[0]?.type || 'video/webm'});
     const a = Object.assign(document.createElement('a'), {href: URL.createObjectURL(blob), download: nomeArq});
@@ -1144,6 +1149,29 @@ async function finalizar() {
     info(`✅ Baixado: ${nomeArq} (${fmt(total)}, ${mb} MB)`);
   }
   arquivo = null; pedacos = [];
+}
+/* editor: abre logo depois de gravar (a gravação original já está salva; a editada vira outro arquivo) */
+async function editar(file, nome, pasta, handle) {
+  try {
+    const {abrirEditor} = await import('./editor.js');
+    await abrirEditor({arquivo: file, nome, pasta, handle, aoFechar: r => {
+      if (r) info(`✅ Editado e salvo: ${r.nome} (${fmt(r.duracao * 1000)})` + (r.apagouOriginal ? ' · original apagado' : ''));
+    }});
+  } catch (e) { console.error(e); info('O editor não abriu: ' + e.message); }
+}
+async function editarArquivo() {
+  try {
+    if ('showOpenFilePicker' in window) {
+      const [h] = await window.showOpenFilePicker({id: 'estudio-gravacoes', types: [{description: 'Vídeo', accept: {'video/*': ['.mp4', '.webm']}}]});
+      let pasta = null;
+      if (pastaRec && await pastaRec.resolve(h).then(c => c && c.length === 1, () => false)) pasta = pastaRec;
+      editar(await h.getFile(), h.name, pasta, h);
+    } else {
+      const i = Object.assign(document.createElement('input'), {type: 'file', accept: 'video/*'});
+      i.onchange = () => i.files[0] && editar(i.files[0], i.files[0].name, null, null);
+      i.click();
+    }
+  } catch (e) { if (e.name !== 'AbortError') info('Não abriu: ' + e.message); }
 }
 function atualizarTempo() {
   const t = acumulado + (pausado ? 0 : performance.now() - inicio);
@@ -1208,6 +1236,7 @@ function aplicarPref() {
   $('#lembrar').checked = pref.lembrar;
   $('#contornocam').checked = pref.contorno;
   $('#borda').value = pref.borda ?? 50;
+  $('#editarparar').checked = pref.editarAoParar !== false;
   $$('.cor').forEach(c => c.classList.toggle('on', c.dataset.cor === pref.cor));
   $('#formato').value = pref.formato; $('#tamanho').value = pref.tam;
   $('#espelho').checked = pref.espelho; $('#camvis').checked = pref.camvis;
@@ -1251,4 +1280,4 @@ function avisarAparelhos(t) { ganchos.mensagem?.(t); info(t); }
 function enviarFundo() { ganchos.fundo?.(); }
 function enviarTracos() { if (tracosMudou && ganchos.tracos && ganchos.tracos()) tracosMudou = false; }
 // para testes no console
-window.estudio = {get cena() { return cena; }, get actx() { return actx; }, get destino() { return destino; }, get pagina() { return pagina; }, get nPag() { return nPag; }, lerArquivosSoltos, abrirAula, grupos: () => grupos, trocarCena, get gravador() { return gravador; }};
+window.estudio = {get cena() { return cena; }, get actx() { return actx; }, get destino() { return destino; }, get pagina() { return pagina; }, get nPag() { return nPag; }, lerArquivosSoltos, abrirAula, grupos: () => grupos, trocarCena, editar, get gravador() { return gravador; }};
