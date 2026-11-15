@@ -138,6 +138,13 @@ const Gravador = (() => {
 #edgrade button{background:#fff;border:2px solid #D9DDE3 !important;padding:6px 2px;display:flex;flex-direction:column;align-items:center;font-size:10px;font-weight:600;color:#0F1B2D}
 #edgrade img{width:100%;aspect-ratio:1;object-fit:contain}
 #edgrade span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#eclipes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+#eclipes button{padding:0;border:3px solid transparent !important;border-radius:10px;overflow:hidden;background:#0F1B2D;position:relative;aspect-ratio:9/14}
+#eclipes button.on{border-color:#FF7A00 !important}
+#eclipes img{width:100%;height:100%;object-fit:cover;display:block}
+#eclipes small{position:absolute;right:4px;bottom:4px;background:#000a;color:#fff;font-size:10px;padding:1px 5px;border-radius:6px}
+#ecadeia button{font-size:13px}
+.ebusca{display:flex;gap:6px}.ebusca input{flex:1;font:inherit;font-size:16px;padding:8px 10px;border-radius:10px;border:2px solid #D9DDE3}
 #ecanvas{touch-action:none}
 #eaviso{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700;font-size:18px;padding:30px;color:#fff;z-index:2}`;
     document.head.appendChild(st);
@@ -468,7 +475,7 @@ const Gravador = (() => {
     parar(); if (revendo) voltarCamera(); pararPrevia(); pararCamera();
     g('gprev').srcObject = null;
     for (const v of quadros.values()) soltar(v);
-    quadros.clear();
+    quadros.clear(); soltarClipes();
     ui.hidden = true; document.documentElement.style.overflow = '';
     if (trava) { trava.release().catch(() => {}); trava = null; }
     if (aoFim) aoFim();
@@ -786,9 +793,10 @@ Se não houver fala, devolva a lista vazia.`;
   const vel = c => c.vel || 1;
   const LAYOUTS = {auto: 'Automático', cheia: 'Câmera cheia', inteira: 'Câmera inteira', circulo: 'Conta + círculo',
     dividida: 'Tela dividida', canto: 'Conta + rosto no canto', mascote: 'Mascote + lousa',
-    mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote', visual: 'Visual: conta + mascote'};
+    mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote', visual: 'Visual: conta + mascote',
+    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio'};
   // take gravado só com a voz não tem imagem: só valem os layouts sem câmera
-  const SEM_CAMERA = ['visual', 'mascote'];
+  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe'];
   const semImagem = k => !!(takes()[k] && takes()[k].soVoz);
   const POSES = {explicando: 'Explicando', ideia: 'Ideia', resolvendo: 'Resolvendo', pensando: 'Pensando',
     desafiando: 'Desafiando', confiante: 'Confiante', estudando: 'Estudando', joinha: 'Joinha'};
@@ -816,6 +824,7 @@ Se não houver fala, devolva a lista vazia.`;
     if (e.trocaPose == null) e.trocaPose = true;
     if (e.mascoteCanto == null) e.mascoteCanto = false;
     if (!e.figs) e.figs = [];
+    if (e.layout === 'escala' && !e.escala) e.escala = {cadeia: cadeiaPadrao(), sentido: 'sai'};
     return e;
   }
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
@@ -832,7 +841,8 @@ Se não houver fala, devolva a lista vazia.`;
       const n = cortados(c).filter(sg => sg[0] <= t + 0.05).length;
       lay = n % 2 === 1 || n === 0 ? (v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia') : 'mascote_fundo';
     }
-    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual';
+    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' ||
+      (lay === 'escala' && fundoEscala(e, local, tamanho(k)) < 0.5);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const filtro = FILTROS[op.filtro] || 'none';
     // transição "zoom": 8% de zoom que volta ao normal em 0,35 s (as outras transições são feitas em tocar())
@@ -858,6 +868,20 @@ Se não houver fala, devolva a lista vazia.`;
       for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       conta(ctx, b.quadro, H * 0.42, W - 140, 150);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.98, 560 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
+    } else if (lay === 'escala') {  // zoom contínuo por uma sequência de desenhos (casa → cidade → … → galáxia)
+      ctx.filter = 'none'; desenharEscala(ctx, e, local, tamanho(k));
+    } else if (lay === 'clipe') {  // vídeo de apoio (banco grátis) cobrindo a tela; a voz é a sua
+      const vc = videoClipe(e);
+      if (vc && vc.readyState >= 2) {
+        cobrir(ctx, vc, 0, 0, W, H);
+        ctx.filter = 'none';
+        const gr = ctx.createLinearGradient(0, H * 0.45, 0, H); gr.addColorStop(0, '#0000'); gr.addColorStop(1, '#000b');
+        ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+      } else {
+        ctx.filter = 'none'; ctx.fillStyle = NAVY; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff'; ctx.font = '60px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(e.clipe ? 'CARREGANDO O VÍDEO…' : 'ESCOLHA O VÍDEO DE APOIO', W / 2, H / 2);
+      }
     } else if (lay === 'mascote') {  // só o mascote apresentando, com a lousa; a voz é a sua
       ctx.filter = 'none'; lousa(ctx, b.quadro, H * 0.36);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.97, ALTURA_MASCOTE * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
@@ -895,6 +919,117 @@ Se não houver fala, devolva a lista vazia.`;
       boneco(ctx, 'joinha', e.ladoMascote, H * 0.95, 400 * e.tamMascote, falandoEm(grupos, t), local, 'pulo');
     legenda(ctx, grupos, t, H * 0.68);
   }
+
+  /* ---------------------------------------------------------------- 🔭 zoom de escala */
+  // do menor para o maior; usa o desenho do banco quando existe, senão o emoji
+  const CADEIA_PADRAO = [['casa', '🏠', 'CASA'], ['mapa-cidade', '🏙️', 'CIDADE'], ['mapa-brasil', '🗺️', 'BRASIL'],
+    ['planeta-terra', '🌎', 'TERRA'], ['sistema-solar', '🪐', 'SISTEMA SOLAR'], ['galaxia', '🌌', 'GALÁXIA']];
+  const temDesenho = n => typeof DESCRICOES !== 'undefined' && !!(DESCRICOES || {})[n];
+  const cadeiaPadrao = () => CADEIA_PADRAO.map(([d, em, r]) => temDesenho(d) ? {tipo: 'desenho', valor: d, rotulo: r} : {tipo: 'emoji', valor: em, rotulo: r});
+  const suaveE = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  const progressoEscala = (local, dur) => Math.min(1, Math.max(0, local / Math.max(0.6, dur - 0.4)));
+  function fundoEscala(e, local, dur) {  // 0 = creme (perto), 1 = espaço (longe)
+    const p = progressoEscala(local, dur);
+    return e.escala && e.escala.sentido === 'entra' ? 1 - p : p;
+  }
+  const mistura = (a, b, t) => {
+    const h = x => [1, 3, 5].map(i => parseInt(x.slice(i, i + 2), 16));
+    const [ra, ga, ba] = h(a), [rb, gb, bb] = h(b);
+    return `rgb(${Math.round(ra + (rb - ra) * t)},${Math.round(ga + (gb - ga) * t)},${Math.round(ba + (bb - ba) * t)})`;
+  };
+  const ESTRELAS = Array.from({length: 90}, (_, n) => [(Math.sin(n * 12.9898) * 43758.5453 % 1 + 1) % 1, (Math.sin(n * 78.233) * 12345.678 % 1 + 1) % 1, 2 + (n % 4) * 1.6]);
+  function pecaEscala(ctx, x, cx, cy, tam, alfa) {
+    if (!x || alfa <= 0.01 || tam < 4) return;
+    ctx.save(); ctx.globalAlpha = Math.min(1, alfa);
+    if (x.tipo === 'emoji') {
+      ctx.font = `${tam * 0.85}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(x.valor, cx, cy + tam * 0.04);
+    } else {
+      const im = imgFig({tipo: 'desenho', valor: x.valor});
+      if (im && im.naturalWidth) {
+        const s = tam / Math.max(im.naturalWidth, im.naturalHeight);
+        ctx.drawImage(im, cx - im.naturalWidth * s / 2, cy - im.naturalHeight * s / 2, im.naturalWidth * s, im.naturalHeight * s);
+      }
+    }
+    ctx.restore();
+  }
+  function desenharEscala(ctx, e, local, dur) {
+    const sai = e.escala.sentido !== 'entra';
+    const cad = sai ? e.escala.cadeia : [...e.escala.cadeia].reverse();
+    const fp = fundoEscala(e, local, dur);
+    ctx.fillStyle = mistura(CREME, '#070D18', fp); ctx.fillRect(0, 0, W, H);
+    if (fp > 0.35) {  // estrelas aparecem quando "sai" para o espaço
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, (fp - 0.35) / 0.4) * 0.9})`;
+      for (const [x, y, r] of ESTRELAS) { ctx.beginPath(); ctx.arc(x * W, y * H, r, 0, 7); ctx.fill(); }
+    }
+    const n = cad.length; if (!n) return;
+    const s = progressoEscala(local, dur) * (n - 1), i = Math.min(n - 1, Math.floor(s)), f = s - i;
+    const q = suaveE(Math.min(1, Math.max(0, (f - 0.3) / 0.7)));  // segura cada nível um pouco antes de trocar
+    const T = 600, cy = H * 0.4, deriva = sai ? 1 - 0.07 * f : 1 + 0.07 * f;
+    const atual = sai ? 1 - 0.86 * q : 1 + 2.2 * q, prox = sai ? 1 + 2.2 * (1 - q) : 0.14 + 0.86 * q;
+    pecaEscala(ctx, cad[i], W / 2, cy, T * atual * deriva, 1 - q);
+    if (i + 1 < n) pecaEscala(ctx, cad[i + 1], W / 2, cy, T * prox * deriva, q);
+    const rot = (q < 0.5 ? cad[i] : cad[Math.min(n - 1, i + 1)]).rotulo;  // nome do nível, embaixo
+    if (rot) {
+      const a = i + 1 < n ? Math.abs(q - 0.5) * 2 : 1;
+      ctx.save(); ctx.globalAlpha = a; ctx.font = '78px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 10; ctx.lineJoin = 'round'; ctx.strokeStyle = fp < 0.5 ? '#fff' : NAVY; ctx.fillStyle = fp < 0.5 ? NAVY : '#fff';
+      ctx.strokeText(rot, W / 2, cy + T * 0.6); ctx.fillText(rot, W / 2, cy + T * 0.6); ctx.restore();
+    }
+  }
+
+  /* ---------------------------------------------------------------- 🎞️ vídeo de apoio (Pexels / Pixabay, grátis) */
+  async function buscarClipes(termo) {
+    const px = localStorage.getItem('pexels'), pb = localStorage.getItem('pixabay');
+    if (!px && !pb) throw new Error('falta a chave do Pexels ou do Pixabay (em Chaves).');
+    const q = encodeURIComponent(String(termo).trim().slice(0, 90));
+    if (px) {
+      const r = await fetch(`https://api.pexels.com/videos/search?query=${q}&orientation=portrait&size=medium&per_page=15`, {headers: {Authorization: px}});
+      if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'a chave do Pexels não foi aceita.' : `o Pexels respondeu ${r.status}.`);
+      const j = await r.json();
+      return (j.videos || []).map(v => {
+        const fs = (v.video_files || []).filter(f => f.link && f.width && (f.file_type || '').includes('mp4'));
+        fs.sort((a, b) => Math.abs(Math.min(a.width, a.height) - 720) - Math.abs(Math.min(b.width, b.height) - 720));
+        return {id: 'px' + v.id, capa: v.image, url: fs[0] && fs[0].link, dur: v.duration, autor: v.user && v.user.name, fonte: 'Pexels', pagina: v.url};
+      }).filter(x => x.url);
+    }
+    const r = await fetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(pb)}&q=${q}&per_page=15&safesearch=true`);
+    if (!r.ok) throw new Error(r.status === 400 || r.status === 401 ? 'a chave do Pixabay não foi aceita.' : `o Pixabay respondeu ${r.status}.`);
+    const j = await r.json();
+    return (j.hits || []).map(h => {
+      const vs = h.videos || {}, f = (vs.small && vs.small.url) ? vs.small : vs.medium || vs.tiny || {};
+      return {id: 'pb' + h.id, capa: f.thumbnail || (vs.tiny || {}).thumbnail, url: f.url, dur: h.duration, autor: h.user, fonte: 'Pixabay', pagina: h.pageURL};
+    }).filter(x => x.url);
+  }
+  async function baixarClipe(e, x, termo) {
+    const r = await fetch(x.url);
+    if (!r.ok) throw new Error(`não consegui baixar o vídeo (${r.status}).`);
+    const blob = await r.blob();
+    if (blob.size > 60e6) throw new Error('esse vídeo é grande demais; escolha outro.');
+    const cl = item.clipes || (item.clipes = {});
+    cl[x.id] = blob;
+    e.clipe = {id: x.id, termo, autor: x.autor || '', fonte: x.fonte, pagina: x.pagina || ''};
+    const usados = new Set((item.estilo || []).map(z => z && z.clipe && z.clipe.id).filter(Boolean));
+    for (const id of Object.keys(cl)) if (!usados.has(id)) { delete cl[id]; soltarClipe(id); }
+  }
+  const clipeVid = new Map();  // id do clipe → elemento <video> (sem som, em loop)
+  function videoClipe(e) {
+    const id = e.clipe && e.clipe.id, blob = id && (item.clipes || {})[id];
+    if (!blob) return null;
+    let v = clipeVid.get(id);
+    if (!v) {
+      v = document.createElement('video'); v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('playsinline', ''); v.src = URL.createObjectURL(blob);
+      v.onloadeddata = () => { if (!tocando && ui && !ui.hidden && takes()[sel]) mostrarQuadro(sel); };
+      clipeVid.set(id, v);
+    }
+    return v;
+  }
+  function soltarClipe(id) {
+    const v = clipeVid.get(id); if (!v) return;
+    v.pause(); URL.revokeObjectURL(v.src); v.removeAttribute('src'); v.load(); clipeVid.delete(id);
+  }
+  const soltarClipes = () => [...clipeVid.keys()].forEach(soltarClipe);
 
   /* ---------------------------------------------------------------- tocar os takes (prévia e exportação) */
   const tamanho = k => { const c = takes()[k]; return c ? Math.max(0, c.fim - c.ini) / vel(c) : 0; };
@@ -1025,14 +1160,19 @@ Se não houver fala, devolva a lista vazia.`;
       v.playbackRate = vel(c); v.preservesPitch = true;
       await irAoTempo(v, c.ini);  // se o celular não conseguir pular, toca do zero e espera chegar no corte
       const grupos = gruposDe(k);
+      const vc = layoutDe(k) === 'clipe' ? videoClipe(est(k)) : null;
+      if (vc) {
+        if (vc.readyState < 2) await noMaximo(new Promise(ok => vc.addEventListener('loadeddata', ok, {once: true})), 5000);
+        try { vc.currentTime = 0; } catch (e) { /* segue */ }
+      }
       await v.play();
       let ativo = false;
       await new Promise(ok => {
         const passo = () => {
-          if (controle.parar) { v.pause(); ok(); return; }
+          if (controle.parar) { v.pause(); if (vc) vc.pause(); ok(); return; }
           const t = v.currentTime;
           if (!ativo && t >= c.ini - 0.02) {
-            ativo = true; ganho.gain.value = 1; if (musica) musica.play().catch(() => {});
+            ativo = true; ganho.gain.value = 1; if (musica) musica.play().catch(() => {}); if (vc) vc.play().catch(() => {});
             if (gravador) { if (gravador.state === 'inactive') gravador.start(1000); else if (gravador.state === 'paused') gravador.resume(); }
           }
           if (ativo) {
@@ -1041,7 +1181,7 @@ Se não houver fala, devolva a lista vazia.`;
             if (aoTempo) aoTempo(dec, total, k);
           }
           if (t >= c.fim || v.ended) {
-            ganho.gain.value = 0; if (musica) musica.pause(); if (gravador && gravador.state === 'recording') gravador.pause();
+            ganho.gain.value = 0; if (musica) musica.pause(); if (vc) vc.pause(); if (gravador && gravador.state === 'recording') gravador.pause();
             foto.getContext('2d').drawImage(ctx.canvas, 0, 0); temFoto = true;  // guarda o último quadro para a próxima transição
             v.pause(); ok(); return;
           }
@@ -1070,7 +1210,11 @@ Se não houver fala, devolva a lista vazia.`;
   }
   async function carregarFigs() {
     const ps = [];
-    blocos.forEach((_, k) => est(k).figs.forEach(f => { const im = f.tipo !== 'emoji' && imgFig(f); if (im && !im.complete) ps.push(noMaximo(im.decode(), 2500)); }));
+    blocos.forEach((_, k) => {
+      const e = est(k), lista = [...e.figs];
+      if (e.layout === 'escala' && e.escala) lista.push(...e.escala.cadeia);
+      lista.forEach(f => { const im = f.tipo !== 'emoji' && imgFig(f); if (im && !im.complete) ps.push(noMaximo(im.decode(), 2500)); });
+    });
     await Promise.all(ps);
   }
   function caixaFig(f) {  // largura e altura da figura (para desenhar e para tocar nela)
@@ -1228,6 +1372,15 @@ Se não houver fala, devolva a lista vazia.`;
   "canto" (conta ocupando a tela + rosto no canto), "mascote" (só o mascote apresentando com lousa; a voz é do professor), "mascote_fundo" (mascote na frente, professor ao fundo),
   "alternar" (alterna professor e mascote a cada frase). Varie: no máximo 2 blocos com mascote em destaque; nunca dois blocos seguidos com o mesmo layout de conta.
 - conta: o texto curto da lousa/quadro (até 24 caracteres, símbolos Unicode como × ÷ ² √ %), só quando o layout mostra conta ou lousa; senão "".`;
+    const temClipe = !!(localStorage.getItem('pexels') || localStorage.getItem('pixabay'));
+    const regrasApoio = `- layout "escala": zoom contínuo por uma sequência de desenhos, do menor para o maior (ex.: casa → cidade → Brasil → Terra → sistema solar → galáxia).
+  Use SÓ quando a fala comparar tamanhos, distâncias, escalas, potências de 10 ou notação científica; no máximo 1 bloco no vídeo.
+  Preencha escala_cadeia (3 a 6 itens, do MENOR para o MAIOR, cada um com valor = nome exato de desenho da lista ou um emoji, e rotulo curto em CAIXA ALTA)
+  e escala_sentido ("sai" = afastando, do pequeno para o grande; "entra" = aproximando, do grande para o pequeno). Nesse bloco, figuras = [].` +
+      (temClipe ? `
+- layout "clipe": um vídeo REAL de banco de imagens cobre a tela (ex.: planeta girando, dinheiro, trânsito, mercado), com a voz por cima.
+  Use quando uma cena do mundo real prende mais que um desenho (ótimo no gancho); no máximo 2 blocos no vídeo e nunca seguidos.
+  Preencha busca_clipe com 2 a 4 palavras em INGLÊS que acham esse vídeo (ex.: "earth rotating space", "counting money cash"). Nesse bloco, figuras = [].` : '');
     const regrasFig = semVideo ? `- figuras: 1 a 3 por bloco (o vídeo depende delas), cada uma ligada a UMA palavra que o professor fala naquele bloco (copie a palavra exatamente como está na fala).
   Prefira "desenho" (use SÓ nomes exatos da lista abaixo); use "emoji" quando nenhum desenho combinar. posicao: alto_esquerda, alto_direita, baixo_esquerda ou baixo_direita
   (o meio é da conta); duas figuras do mesmo bloco em posições diferentes.`
@@ -1243,6 +1396,7 @@ ${regrasLayout}
 - cor_titulo: laranja, navy, branco, amarelo ou sem. transicao: nenhuma, zoom, esmaecer, deslizar, subir, flash ou desfoque (prefira zoom; varie com moderação).
 - pose do mascote: explicando, ideia, resolvendo, pensando, desafiando, confiante, estudando ou joinha (combine com o que é falado).
 - mascote_canto: true se o mascote pequeno no canto ajuda naquele bloco (não use em blocos com layout de mascote).
+${regrasApoio}
 ${regrasFig}
 Desenhos disponíveis (nome = o que mostra):
 ${desenhos}
@@ -1251,7 +1405,9 @@ BLOCOS:
 ${textoBlocos}`;
     const E = (...v) => ({type: 'STRING', enum: v});
     const esquema = {type: 'OBJECT', properties: {blocos: {type: 'ARRAY', items: {type: 'OBJECT', properties: {
-      bloco: {type: 'INTEGER'}, layout: semVideo ? E(...SEM_CAMERA) : E('cheia', 'dividida', 'circulo', 'canto', 'mascote', 'mascote_fundo', 'alternar'),
+      bloco: {type: 'INTEGER'}, layout: E(...(semVideo ? ['visual', 'mascote'] : ['cheia', 'dividida', 'circulo', 'canto', 'mascote', 'mascote_fundo', 'alternar']), 'escala', ...(temClipe ? ['clipe'] : [])),
+      escala_cadeia: {type: 'ARRAY', items: {type: 'OBJECT', properties: {valor: {type: 'STRING'}, rotulo: {type: 'STRING'}}, required: ['valor', 'rotulo']}},
+      escala_sentido: E('sai', 'entra'), busca_clipe: {type: 'STRING'},
       pose: E(...Object.keys(POSES)), mascote_canto: {type: 'BOOLEAN'}, titulo: {type: 'STRING'}, cor_titulo: E(...Object.keys(CORES_TITULO)),
       conta: {type: 'STRING'}, transicao: E(...Object.keys(TRANSICOES)),
       figuras: {type: 'ARRAY', items: {type: 'OBJECT', properties: {tipo: E('emoji', 'desenho'), valor: {type: 'STRING'}, palavra: {type: 'STRING'},
@@ -1266,6 +1422,8 @@ ${textoBlocos}`;
     const POS = {alto_esquerda: [0.24, 0.3], alto_direita: [0.76, 0.3], meio_esquerda: [0.22, 0.5], meio_direita: [0.78, 0.5], centro: [0.5, 0.46],
       baixo_esquerda: [0.25, 0.58], baixo_direita: [0.75, 0.58]};
     let nFig = 0;
+    const pedirClipe = [];
+    const ehEmoji = v => /\p{Extended_Pictographic}/u.test(v || '');
     for (const x of r.blocos || []) {
       const k = x.bloco - 1; if (!(k >= 0 && k < blocos.length)) continue;
       const e = est(k);
@@ -1275,6 +1433,17 @@ ${textoBlocos}`;
       setTexto(k, 'texto_tela', (x.titulo || '').slice(0, 40));
       if (x.conta) setTexto(k, 'quadro', x.conta.slice(0, 40));
       e.figs = e.figs.filter(f => !f.ia);  // troca só as figuras que a IA tinha posto; as suas ficam
+      if (lay === 'escala') {
+        const cad = (x.escala_cadeia || []).map(c => temDesenho(c.valor) ? {tipo: 'desenho', valor: c.valor, rotulo: (c.rotulo || '').toUpperCase().slice(0, 20)}
+          : ehEmoji(c.valor) ? {tipo: 'emoji', valor: [...c.valor.trim()].slice(0, 2).join(''), rotulo: (c.rotulo || '').toUpperCase().slice(0, 20)} : null).filter(Boolean);
+        e.escala = {cadeia: cad.length >= 2 ? cad : cadeiaPadrao(), sentido: x.escala_sentido === 'entra' ? 'entra' : 'sai'};
+        continue;
+      }
+      if (lay === 'clipe') {
+        if (x.busca_clipe && !(e.clipe && e.clipe.termo === x.busca_clipe && (item.clipes || {})[e.clipe.id])) pedirClipe.push([k, x.busca_clipe]);
+        else if (!x.busca_clipe && !e.clipe) e.layout = semImagem(k) ? 'visual' : 'circulo';
+        continue;
+      }
       const dur = tamanho(k);
       for (const fg of x.figuras || []) {
         if (fg.tipo === 'desenho' && !(DESCRICOES || {})[fg.valor]) continue;
@@ -1284,6 +1453,15 @@ ${textoBlocos}`;
         e.figs.push({id: 'ia' + Date.now().toString(36) + nFig++, tipo: fg.tipo, valor: fg.valor, x: px, y: py, tam: fg.tipo === 'emoji' ? 200 : 280,
           ini: +inicio.toFixed(2), fim: +Math.min(dur, inicio + 2.4).toFixed(2), anim: 'pop', ia: true});
       }
+    }
+    for (const [n, [k, termo]] of pedirClipe.entries()) {  // baixa os vídeos de apoio que a IA pediu
+      aviso(`🎞️ Buscando vídeo de apoio… (${n + 1} de ${pedirClipe.length})`);
+      const e = est(k);
+      try {
+        const lista = await buscarClipes(termo);
+        if (!lista.length) throw new Error('nada encontrado');
+        await baixarClipe(e, lista[0], termo);
+      } catch (err) { e.layout = semImagem(k) ? 'visual' : 'circulo'; delete e.clipe; }
     }
     opcoes().seco = false;
     item.montouIA = true;
@@ -1392,6 +1570,13 @@ ${textoBlocos}`;
       <div class="eaba" data-aba="visual">
       <label>Layout deste bloco${c.soVoz ? ' <small>(gravado só com a voz: layouts sem câmera)</small>' : ''}</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(LAYOUTS).filter(x => !c.soVoz || SEM_CAMERA.includes(x)).map(x => `<button data-l="${x}" style="flex:1 0 30%">${LAYOUTS[x]}</button>`).join('')}</div>
+      <div id="eescalaw" hidden><label>Sequência do zoom <small>(do menor para o maior; toque num item para tirar)</small></label>
+      <div id="ecadeia" class="ebot" style="flex-wrap:wrap"></div>
+      <div class="ebot"><button id="ecdes">＋ Desenho</button><button id="ecemo">＋ Emoji</button><button id="ecpad">↺ Casa → galáxia</button></div>
+      <div class="ebot"><button data-se="sai">🔭 Afastando</button><button data-se="entra">🔬 Aproximando</button></div></div>
+      <div id="eclipew" hidden><label>Vídeo de apoio <small>(Pexels/Pixabay, grátis; em inglês acha mais)</small></label>
+      <div class="ebusca"><input id="ecbusca" type="search" placeholder="ex.: earth from space, money, traffic"><button id="ecachar">Buscar</button></div>
+      <div id="eclipes"></div><small id="ecred"></small></div>
       <label class="echeck"><input id="ecanto" type="checkbox" ${est(k).mascoteCanto ? 'checked' : ''}> 🦸 Mascote no canto (em qualquer layout)</label>
       <div id="eposew"><label>Pose do mascote</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div>
@@ -1482,7 +1667,44 @@ ${textoBlocos}`;
     const mostrarConta = () => {
       g('econtaw').hidden = !COM_TEXTO.includes(e.layout);
       g('eposew').hidden = !(COM_MASCOTE.includes(e.layout) || e.mascoteCanto);
+      est(k);  // cria a sequência padrão do zoom, se for o caso
+      g('eescalaw').hidden = e.layout !== 'escala'; g('eclipew').hidden = e.layout !== 'clipe';
+      if (e.layout === 'escala') mostrarCadeia();
+      if (e.layout === 'clipe') mostrarCredito();
     };
+    const mostrarCadeia = () => {
+      g('ecadeia').innerHTML = e.escala.cadeia.map((x, n) => `<button data-cn="${n}">${x.tipo === 'emoji' ? esc(x.valor) : '🖼️'} ${esc(x.rotulo || x.valor)} ✕</button>`).join('') ||
+        '<small>Nenhum item: ponha pelo menos dois.</small>';
+      g('ecadeia').querySelectorAll('[data-cn]').forEach(b => b.onclick = () => { e.escala.cadeia.splice(Number(b.dataset.cn), 1); guardar(); mostrarCadeia(); mostrarQuadro(k); });
+      ui.querySelectorAll('[data-se]').forEach(b => b.classList.toggle('on', b.dataset.se === e.escala.sentido));
+    };
+    const porNaCadeia = x => { const r = prompt('Nome que aparece na tela (ex.: CIDADE)', x.rotulo || ''); if (r === null) return; x.rotulo = r.trim().toUpperCase().slice(0, 20); e.escala.cadeia.push(x); guardar(); mostrarCadeia(); previa([k]); };
+    g('ecdes').onclick = () => escolherDesenho(nome => porNaCadeia({tipo: 'desenho', valor: nome, rotulo: nome.replace(/-/g, ' ').toUpperCase()}));
+    g('ecemo').onclick = () => { const em = (prompt('Cole um emoji (ex.: 🌎)') || '').trim(); if (em) porNaCadeia({tipo: 'emoji', valor: [...em].slice(0, 2).join(''), rotulo: ''}); };
+    g('ecpad').onclick = () => { e.escala.cadeia = cadeiaPadrao(); guardar(); mostrarCadeia(); previa([k]); };
+    ui.querySelectorAll('[data-se]').forEach(b => b.onclick = () => { e.escala.sentido = b.dataset.se; guardar(); mostrarCadeia(); previa([k]); });
+    const mostrarCredito = () => {
+      const cl = e.clipe;
+      g('ecred').innerHTML = cl ? `Escolhido: vídeo de ${esc(cl.autor || 'autor')} no ${esc(cl.fonte)} (“${esc(cl.termo || '')}”).` : 'Busque e toque num vídeo para usar neste bloco.';
+      if (cl && !g('ecbusca').value) g('ecbusca').value = cl.termo || '';
+    };
+    g('ecachar').onclick = async () => {
+      const termo = g('ecbusca').value.trim(); if (!termo) return g('ecbusca').focus();
+      g('eclipes').innerHTML = '<small>Buscando…</small>';
+      let lista;
+      try { lista = await buscarClipes(termo); } catch (err) { g('eclipes').innerHTML = ''; return alert('Não deu para buscar: ' + err.message); }
+      g('eclipes').innerHTML = lista.map((x, n) => `<button data-cl="${n}" class="${e.clipe && e.clipe.id === x.id ? 'on' : ''}"><img src="${esc(x.capa || '')}" alt="" loading="lazy"><small>${Math.round(x.dur || 0)} s</small></button>`).join('') ||
+        '<small>Nada encontrado. Tente outras palavras (em inglês costuma achar mais).</small>';
+      g('eclipes').querySelectorAll('[data-cl]').forEach(b => b.onclick = async () => {
+        aviso('Baixando o vídeo de apoio…');
+        try { await baixarClipe(e, lista[Number(b.dataset.cl)], termo); await guardar(); }
+        catch (err) { aviso(''); return alert('Não deu: ' + err.message); }
+        aviso('');
+        g('eclipes').querySelectorAll('[data-cl]').forEach(x => x.classList.toggle('on', x === b));
+        mostrarCredito(); mostrarQuadro(k);
+      });
+    };
+    g('ecbusca').onkeydown = ev => { if (ev.key === 'Enter') g('ecachar').click(); };
     opcao('tc', 'corTitulo'); opcao('tt', 'tamTitulo'); opcao('tp', 'posTitulo'); opcao('l', 'layout', mostrarConta); opcao('po', 'pose');
     opcao('lm', 'ladoMascote'); opcao('em', 'entradaMascote', () => previa([k]));
     g('ecanto').onchange = () => { e.mascoteCanto = g('ecanto').checked; guardar(); mostrarConta(); mostrarQuadro(k, c.ini + 0.8); };
@@ -1589,5 +1811,5 @@ ${textoBlocos}`;
     fechar();
   }
 
-  return {abrir};
+  return {abrir, buscarClipes};
 })();

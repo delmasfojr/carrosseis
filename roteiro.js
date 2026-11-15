@@ -396,6 +396,19 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       const r = await fetch(`https://www.googleapis.com/youtube/v3/videoCategories?part=id&regionCode=BR&key=${encodeURIComponent($('#chaveyt').value.trim())}`);
       alert(r.ok ? 'A chave do YouTube funciona! ✅' : `A chave não funcionou (${r.status}).`);
     };
+    $('#chavepx').value = localStorage.getItem('pexels') || '';
+    $('#chavepb').value = localStorage.getItem('pixabay') || '';
+    const guardarClipe = () => {
+      for (const [id, nome] of [['#chavepx', 'pexels'], ['#chavepb', 'pixabay']]) {
+        const v = $(id).value.trim(); if (v) localStorage.setItem(nome, v); else localStorage.removeItem(nome);
+      }
+    };
+    $('#salvarclipe').onclick = () => { guardarClipe(); alert('Chave dos vídeos de apoio salva só neste celular.'); };
+    $('#testarclipe').onclick = async () => {
+      guardarClipe();
+      try { const r = await Gravador.buscarClipes('earth'); alert(r.length ? `Funciona! ✅ Achei ${r.length} vídeos de teste.` : 'A chave funciona, mas a busca veio vazia.'); }
+      catch (e) { alert('Não funcionou: ' + e.message); }
+    };
   }
   return {iniciar, gerar, gerarAssunto, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
 })();
