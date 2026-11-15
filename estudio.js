@@ -2,7 +2,8 @@
    Slides do PDF (lidos da pasta do professor, sem sair do computador) + caneta + câmera no canto
    + compartilhar tela, tudo montado num canvas 1920×1080 que é gravado com o MediaRecorder. */
 import * as pdfjs from './vendor/pdfjs/pdf.min.mjs';
-import {desenharTraco, contorno, pontosReais, mult, IDENT, matrizOk, reconhecer, formaArrasto, novoId, limparCache} from './tinta.js';
+import {desenharTraco, contorno, pontosReais, mult, IDENT, matrizOk, reconhecer, formaArrasto, novoId, limparCache,
+  espDe, nivelDe, espMarca, ESP_PADRAO, virarForma, desfazerForma, MEXEU_DESFAZ} from './tinta.js';
 pdfjs.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.min.mjs';
 
 const W = 1920, H = 1080;
@@ -12,7 +13,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const tela = $('#tela'), ctx = tela.getContext('2d');
 
 /* ---------- preferências (só neste computador) ---------- */
-const PREF_PADRAO = {cor: LAR, esp: 7, formato: 'ret', tam: 24, canto: 'id', pos: null, espelho: true, camvis: true,
+const PREF_PADRAO = {cor: LAR, esp: espDe(ESP_PADRAO), espN: ESP_PADRAO, formato: 'ret', tam: 24, canto: 'id', pos: null, espelho: true, camvis: true,
   marcadagua: true, forma: 'reta', contorno: true, lembrar: false, voz: true, ruido: false, somtela: true, qualidade: '1080', cam: '', mic: '', faixa: true};
 let pref = {...PREF_PADRAO};
 try { Object.assign(pref, JSON.parse(localStorage.getItem('estudio-pref') || '{}')); } catch (e) {}
@@ -404,7 +405,8 @@ function apagarEm(x, y) {
   }
 }
 
-/* segurar a caneta parada no fim do traço vira forma (reta, círculo, retângulo, triângulo, seta) */
+/* segurar a caneta parada no fim do traço vira forma (reta, círculo, retângulo, triângulo, seta).
+   Se depois disso a caneta continuar andando (ex.: parou no meio do "7" para pensar), volta a ser traço normal. */
 let seguraTimer = null;
 function armarForma(t) {
   clearTimeout(seguraTimer);
@@ -413,13 +415,12 @@ function armarForma(t) {
     if (atual !== t) return;
     const f = reconhecer(t.pts);
     if (!f) return;
-    t.tipo = 'forma'; t.f = f; t.formado = true;
-    if (t.esp > pref.esp * 2) t.esp = pref.esp * 2; // marca-texto vira forma de traço normal
+    virarForma(t, f);
     sujar();
   }, 550);
 }
 
-let atual = null, arrasto = null;
+let atual = null, arrasto = null, dono = null, penViu = false; // dono = qual ponteiro está riscando agora
 tela.addEventListener('contextmenu', e => e.preventDefault());
 tela.addEventListener('pointerdown', e => {
   const [x, y] = pontoNaTela(e);
@@ -430,15 +431,19 @@ tela.addEventListener('pointerdown', e => {
   }
   if (e.button !== 0 && e.pointerType === 'mouse') return;
   if (!podeRiscar()) return;
+  if (e.pointerType === 'pen') penViu = true;
+  if (e.pointerType === 'touch' && penViu) return; // tela touch + caneta: a mão encostada não risca
+  if (atual && dono !== null && dono !== e.pointerId) return; // um segundo dedo/caneta não rouba o traço
   tela.setPointerCapture(e.pointerId);
+  dono = e.pointerId;
   const f = (e.buttons & 32) ? 'borracha' : ferr; // ponta de borracha da caneta da mesa
   if (f === 'borracha') { atual = {borracha: true}; apagarEm(x, y); return; }
   if (f === 'laser') { atual = {laser: true}; laser.push([x, y, performance.now()]); return; }
   const pr = e.pointerType === 'pen';
   if (f === 'forma') {
-    atual = {id: novoId(), tipo: 'forma', cor: pref.cor, esp: pref.esp, pts: [[x, y]], ini: [x, y], f: formaArrasto(pref.forma, [x, y], [x + 1, y + 1])};
+    atual = {id: novoId(), tipo: 'forma', cor: pref.cor, esp: pref.esp, base: pref.esp, pts: [[x, y]], ini: [x, y], f: formaArrasto(pref.forma, [x, y], [x + 1, y + 1])};
   } else {
-    atual = {id: novoId(), tipo: f, cor: pref.cor, esp: f === 'marca' ? pref.esp * 4 : pref.esp, pr, pts: [[x, y, pr ? e.pressure : .5]]};
+    atual = {id: novoId(), tipo: f, cor: pref.cor, esp: f === 'marca' ? espMarca(pref.esp) : pref.esp, base: pref.esp, pr, pts: [[x, y, pr ? e.pressure : .5]]};
     armarForma(atual);
   }
   tracos().push(atual);
@@ -452,14 +457,18 @@ tela.addEventListener('pointermove', e => {
     marcarCanto();
     return;
   }
-  if (!atual) return;
+  if (!atual || e.pointerId !== dono) return;
   for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) {
     const [x, y] = pontoNaTela(ev);
     if (atual.borracha) apagarEm(x, y);
     else if (atual.laser) laser.push([x, y, performance.now()]);
     else if (atual.ini) atual.f = formaArrasto(pref.forma, atual.ini, [x, y], ev.shiftKey);
-    else if (atual.formado) { if (atual.f.k === 'reta') atual.f = formaArrasto('reta', atual.f.a, [x, y], true); }
     else {
+      if (atual.formado) { // virou forma mas a caneta seguiu andando: volta a ser traço
+        const o = atual.antes.onde;
+        if (Math.hypot(x - o[0], y - o[1]) < MEXEU_DESFAZ) continue;
+        desfazerForma(atual);
+      }
       const u = atual.pts[atual.pts.length - 1];
       if (Math.hypot(x - u[0], y - u[1]) < 1.5) continue;
       atual.pts.push([x, y, atual.pr ? ev.pressure : .5]);
@@ -468,14 +477,16 @@ tela.addEventListener('pointermove', e => {
   }
   sujar();
 });
-const soltar = () => {
-  if (arrasto) { arrasto = null; tela.classList.remove('mover'); salvarPref(); }
+const soltar = e => {
+  if (arrasto) { arrasto = null; tela.classList.remove('mover'); salvarPref(); return; }
+  if (e && dono !== null && e.pointerId !== dono) return; // soltou outro dedo: o traço continua
   clearTimeout(seguraTimer);
-  if (atual && atual.pts) { atual.fim = true; delete atual.ini; sujar(); }
-  atual = null;
+  if (atual && atual.pts) { atual.fim = true; delete atual.ini; delete atual.antes; sujar(); }
+  atual = null; dono = null;
 };
 tela.addEventListener('pointerup', soltar);
 tela.addEventListener('pointercancel', soltar);
+tela.addEventListener('lostpointercapture', soltar); // perdeu o foco no meio do traço: a caneta não fica "grudada"
 
 /* mover/girar/escalar traços (seleção feita no tablet) */
 function moverTracos(ids, m) {
@@ -513,6 +524,7 @@ $('#limpar').onclick = limparSlide;
 function escolherFerr(f) {
   ferr = f;
   $$('[data-ferr]').forEach(b => b.classList.toggle('on', b.dataset.ferr === f));
+  cursorCaneta();
 }
 $$('[data-ferr]').forEach(b => b.onclick = () => escolherFerr(b.dataset.ferr));
 $('#forma').onchange = e => { pref.forma = e.target.value; salvarPref(); escolherFerr('forma'); };
@@ -520,8 +532,34 @@ $$('.cor').forEach(b => b.onclick = () => {
   pref.cor = b.dataset.cor; salvarPref();
   $$('.cor').forEach(c => c.classList.toggle('on', c === b));
   if (ferr === 'laser' || ferr === 'borracha') escolherFerr('caneta');
+  mostrarEsp();
 });
-$('#espessura').onchange = e => { pref.esp = +e.target.value; salvarPref(); };
+/* espessura de 1 a 100 (pref.espN); pref.esp guarda os pixels no quadro 1920×1080 */
+function mostrarEsp() {
+  $('#espessura').value = pref.espN; $('#espnum').value = pref.espN;
+  const bola = $('#espbola'), d = Math.max(2, Math.min(26, pref.esp * tela.getBoundingClientRect().width / W));
+  bola.style.width = bola.style.height = d + 'px'; bola.style.background = pref.cor;
+  cursorCaneta();
+}
+function definirEsp(n, salvar = true) {
+  pref.espN = Math.min(100, Math.max(1, Math.round(+n) || ESP_PADRAO));
+  pref.esp = espDe(pref.espN);
+  mostrarEsp();
+  if (salvar) salvarPref();
+}
+$('#espessura').oninput = e => definirEsp(e.target.value);
+$('#espnum').onchange = e => definirEsp(e.target.value);
+$('#espnum').onkeydown = e => { if (e.key === 'Enter') { definirEsp(e.target.value); e.target.blur(); } e.stopPropagation(); };
+$('#espnum').onkeyup = e => e.stopPropagation();
+/* cursor do tamanho real da ponta (caneta e marca-texto) */
+function cursorCaneta() {
+  if (ferr !== 'caneta' && ferr !== 'marca') { tela.style.cursor = ''; return; }
+  const px = (ferr === 'marca' ? espMarca(pref.esp) : pref.esp) * tela.getBoundingClientRect().width / W;
+  const d = Math.max(6, Math.min(120, Math.round(px))), r = d / 2, s = d + 4;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"><circle cx="${s / 2}" cy="${s / 2}" r="${r}" fill="${pref.cor}" fill-opacity="${ferr === 'marca' ? .35 : .55}" stroke="#fff" stroke-width="1"/><circle cx="${s / 2}" cy="${s / 2}" r="${r + 1}" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="1"/></svg>`;
+  tela.style.cursor = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${Math.round(s / 2)} ${Math.round(s / 2)}, crosshair`;
+}
+new ResizeObserver(() => mostrarEsp()).observe(tela);
 
 /* =====================================================================
    CENAS
@@ -1254,7 +1292,7 @@ window.addEventListener('beforeunload', e => { if (gravador) { e.preventDefault(
    TECLADO
    ===================================================================== */
 document.addEventListener('keydown', e => {
-  if (e.target.matches('input[type=search], input[type=text], select')) return;
+  if (e.target.matches('input[type=search], input[type=text], input[type=number], input[type=range], select')) return;
   const k = e.key;
   if ((e.ctrlKey || e.metaKey) && k.toLowerCase() === 'z') { e.preventDefault(); desfazer(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1269,6 +1307,8 @@ document.addEventListener('keydown', e => {
   else if (k.toLowerCase() === 'f') escolherFerr('forma');
   else if (k.toLowerCase() === 'l') escolherFerr('laser');
   else if (k.toLowerCase() === 'e') escolherFerr('borracha');
+  else if (k === '[' || k === '-') definirEsp(pref.espN - (pref.espN > 20 ? 5 : 1)); // espessura: [ e ] (ou - e +)
+  else if (k === ']' || k === '=' || k === '+') definirEsp(pref.espN + (pref.espN >= 20 ? 5 : 1));
   else if (k === 'Delete' || k === 'Backspace') limparSlide();
   else if (k.toLowerCase() === 'g') gravador ? pausar() : gravar();
 });
@@ -1285,7 +1325,8 @@ function ajustar() {
 new ResizeObserver(ajustar).observe($('#palco'));
 
 function aplicarPref() {
-  $('#espessura').value = pref.esp;
+  if (!(pref.espN >= 1)) pref.espN = nivelDe(pref.esp * 1.55); // preferência antiga (fina/média/grossa): mesma grossura de antes
+  definirEsp(pref.espN, false);
   $('#forma').value = pref.forma;
   $('#lembrar').checked = pref.lembrar;
   $('#contornocam').checked = pref.contorno;

@@ -50,6 +50,19 @@ button:disabled{opacity:.4}
 #msg{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--lar);color:#fff;padding:8px 14px;border-radius:12px;font-weight:700;max-width:90%;text-align:center;pointer-events:none}
 #contagem{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:160px 'Anton',Impact,sans-serif;color:var(--lar);text-shadow:0 6px 30px #000;pointer-events:none}
 #cenas{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;background:var(--navy);padding:8px;border-radius:12px;box-shadow:0 6px 20px #0008;z-index:3}
+#espbox{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:min(420px,92%);background:var(--navy);padding:10px 14px;border-radius:14px;box-shadow:0 6px 20px #0008;z-index:3;display:flex;flex-direction:column;gap:8px}
+#espbox.hide{display:none}
+#espbox .esptopo{display:flex;align-items:center;gap:10px}
+#espbox .esptopo b{font:28px 'Anton',Impact,sans-serif}
+#espbox .esptopo small{opacity:.7}
+#espbox .espalvo{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+#espbox .esplinha{display:flex;align-items:center;gap:8px}
+#espbox .esplinha input{flex:1;accent-color:#FF7A00;height:34px}
+#espbox .esplinha button{width:40px;height:40px;font-size:22px;padding:0}
+#espbox .esprapido{display:flex;gap:6px}
+#espbox .esprapido button{flex:1;padding:6px 0}
+.espb{display:inline-block;border-radius:50%;width:8px;height:8px;box-shadow:0 0 0 1px #fff8;vertical-align:middle}
+#mesp .espb{margin-right:6px}
 #formas{position:absolute;left:8px;bottom:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--navy);padding:8px;border-radius:12px;box-shadow:0 6px 20px #0008;z-index:3}
 #desconectado{position:absolute;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-weight:700;z-index:4}
 </style>
@@ -99,6 +112,11 @@ button:disabled{opacity:.4}
       <button data-forma="ret">▭ Retângulo</button><button data-forma="tri">△ Triângulo</button>
       <button data-forma="eixos">✛ Eixos</button>
     </div>
+    <div id="espbox" class="hide">
+      <div class="esptopo"><span class="espalvo"><i class="espb"></i></span><b id="espval">25</b><small>de 100</small></div>
+      <div class="esplinha"><button id="espmenos">−</button><input id="espslider" type="range" min="1" max="100" step="1" value="25"><button id="espmais">＋</button></div>
+      <div class="esprapido"><button data-esp="5">5</button><button data-esp="15">15</button><button data-esp="25">25</button><button data-esp="40">40</button><button data-esp="60">60</button><button data-esp="100">100</button></div>
+    </div>
     <div id="msg" class="hide"></div>
     <div id="contagem" class="hide"></div>
     <div id="desconectado" class="hide">Conexão com o PC caiu. Tentando de novo…</div>
@@ -115,7 +133,7 @@ button:disabled{opacity:.4}
     <button class="cor" data-cor="#D62828" style="background:#D62828"></button>
     <button class="cor" data-cor="#1E9E4A" style="background:#1E9E4A"></button>
     <button class="cor" data-cor="#1F6FEB" style="background:#1F6FEB"></button>
-    <button id="mesp">média</button>
+    <button id="mesp" title="Espessura (1 a 100)">25</button>
     <span class="esp"></span>
     <button id="mdedo" title="Escrever com o dedo">☝️ Dedo</button>
     <button id="mdesfazer">↶</button>

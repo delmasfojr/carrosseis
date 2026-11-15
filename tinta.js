@@ -7,11 +7,21 @@ const cache = new Map(); // id → {k, path}
 let nId = 0;
 export const novoId = () => Math.random().toString(36).slice(2, 7) + (nId++).toString(36);
 
+/* ---------- espessura: escala de 1 a 100 → pixels no quadro 1920×1080 ----------
+   curva suave: os números baixos têm passos finos (1 ≈ 1,5 px · 25 ≈ 11 px · 50 ≈ 29 px · 100 = 80 px) */
+export const ESP_PADRAO = 25;
+export const espDe = n => +(1.5 + 78.5 * Math.pow(Math.min(100, Math.max(1, +n || ESP_PADRAO)) / 100, 1.5)).toFixed(2);
+export const nivelDe = px => Math.min(100, Math.max(1, Math.round(100 * Math.pow(Math.max(0, (+px || 11) - 1.5) / 78.5, 1 / 1.5))));
+export const espMarca = esp => Math.min(200, Math.max(10, esp * 4)); // marca-texto: 4× a caneta (10 a 200 px)
+
 /* ---------- desenho ---------- */
 function caminhoTinta(t) {
-  const pts = t.pts.map(p => [p[0], p[1], p[2] ?? .5]);
-  const o = getStroke(pts, {size: t.esp * 1.55, thinning: t.pr ? .62 : .5, smoothing: .55, streamline: .42,
-    simulatePressure: !t.pr, last: !!t.fim, start: {taper: 0, cap: true}, end: {taper: t.fim ? t.esp * 2 : 0, cap: true}});
+  // pressão só com caneta de verdade; mínimo 0,2 (algumas mesas mandam 0 no primeiro ponto e o traço nascia fiozinho)
+  const pts = t.pts.map(p => [p[0], p[1], t.pr ? Math.max(.2, Math.min(1, p[2] ?? .5)) : .5]);
+  // canetinha: largura = t.esp (igual ao ponto e às formas), sem afinar com a velocidade do mouse,
+  // sem "rabicho" que aparecia de repente ao soltar, e o traço chega até a ponta (last) enquanto desenha
+  const o = getStroke(pts, {size: t.esp, thinning: t.pr ? .5 : 0, smoothing: .5, streamline: .3,
+    simulatePressure: false, last: true, start: {taper: 0, cap: true}, end: {taper: 0, cap: true}});
   const path = new Path2D();
   if (o.length < 3) return path;
   path.moveTo(o[0][0], o[0][1]);
@@ -73,7 +83,7 @@ export function desenharTraco(cx, t) {
     t.pts.forEach((p, i) => i ? cx.lineTo(p[0], p[1]) : cx.moveTo(p[0], p[1]));
     cx.stroke();
   } else {
-    const k = t.pts.length + (t.fim ? 'f' : '');
+    const k = t.pts.length + '|' + t.esp;
     let c = t.id && cache.get(t.id);
     if (!c || c.k !== k) { c = {k, path: caminhoTinta(t)}; if (t.id) cache.set(t.id, c); }
     cx.fill(c.path);
@@ -112,6 +122,21 @@ export function formaArrasto(k, a, b, igual) {
 function retaReta(a, b) { // trava em 0°, 45°, 90°
   const dx = b[0] - a[0], dy = b[1] - a[1], ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * Math.PI / 4, r = Math.hypot(dx, dy);
   return [a[0] + r * Math.cos(ang), a[1] + r * Math.sin(ang)];
+}
+
+/* ---------- virar forma / voltar a ser traço (PC e tablet usam as mesmas regras) ----------
+   t.base = espessura da caneta escolhida (a marca-texto usa 4× isso; ao virar forma volta para a da caneta) */
+export const MEXEU_DESFAZ = 28; // depois de virar forma, se a caneta andar mais que isso, volta a ser traço normal
+export function virarForma(t, f) {
+  if (!t.antes) t.antes = {tipo: t.tipo, esp: t.esp, onde: t.pts[t.pts.length - 1]};
+  t.tipo = 'forma'; t.f = f; t.formado = true;
+  if (t.antes.tipo === 'marca') t.esp = t.base || t.esp / 4;
+}
+export function desfazerForma(t) {
+  if (!t.antes) return false;
+  t.tipo = t.antes.tipo; t.esp = t.antes.esp;
+  delete t.f; delete t.antes; t.formado = false;
+  return true;
 }
 
 /* ---------- reconhecimento: segurou parado no fim do traço ---------- */

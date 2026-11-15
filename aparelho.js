@@ -1,6 +1,7 @@
 /* Aparelho do Estúdio: celular como câmera ou tablet como mesa de escrever.
    Abre por aparelho.html#código (QR code mostrado no PC). */
-import {desenharTraco, reconhecer, formaArrasto, novoId, pontosReais, mult, aplicar, IDENT} from './tinta.js';
+import {desenharTraco, reconhecer, formaArrasto, novoId, pontosReais, mult, aplicar, IDENT,
+  espDe, espMarca, ESP_PADRAO, virarForma, desfazerForma, MEXEU_DESFAZ} from './tinta.js';
 (() => {
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -222,7 +223,8 @@ let est = {cena: 'slide', pagina: 0, nPag: 0, gravando: false, pausado: false, t
 let tempoBase = 0, tempoEm = 0;
 let fundo = null, fundoChave = '', listaPC = [], listaChave = '';
 const minhas = new Map(); // traços meus ainda não confirmados pelo PC
-let ferr = 'caneta', cor = '#FF7A00', esp = 7, penViu = false, dedo = false;
+let espN = (() => { try { return Math.min(100, Math.max(1, +localStorage.getItem('mesa-esp') || ESP_PADRAO)); } catch (e) { return ESP_PADRAO; } })();
+let ferr = 'caneta', cor = '#FF7A00', esp = espDe(espN), penViu = false, dedo = false, dono = null;
 let atual = null, laser = [];
 let sujo = true;
 
@@ -455,8 +457,7 @@ function armarForma(t) {
     if (atual !== t) return;
     const f = reconhecer(t.pts);
     if (!f) return;
-    t.tipo = 'forma'; t.f = f; t.formado = true;
-    if (t.esp > 40) t.esp = Math.round(t.esp / 4);
+    virarForma(t, f);
     enviar({t: 'forma', id: t.id, f});
     if (navigator.vibrate) navigator.vibrate(15);
     sujo = true;
@@ -468,7 +469,10 @@ cv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'touch' && penViu && !dedo) return; // com caneta, a mão encostada não risca
   if (!['slide', 'quadro', 'tela'].includes(est.cena)) return;
   e.preventDefault();
+  if (atual && dono !== null && dono !== e.pointerId) return; // segundo dedo não rouba o traço
+  $('#espbox').classList.add('hide');
   cv.setPointerCapture(e.pointerId);
+  dono = e.pointerId;
   const p = ponto(e);
   const f = (e.buttons & 32) ? 'borracha' : ferr;
   if (f === 'selecao') { atual = iniciarSel(p); sujo = true; return; }
@@ -478,9 +482,9 @@ cv.addEventListener('pointerdown', e => {
   const id = novoId();
   const pr = e.pointerType === 'pen';
   if (f === 'forma') {
-    atual = {id, tipo: 'forma', cor, esp, pts: [p], ini: p, f: formaArrasto(formaSel, p, [p[0] + 1, p[1] + 1])};
+    atual = {id, tipo: 'forma', cor, esp, base: esp, pts: [p], ini: p, f: formaArrasto(formaSel, p, [p[0] + 1, p[1] + 1])};
   } else {
-    atual = {id, tipo: f, cor, esp: f === 'marca' ? esp * 4 : esp, pr, pts: [p]};
+    atual = {id, tipo: f, cor, esp: f === 'marca' ? espMarca(esp) : esp, base: esp, pr, pts: [p]};
     armarForma(atual);
   }
   minhas.set(id, atual);
@@ -488,7 +492,7 @@ cv.addEventListener('pointerdown', e => {
   sujo = true;
 });
 cv.addEventListener('pointermove', e => {
-  if (!atual) return;
+  if (!atual || (dono !== null && e.pointerId !== dono)) return;
   e.preventDefault();
   const novos = [];
   for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) {
@@ -497,7 +501,12 @@ cv.addEventListener('pointermove', e => {
     if (atual.laser) { laser.push([...p, performance.now()]); novos.push(p); continue; }
     if (atual.borracha) { novos.push(p); continue; }
     if (atual.ini) { atual.f = formaArrasto(formaSel, atual.ini, p); continue; }
-    if (atual.formado) { if (atual.f.k === 'reta') atual.f = formaArrasto('reta', atual.f.a, p, true); continue; }
+    if (atual.formado) { // virou forma mas a caneta seguiu andando: volta a ser traço
+      const o = atual.antes.onde;
+      if (Math.hypot(p[0] - o[0], p[1] - o[1]) < MEXEU_DESFAZ) continue;
+      desfazerForma(atual);
+      enviar({t: 'desforma', id: atual.id});
+    }
     const u = atual.pts[atual.pts.length - 1];
     if (Math.hypot(p[0] - u[0], p[1] - u[1]) < 2) continue;
     atual.pts.push(p);
@@ -505,21 +514,25 @@ cv.addEventListener('pointermove', e => {
     novos.push(p);
   }
   if (atual.laco || atual.arraste) return;
-  if (atual.ini || atual.formado) { enviar({t: 'forma', id: atual.id, f: atual.f}); sujo = true; return; }
+  if (atual.ini) { enviar({t: 'forma', id: atual.id, f: atual.f}); sujo = true; return; }
+  if (atual.formado) return;
   if (!novos.length) return;
   if (atual.laser) enviar({t: 'laser', pts: novos});
   else if (atual.borracha) enviar({t: 'apaga', pts: novos});
   else enviar({t: 'pts', id: atual.id, pts: novos});
   sujo = true;
 });
-const soltar = () => {
+const soltar = e => {
+  if (e && dono !== null && e.pointerId !== dono) return; // soltou outro dedo: o traço continua
+  dono = null;
   clearTimeout(seguraTimer);
   if (atual && (atual.laco || atual.arraste)) { soltarSel(); atual = null; sujo = true; return; }
-  if (atual && atual.id) { atual.fim = true; delete atual.ini; enviar({t: 'fim', id: atual.id}); sujo = true; }
+  if (atual && atual.id) { atual.fim = true; delete atual.ini; delete atual.antes; enviar({t: 'fim', id: atual.id}); sujo = true; }
   atual = null;
 };
 cv.addEventListener('pointerup', soltar);
 cv.addEventListener('pointercancel', soltar);
+cv.addEventListener('lostpointercapture', soltar);
 document.addEventListener('touchmove', e => e.preventDefault(), {passive: false}); // sem rolar/zoom sem querer
 
 const cmd = (c, v) => enviar({t: 'cmd', c, v});
@@ -547,11 +560,26 @@ $$('#formas [data-forma]').forEach(b => b.onclick = () => {
   $('#formas').classList.add('hide');
 });
 $$('#mesa .cor').forEach(b => b.onclick = () => {
-  cor = b.dataset.cor; $$('#mesa .cor').forEach(x => x.classList.toggle('on', x === b));
+  cor = b.dataset.cor; $$('#mesa .cor').forEach(x => x.classList.toggle('on', x === b)); definirEsp(espN);
   if (ferr === 'laser' || ferr === 'borracha') $('[data-f=caneta]').click();
 });
-const ESP = [[4, 'fina'], [7, 'média'], [12, 'grossa']];
-$('#mesp').onclick = () => { const i = (ESP.findIndex(x => x[0] === esp) + 1) % ESP.length; esp = ESP[i][0]; $('#mesp').textContent = ESP[i][1]; };
+/* espessura de 1 a 100: botão abre a régua (deslizar + atalhos) */
+function definirEsp(n) {
+  espN = Math.min(100, Math.max(1, Math.round(+n) || ESP_PADRAO));
+  esp = espDe(espN);
+  try { localStorage.setItem('mesa-esp', espN); } catch (e) {}
+  $('#mesp').innerHTML = `<i class="espb"></i>${espN}`;
+  $('#espval').textContent = espN;
+  $('#espslider').value = espN;
+  const r = cv.getBoundingClientRect().width / W || .5, d = Math.max(2, Math.min(40, esp * r));
+  for (const b of document.querySelectorAll('.espb')) { b.style.width = b.style.height = Math.min(d, b.closest('#mesp') ? 22 : 40) + 'px'; b.style.background = cor; }
+}
+$('#mesp').onclick = () => { $('#espbox').classList.toggle('hide'); $('#formas').classList.add('hide'); definirEsp(espN); };
+$('#espslider').oninput = e => definirEsp(e.target.value);
+$$('#espbox [data-esp]').forEach(b => b.onclick = () => definirEsp(b.dataset.esp));
+$('#espmenos').onclick = () => definirEsp(espN - 1);
+$('#espmais').onclick = () => definirEsp(espN + 1);
+definirEsp(espN);
 $('#mdedo').onclick = () => { dedo = !dedo; $('#mdedo').classList.toggle('on', dedo); };
 
 $('#modomesa').onclick = async () => {

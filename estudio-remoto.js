@@ -167,6 +167,7 @@ function tracos(forcar) {
   return true;
 }
 
+import {espMarca, virarForma, desfazerForma} from './tinta.js';
 /* ---------- mesa → PC ---------- */
 const emCurso = new Map();
 function receber(conn, d) {
@@ -175,8 +176,9 @@ function receber(conn, d) {
     case 'ini': {
       if (!E.podeRiscar()) return;
       const tipo = ['marca', 'forma'].includes(d.tipo) ? d.tipo : 'caneta';
-      const t = {id: String(d.id), tipo, cor: String(d.cor).slice(0, 9), pr: !!d.pr,
-        esp: Math.min(60, +d.esp || 7) * (tipo === 'marca' ? 4 : 1), pts: [[+d.p[0], +d.p[1], +(d.p[2] ?? .5)]], f: forma(d.f)};
+      const base = Math.min(80, Math.max(1, +d.esp || 11)); // espessura da caneta (escala 1–100 já em pixels)
+      const t = {id: String(d.id), tipo, cor: String(d.cor).slice(0, 9), pr: !!d.pr, base,
+        esp: tipo === 'marca' ? espMarca(base) : base, pts: [[+d.p[0], +d.p[1], +(d.p[2] ?? .5)]], f: forma(d.f)};
       E.tracos().push(t); E.historico().push({add: t});
       emCurso.set(t.id, t); E.sujar();
       break;
@@ -193,14 +195,19 @@ function receber(conn, d) {
       if (!t) return;
       const f = forma(d.f);
       if (!f) return;
-      t.tipo = 'forma'; t.f = f;
-      if (t.esp > 40) t.esp = Math.round(t.esp / 4);
+      if (t.tipo === 'forma') t.f = f; // forma sendo arrastada (ou reta sendo ajustada)
+      else virarForma(t, f);           // traço que virou forma: marca-texto volta para a grossura da caneta
       E.sujar();
+      break;
+    }
+    case 'desforma': { // virou forma, mas a caneta seguiu andando: volta a ser traço
+      const t = emCurso.get(String(d.id));
+      if (t && desfazerForma(t)) E.sujar();
       break;
     }
     case 'fim': {
       const t = emCurso.get(String(d.id));
-      if (t) t.fim = true;
+      if (t) { t.fim = true; delete t.antes; }
       emCurso.delete(String(d.id)); E.sujar(); tracos(true); break;
     }
     case 'laser': if (Array.isArray(d.pts)) for (const p of d.pts) E.laser([+p[0], +p[1], performance.now()]); break;
