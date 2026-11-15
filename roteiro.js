@@ -62,6 +62,8 @@ const Roteiro = (() => {
   async function mostrarLista() {
     const itens = (await todosR()).sort((a, b) => b.id.localeCompare(a.id));
     $('#rvazio').hidden = itens.length > 0;
+    $('#rlimpar').hidden = itens.length === 0;
+    $('#rapagargravados').hidden = !itens.some(i => i.gravado);
     document.querySelectorAll('.nroteiros').forEach(e => e.textContent = itens.length ? `(${itens.length})` : '');
     $('#ritens').innerHTML = itens.map(i => `<button class="rcartao ${i.gravado ? 'postado' : ''}" data-id="${i.id}">
       <span class="nota">${fogo(i.conteudo.nota_viral)} ${i.conteudo.nota_viral}/10</span>
@@ -98,6 +100,7 @@ const Roteiro = (() => {
     // gravação e vídeo pronto
     const nt = (atual.takes || []).filter(Boolean).length, nb = c.blocos.length + 1;
     $('#rgravar').textContent = atual.video ? '🎥 Regravar ou remontar' : nt ? `🎥 Continuar a gravação (${nt} de ${nb} blocos)` : '🎥 Gravar o vídeo';
+    $('#rdenovo').hidden = !(nt || atual.video);
     if (urlVideo) { URL.revokeObjectURL(urlVideo); urlVideo = null; }
     if (atual.video) {
       urlVideo = URL.createObjectURL(atual.video);
@@ -291,6 +294,25 @@ const Roteiro = (() => {
     $('#rcopiarleg').onclick = async () => alert(await copiar($('#rlegenda').value) ? 'Legenda copiada!' : 'Selecione e copie à mão.');
     $('#rlegenda').onchange = async () => { atual.conteudo.legenda = $('#rlegenda').value; await salvarR(atual); };
     $('#rmarcar').onclick = async () => { atual.gravado = !atual.gravado; await salvarR(atual); abrir(atual.id); };
+    // apaga takes e vídeo pronto e abre o gravador no bloco 1; textos, legenda, estilos e música ficam
+    $('#rdenovo').onclick = async () => {
+      if (!confirm('Apagar tudo o que já foi gravado deste roteiro e começar do bloco 1?\nO roteiro, a legenda, os estilos e a música ficam. (não dá para desfazer)')) return;
+      atual.takes = []; delete atual.video; atual.gravado = false;
+      await salvarR(atual);
+      Gravador.abrir(atual, salvarR, () => abrir(atual.id));
+    };
+    $('#rapagargravados').onclick = async () => {
+      const g = (await todosR()).filter(i => i.gravado);
+      if (!confirm(`Apagar do celular os ${g.length} roteiros marcados como gravados? (não dá para desfazer)`)) return;
+      for (const i of g) await apagarR(i.id);
+      mostrarLista();
+    };
+    $('#rapagartodos').onclick = async () => {
+      const n = (await todosR()).length;
+      if (!confirm(`Apagar do celular TODOS os ${n} roteiros (e os vídeos gravados deles)? (não dá para desfazer)`)) return;
+      await tx('readwrite', s => s.clear(), 'r');
+      mostrarLista();
+    };
     $('#rexcluir').onclick = async () => { if (confirm('Excluir este roteiro do celular? (não dá para desfazer)')) { await apagarR(atual.id); tela('roteiros'); } };
     $('#tpplay').onclick = playTP;
     $('#tptexto').onclick = playTP;

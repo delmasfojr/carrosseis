@@ -192,12 +192,17 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
     <div class="seg"><button data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button class="on" data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
     <p id="rvazio" class="dica" hidden>Nenhum roteiro ainda. Em <b>＋ Criar</b>, escolha “Roteiro de Reels”, ou toque em <b>Roteiro</b> num vídeo da aba <b>🔥 Ideias</b>.</p>
     <div id="ritens"></div>
+    <div id="rlimpar" class="rodape" hidden>
+      <button id="rapagargravados" class="perigo">Apagar os já gravados</button>
+      <button id="rapagartodos" class="perigo">Apagar todos</button>
+    </div>
   </section>
 
   <section class="tela" id="verroteiro" hidden>
     <button id="rvoltar" class="sec">← Voltar</button>
     <h2 id="rtitulo" style="margin-top:14px"></h2>
     <button id="rgravar" class="principal" style="margin-top:0">🎥 Gravar o vídeo</button>
+    <button id="rdenovo" class="sec perigo" style="width:100%;margin-top:10px" hidden>🔁 Começar a gravação do zero</button>
     <div id="rvideofinal"></div>
     <button id="rtp" class="sec" style="width:100%;margin-top:10px">🎬 Só teleprompter (gravar com outra câmera)</button>
     <div id="rcorpo"></div>
