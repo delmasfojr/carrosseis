@@ -1014,7 +1014,8 @@ Se não houver fala, devolva a lista vazia.`;
   const cacheFigs = new Map();
   let posFigs = new Map();  // id → {cx, cy, s}: onde cada figura foi desenhada (para tocar nela no editor)
   function posicionarFigs(ctx, k, lay) {
-    const e = est(k), b = blocos[k], op = opcoes();
+    const e = {...est(k)}, b = blocos[k], op = opcoes();
+    e.figs = e.figs.filter(f => !f.cheia);  // imagem em tela cheia não disputa lugar com as figuras
     const medidas = e.figs.map(f => caixaFig(f));
     const assin = JSON.stringify([lay, b.quadro, b.texto_tela, e.tamTitulo, e.posTitulo, e.tamMascote, e.ladoMascote, e.mascoteCanto, e.pose,
       op.legenda, op.mascote, poses.size, e.figs.map((f, n) => [f.id, f.x, f.y, f.ini, f.fim, f.fixa, medidas[n]])]);
@@ -1118,12 +1119,14 @@ Se não houver fala, devolva a lista vazia.`;
       ctx.filter = filtro; caber(ctx, v);
     } else cobrir(ctx, v, 0, 0, W, H);
     ctx.restore(); ctx.filter = 'none';
+    const sobreImagem = desenharFigsCheias(ctx, k, local);  // imagens em tela cheia: cobrem o fundo, mas não o @, o título e a legenda
     ctx.fillStyle = '#ffffff40'; ctx.fillRect(0, 0, W, 14);
     ctx.fillStyle = LAR; ctx.fillRect(0, 0, W * Math.min(1, decorrido / total), 14);
     ctx.font = '42px Anton, Impact, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
     const a = '@DELMAO', bb = 'SIMPLIFICA', la = ctx.measureText(a).width, lb = ctx.measureText(bb).width;
-    ctx.save(); ctx.shadowColor = creme ? 'transparent' : '#000a'; ctx.shadowBlur = 10;
-    ctx.fillStyle = creme ? NAVY : '#fff'; ctx.fillText(a, (W - la - lb) / 2, 80);
+    const fundoClaro = creme && !sobreImagem;
+    ctx.save(); ctx.shadowColor = fundoClaro ? 'transparent' : '#000a'; ctx.shadowBlur = 10;
+    ctx.fillStyle = fundoClaro ? NAVY : '#fff'; ctx.fillText(a, (W - la - lb) / 2, 80);
     ctx.fillStyle = LAR; ctx.fillText(bb, (W - la - lb) / 2 + la, 80); ctx.restore();
     if (b.texto_tela) {
       const [fundo, corT] = CORES_TITULO[e.corTitulo] || CORES_TITULO.navy, y = H * (POS_TITULO[e.posTitulo] || 0.17);
@@ -1444,10 +1447,44 @@ Se não houver fala, devolva a lista vazia.`;
     const im = imgFig(f);
     return im && im.naturalWidth ? [im.naturalWidth * f.tam / im.naturalHeight, f.tam] : [f.tam, f.tam];
   }
+  // imagem do celular em tela cheia: "preencher" corta as bordas; "inteira" mostra tudo com a própria imagem borrada atrás.
+  // Animações: flutua = zoom lento (Ken Burns); pop = entra com zoom; nenhuma = corte seco. Devolve true se cobriu a tela.
+  function desenharFigsCheias(ctx, k, local) {
+    let cobriu = false;
+    for (const f of est(k).figs) {
+      if (!f.cheia) continue;
+      const sel = marcarSel && figSel === f.id;
+      if (!sel && (local < f.ini - 0.01 || local > f.fim)) continue;
+      const im = imgFig(f); if (!im || !im.naturalWidth) continue;
+      const iw = im.naturalWidth, ih = im.naturalHeight, dur = Math.max(0.3, f.fim - f.ini);
+      const q = Math.min(1, Math.max(0, (local - f.ini) / 0.35)), sai = Math.min(1, Math.max(0, (local - (f.fim - 0.25)) / 0.25));
+      let alfa = 1, zoom = 1;
+      if (f.anim === 'pop') { const e3 = 1 - Math.pow(1 - q, 3); alfa = Math.min(1, q * 2) * (1 - sai); zoom = 1.12 - 0.12 * e3; }
+      else if (f.anim === 'flutua') { alfa = Math.min(1, q * 1.5) * (1 - sai); zoom = 1 + 0.1 * Math.min(1, Math.max(0, (local - f.ini) / dur)); }
+      if (sel) { alfa = 1; zoom = 1; }
+      if (alfa <= 0) continue;
+      ctx.save(); ctx.globalAlpha = alfa;
+      ctx.translate(W / 2, H / 2); ctx.scale(zoom, zoom); ctx.translate(-W / 2, -H / 2);
+      if (f.encaixe === 'inteira') {
+        ctx.save(); ctx.filter = 'blur(36px) brightness(.55)';
+        const s0 = Math.max((W + 120) / iw, (H + 120) / ih); ctx.drawImage(im, (W - iw * s0) / 2, (H - ih * s0) / 2, iw * s0, ih * s0);
+        ctx.restore();
+        const s1 = Math.min(W / iw, H / ih); ctx.drawImage(im, (W - iw * s1) / 2, (H - ih * s1) / 2, iw * s1, ih * s1);
+      } else {
+        const s1 = Math.max(W / iw, H / ih), sw = W / s1, sh = H / s1;
+        ctx.drawImage(im, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, W, H);
+      }
+      ctx.restore();
+      if (alfa > 0.5) cobriu = true;
+      if (sel) { ctx.save(); ctx.setLineDash([18, 12]); ctx.lineWidth = 8; ctx.strokeStyle = LAR; ctx.strokeRect(10, 10, W - 20, H - 20); ctx.restore(); }
+    }
+    return cobriu;
+  }
   function desenharFigs(ctx, k, local, lay) {
     const pos = posicionarFigs(ctx, k, lay);
     posFigs = pos;
     for (const f of est(k).figs) {
+      if (f.cheia) continue;
       const sel = marcarSel && figSel === f.id;
       if (!sel && (local < f.ini - 0.01 || local > f.fim)) continue;
       const q = Math.min(1, Math.max(0, (local - f.ini) / 0.35)), sai = Math.min(1, Math.max(0, (local - (f.fim - 0.2)) / 0.2));
@@ -1475,47 +1512,61 @@ Se não houver fala, devolva a lista vazia.`;
   function configurarFiguras(k, c) {
     const e = est(k), dur = Math.max(0.5, tamanho(k)), guardar = () => salvar(item).catch(() => {});
     const verNoTempo = local => mostrarQuadro(k, c.ini + Math.min(local, dur - 0.05) * vel(c));
-    const nova = (tipo, valor, tam) => {
+    const nova = (tipo, valor, tam, extra) => {
       const local = Math.max(0, Math.min(dur - 0.5, (tQuadro - c.ini) / vel(c)));
       const f = {id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), tipo, valor, x: 0.5, y: 0.45, tam,
-        ini: +local.toFixed(2), fim: +Math.min(dur, local + 2.5).toFixed(2), anim: 'pop'};
+        ini: +local.toFixed(2), fim: +Math.min(dur, local + (extra && extra.cheia ? 4 : 2.5)).toFixed(2), anim: 'pop', ...extra};
       e.figs.push(f); figSel = f.id; guardar(); lista(); verNoTempo(f.ini + 0.4);
     };
     ui.querySelectorAll('[data-emo]').forEach(b => b.onclick = () => nova('emoji', b.dataset.emo, 220));
     g('efoutro').onclick = () => { const x = prompt('Digite ou cole o emoji:'); if (x && x.trim()) nova('emoji', x.trim().slice(0, 8), 220); };
     g('efdes').onclick = () => escolherDesenho(nome => nova('desenho', nome, 300));
-    g('efimg').onclick = () => g('efarq').click();
+    let emTelaCheia = false;
+    g('efimg').onclick = () => { emTelaCheia = false; g('efarq').click(); };
+    g('efcheia').onclick = () => { emTelaCheia = true; g('efarq').click(); };
     g('efarq').onchange = async () => {
-      const f = g('efarq').files[0]; if (!f) return;
+      const f = g('efarq').files[0]; g('efarq').value = ''; if (!f) return;
       if (f.size > 12e6) return alert('Imagem grande demais (mais de 12 MB).');
       const id = 'img' + Date.now().toString(36);
       (item.imagens || (item.imagens = {}))[id] = f;
-      nova('imagem', id, 420);
+      if (emTelaCheia) nova('imagem', id, 420, {cheia: true, encaixe: 'preencher', anim: 'flutua'});
+      else nova('imagem', id, 420);
     };
     function lista() {
       g('eflista').innerHTML = e.figs.length ? '<label>Figuras deste bloco <small>(toque para ajustar)</small></label><div class="ebot" style="flex-wrap:wrap">' +
-        e.figs.map(f => `<button data-fig="${f.id}" class="${f.id === figSel ? 'on' : ''}" style="flex:0 0 auto">${f.tipo === 'emoji' ? esc(f.valor) : f.tipo === 'desenho' ? '🎨 ' + esc(f.valor) : '📷 imagem'}${f.ia ? ' ✨' : ''}</button>`).join('') + '</div>' : '';
+        e.figs.map(f => `<button data-fig="${f.id}" class="${f.id === figSel ? 'on' : ''}" style="flex:0 0 auto">${f.tipo === 'emoji' ? esc(f.valor) : f.tipo === 'desenho' ? '🎨 ' + esc(f.valor) : f.cheia ? '🖼️ tela cheia' : '📷 imagem'}${f.ia ? ' ✨' : ''}</button>`).join('') + '</div>' : '';
       g('eflista').querySelectorAll('[data-fig]').forEach(b => b.onclick = () => { figSel = b.dataset.fig; lista(); const f = e.figs.find(x => x.id === figSel); verNoTempo(f.ini + 0.4); });
       configFig();
     }
     function configFig() {
       const f = e.figs.find(x => x.id === figSel);
       if (!f) { g('efcfg').innerHTML = e.figs.length ? '' : '<p class="eaviso2">Escolha um emoji, um desenho do banco ou uma imagem do celular (PNG recortado fica sem fundo). Depois toque ou arraste na prévia para mudar de lugar.</p>'; return; }
-      g('efcfg').innerHTML = `<p class="eaviso2">👆 Arraste a figura na prévia (ou toque onde ela deve ficar).</p>
-        <label>Tamanho</label><input id="eftam" type="range" min="80" max="900" step="10" value="${f.tam}">
+      const ANIMS = f.cheia ? {flutua: 'Zoom lento', pop: 'Entra com zoom', nenhuma: 'Corte seco'} : {pop: 'Pula', flutua: 'Flutua', nenhuma: 'Parada'};
+      g('efcfg').innerHTML = (f.tipo === 'imagem' ? `<label>Mostrar como</label><div class="ebot"><button data-fc="0" class="${f.cheia ? '' : 'on'}">📷 Figura</button><button data-fc="1" class="${f.cheia ? 'on' : ''}">🖼️ Tela cheia</button></div>` : '') +
+        (f.cheia ? `<label>Encaixe</label><div class="ebot"><button data-fe="preencher" class="${f.encaixe !== 'inteira' ? 'on' : ''}">Preencher a tela</button><button data-fe="inteira" class="${f.encaixe === 'inteira' ? 'on' : ''}">Imagem inteira</button></div>
+        <p class="eaviso2">“Preencher” corta as bordas; “Imagem inteira” não corta nada (bom para foto de questão). O @, o título e a legenda ficam por cima.</p>`
+        : `<p class="eaviso2">👆 Arraste a figura na prévia (ou toque onde ela deve ficar).</p>
+        <label>Tamanho</label><input id="eftam" type="range" min="80" max="900" step="10" value="${f.tam}">`) + `
         <label>Aparece em <b id="vfini"></b></label><input id="efini" type="range" min="0" max="${dur.toFixed(2)}" step="0.05" value="${f.ini}">
         <label>Some em <b id="vffim"></b></label><input id="effim" type="range" min="0" max="${dur.toFixed(2)}" step="0.05" value="${f.fim}">
-        <label>Animação</label><div class="ebot">${Object.entries({pop: 'Pula', flutua: 'Flutua', nenhuma: 'Parada'}).map(([x, n]) => `<button data-fa="${x}" class="${f.anim === x ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <label>Animação</label><div class="ebot">${Object.entries(ANIMS).map(([x, n]) => `<button data-fa="${x}" class="${f.anim === x ? 'on' : ''}">${n}</button>`).join('')}</div>
         <div class="ebot"><button id="efok">✓ Pronto</button><button id="efdel" style="color:#b00">🗑 Apagar</button></div>`;
       const tempos = () => {
         g('vfini').textContent = `${seg(f.ini)}` + (palavraNoTempo(k, f.ini) ? ` — “${palavraNoTempo(k, f.ini)}”` : '');
         g('vffim').textContent = seg(f.fim);
       };
       tempos();
-      g('eftam').oninput = () => { f.tam = Number(g('eftam').value); verNoTempo(f.ini + 0.4); };
+      if (g('eftam')) g('eftam').oninput = () => { f.tam = Number(g('eftam').value); verNoTempo(f.ini + 0.4); };
+      ui.querySelectorAll('[data-fc]').forEach(b => b.onclick = () => {
+        f.cheia = b.dataset.fc === '1';
+        if (f.cheia) { f.encaixe = f.encaixe || 'preencher'; if (f.anim === 'pop') f.anim = 'flutua'; }
+        guardar(); configFig(); lista(); verNoTempo(f.ini + 0.4);
+      });
+      ui.querySelectorAll('[data-fe]').forEach(b => b.onclick = () => { f.encaixe = b.dataset.fe; guardar(); configFig(); verNoTempo(f.ini + 0.4); });
       g('efini').oninput = () => { f.ini = Math.min(Number(g('efini').value), f.fim - 0.3); g('efini').value = f.ini; tempos(); verNoTempo(f.ini + 0.05); };
       g('effim').oninput = () => { f.fim = Math.max(Number(g('effim').value), f.ini + 0.3); g('effim').value = f.fim; tempos(); verNoTempo(f.fim - 0.05); };
-      g('eftam').onchange = g('efini').onchange = g('effim').onchange = guardar;
+      if (g('eftam')) g('eftam').onchange = guardar;
+      g('efini').onchange = g('effim').onchange = guardar;
       ui.querySelectorAll('[data-fa]').forEach(b => b.onclick = () => { f.anim = b.dataset.fa; guardar(); configFig(); previa([k]); });
       g('efok').onclick = () => { figSel = null; lista(); mostrarQuadro(k, tQuadro); };
       g('efdel').onclick = () => { e.figs = e.figs.filter(x => x !== f); figSel = null; guardar(); lista(); mostrarQuadro(k, tQuadro); };
@@ -1533,14 +1584,14 @@ Se não houver fala, devolva a lista vazia.`;
       if (tocando || abaEd !== 'figuras') return;
       const [px, py] = ponto(ev), local = (tQuadro - c.ini) / vel(c);
       const toque = [...e.figs].reverse().find(f => {
-        if (f.id !== figSel && (local < f.ini || local > f.fim)) return false;
+        if (f.cheia || (f.id !== figSel && (local < f.ini || local > f.fim))) return false;
         const [w0, h0] = caixaFig(f), l = posFigs.get(f.id) || {cx: f.x * W, cy: f.y * H, s: 1};
         return Math.abs(px * W - l.cx) < w0 * l.s / 2 + 20 && Math.abs(py * H - l.cy) < h0 * l.s / 2 + 20;
       });
       // figura que você mexe fica onde você pôs (sai do posicionamento automático)
       const fixar = f => { const l = posFigs.get(f.id); if (l && !f.fixa) { f.x = l.cx / W; f.y = l.cy / H; f.tam = Math.round(f.tam * l.s); } f.fixa = true; };
       if (toque) { fixar(toque); figSel = toque.id; arrastando = {f: toque, dx: toque.x - px, dy: toque.y - py}; lista(); }
-      else if (figSel) { const f = e.figs.find(x => x.id === figSel); if (f) { f.fixa = true; f.x = px; f.y = py; arrastando = {f, dx: 0, dy: 0}; } }
+      else if (figSel) { const f = e.figs.find(x => x.id === figSel && !x.cheia); if (f) { f.fixa = true; f.x = px; f.y = py; arrastando = {f, dx: 0, dy: 0}; } }
       if (arrastando) { cv.setPointerCapture(ev.pointerId); ev.preventDefault(); mostrarQuadro(k, tQuadro); }
     };
     cv.onpointermove = ev => {
@@ -1884,6 +1935,7 @@ ${textoBlocos}`;
       <label>Pôr na tela <small>(toque num emoji)</small></label>
       <div class="ebot efemo" style="flex-wrap:wrap">${EMOJIS.map(x => `<button data-emo="${x}">${x}</button>`).join('')}</div>
       <div class="ebot"><button id="efoutro">😀 Outro emoji</button><button id="efdes">🎨 Desenho</button><button id="efimg">📷 Imagem</button></div>
+      <div class="ebot"><button id="efcheia">🖼️ Imagem em tela cheia</button></div>
       <input id="efarq" type="file" accept="image/*" hidden>
       <div id="eflista"></div>
       <div id="efcfg"></div>
