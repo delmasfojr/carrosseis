@@ -109,9 +109,10 @@ DURAÇÃO ESCOLHIDA PELO PROFESSOR: ${rot} (vale ACIMA da regra 7, do número de
   const ROTEIRO_OBJ = ESQUEMA.properties.roteiros.items;
   const ESQUEMA_PDF = obj({prova_citada: S, questao: obj({achou: {type: 'BOOLEAN'}, numero: S, pagina: S, enunciado: S, figura_descricao: S,
     alternativas: S, resolucao: S, resposta: S, gabarito_documento: S, confere: {type: 'STRING', enum: ['sim', 'nao', 'sem_gabarito']}, alerta: S,
-    figura_pagina: {type: 'INTEGER'}, figura_caixa: lista({type: 'NUMBER'})}), roteiros: lista(ROTEIRO_OBJ)});
+    figura_pagina: {type: 'INTEGER'}, figura_caixa: lista({type: 'NUMBER'}), questao_pagina: {type: 'INTEGER'}, questao_caixa: lista({type: 'NUMBER'})}),
+    roteiros: lista(ROTEIRO_OBJ)});
   ESQUEMA_PDF.propertyOrdering = ['prova_citada', 'questao', 'roteiros'];
-  ESQUEMA_PDF.properties.questao.propertyOrdering = ['achou', 'numero', 'pagina', 'enunciado', 'figura_descricao', 'alternativas', 'resolucao', 'resposta', 'gabarito_documento', 'confere', 'alerta', 'figura_pagina', 'figura_caixa'];
+  ESQUEMA_PDF.properties.questao.propertyOrdering = ['achou', 'numero', 'pagina', 'enunciado', 'figura_descricao', 'alternativas', 'resolucao', 'resposta', 'gabarito_documento', 'confere', 'alerta', 'figura_pagina', 'figura_caixa', 'questao_pagina', 'questao_caixa'];
   async function acharPagina(arquivo, numero, obs) {
     const partes = await partesDoArquivo(arquivo, 0, aviso);
     aviso('📄 Procurando a questão no arquivo…');
@@ -188,7 +189,12 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
 6b. figura_pagina e figura_caixa: se a questão tem figura, gráfico ou tabela, a página dela (o número escrito antes da imagem) e a caixa
    da figura nessa imagem, [ymin, xmin, ymax, xmax] de 0 a 1000, pegando a figura inteira com os rótulos e medidas (sem o texto
    do enunciado nem as alternativas). Sem figura: figura_pagina = 0 e figura_caixa = [].
+6c. questao_pagina e questao_caixa: a página e a caixa da QUESTÃO INTEIRA como está na prova, do título ("QUESTÃO ${numero}") até a
+   última alternativa, com enunciado, figura e alternativas, [ymin, xmin, ymax, xmax] de 0 a 1000. Ela vai aparecer no vídeo
+   do jeito que está na prova, então não corte nada dela nem pegue pedaço de outra questão.
 7. Faça EXATAMENTE 1 roteiro: o Reels da RESOLUÇÃO dessa questão (não um macete genérico).
+   - A QUESTÃO DA PROVA aparece inteira na tela durante o gancho: os ganchos convidam a olhar e tentar ("Olha essa questão do
+     ENEM: pausa e tenta antes de eu resolver!"), até 110 caracteres.
    - Gancho que prende ligado à questão ("A questão que derrubou metade da sala…"). prova_citada: a prova que o documento diz
      ser (ENEM, Fuvest, concurso…), ou "" se o documento não disser; só cite essa.
    - Os blocos seguem a resolução, um passo por bloco, na ordem; o penúltimo revela a resposta (a letra).
@@ -203,10 +209,15 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
     else try { r.questao.conferencia = await conferirResolucao(partes, numero, r.questao); } catch (e) { r.questao.conferencia = {erro: e.message}; }
     return {questao: r.questao, roteiros: garantirSeguir(limparProvas(r, 'roteiros')).slice(0, 1), partes};
   }
-  // recorta a figura ORIGINAL da questão da página (vai no gancho do vídeo: é a própria prova, 100% fiel)
-  async function recortarFigura(partes, questao) {
-    const cx = questao.figura_caixa || [];
+  // recorta um pedaço ORIGINAL da página (a questão inteira ou só a figura): é a própria prova, 100% fiel.
+  // Foto de uma questão sem caixa: a foto inteira.
+  async function recortarFigura(partes, pagina, caixa) {
+    const cx = caixa || [];
+    const fotos = partes.filter(x => x.inlineData && /^image\//.test(x.inlineData.mimeType));
+    const inteira = cx.length !== 4 && fotos.length === 1 && !partes.some(x => x.text && /^Página/.test(x.text));
+    if (inteira) return new Blob([Uint8Array.from(atob(fotos[0].inlineData.data), c => c.charCodeAt(0))], {type: fotos[0].inlineData.mimeType});
     if (cx.length !== 4 || !(cx[2] > cx[0] && cx[3] > cx[1]) || (cx[2] - cx[0]) * (cx[3] - cx[1]) < 4000) return null;
+    const questao = {figura_pagina: pagina};
     let img = null;
     for (let i = 0; i < partes.length; i++) {
       const pt = partes[i];
@@ -258,12 +269,14 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       } catch (e) { item.erroFigura = e.message; }
       // gancho com a figura ORIGINAL da prova (recortada da página); a figura animada entra a partir do bloco 2
       try {
-        const real = await recortarFigura(partes, questao);
-        if (real) {
-          item.imagens = {real};
+        const q = await recortarFigura(partes, questao.questao_pagina, questao.questao_caixa);  // a questão inteira, como na prova
+        const real = await recortarFigura(partes, questao.figura_pagina, questao.figura_caixa);  // só a figura
+        item.imagens = {...(q ? {questao: q} : {}), ...(real ? {real} : {})};
+        const mostra = q ? 'questao' : real ? 'real' : null;
+        if (mostra) {
           item.estilo = item.estilo || [];
-          item.estilo[0] = {layout: 'visual', pose: 'desafiando', figs: [{id: 'real', tipo: 'imagem', valor: 'real', x: 0.5, y: 0.45, tam: 760, ini: 0, fim: 60,
-            cheia: true, encaixe: 'inteira', anim: 'flutua'}]};  // a figura da prova ocupando a tela, com zoom lento
+          // gancho = a questão como está na prova, num cartão entre o título (no topo) e a legenda (embaixo)
+          item.estilo[0] = {layout: 'questao', questaoImg: mostra, posTitulo: 'topo', tamTitulo: 'M'};
           conteudo.gancho_quadro = '';
         }
       } catch (e) { /* sem o recorte: o gancho fica com a figura animada */ }
@@ -385,7 +398,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
         ${(cf => !cf ? '' : `<br>${cf.unanime || (cf.professor && !atual.questao.alerta) ? '<small>' : '<b style="color:#c0392b">'}${esc(resumoVotos(cf, atual.questao))}${cf.unanime || (cf.professor && !atual.questao.alerta) ? '</small>' : '</b>'}
           ${(cf.extras || []).map((x, n) => x.erro ? '' : `<details><summary>Conferência ${n + 1}: ${esc(x.resposta)}</summary>
             <p style="white-space:pre-wrap"><b>Figura:</b> ${esc(x.figura)}\n\n${esc(x.resolucao)}</p></details>`).join('')}`)(atual.questao.conferencia)}
-        ${atual.imagens && atual.imagens.real ? `<img id="rfigreal" style="width:100%;margin:8px 0;border-radius:8px;border:1px solid #ddd" alt="figura da prova"><small>Figura original da prova: aparece no gancho do vídeo.</small>` : ''}
+        ${atual.imagens && (atual.imagens.questao || atual.imagens.real) ? `<img id="rfigreal" style="width:100%;margin:8px 0;border-radius:8px;border:1px solid #ddd" alt="questão da prova"><small>${atual.imagens.questao ? 'A questão como está na prova' : 'Figura original da prova'}: aparece no gancho do vídeo.</small>` : ''}
         <details><summary>Enunciado e figura (como a IA leu)</summary><p style="white-space:pre-wrap">${esc(atual.enunciado || '')}</p></details>
         <details><summary>Resolução da IA</summary><p style="white-space:pre-wrap">${esc(atual.questao.resolucao)}</p></details>
         ${atual.figura ? '<small>📐 Figura animada pronta: grave a voz lendo o roteiro.</small>' : atual.erroFigura ? '<small>📐 A figura não saiu; dá para desenhar no editor.</small>' : ''}</div>` : ''}
@@ -407,7 +420,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       </div>`).join('')}
       <h3>Comentário para fixar</h3><p class="bloco">${esc(c.comentario_fixado)}</p>`;
     $('#rcorpo').querySelectorAll('input[name=gancho]').forEach(r => r.onchange = async () => { atual.gancho = Number(r.value); await salvarR(atual); });
-    if ($('#rfigreal')) $('#rfigreal').src = URL.createObjectURL(atual.imagens.real);
+    if ($('#rfigreal')) $('#rfigreal').src = URL.createObjectURL(atual.imagens.questao || atual.imagens.real);
     if (atual.figura && $('#rfigcv')) {  // prévia da figura: um passo por camada, com a palavra que faz cada uma entrar
       let passo = (atual.figura.camadas || []).length - 1;
       const falas = [c.ganchos[atual.gancho] || c.ganchos[0], ...c.blocos.map(b => b.fala)];

@@ -931,9 +931,9 @@ Se não houver fala, devolva a lista vazia.`;
   const LAYOUTS = {auto: 'Automático', cheia: 'Câmera cheia', inteira: 'Câmera inteira', circulo: 'Conta + círculo',
     dividida: 'Tela dividida', canto: 'Conta + rosto no canto', mascote: 'Mascote + lousa',
     mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote', visual: 'Visual: conta + mascote',
-    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio', figura: '📐 Figura animada'};
+    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio', figura: '📐 Figura animada', questao: '📄 Questão da prova'};
   // take gravado só com a voz não tem imagem: só valem os layouts sem câmera
-  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe', 'figura'];
+  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe', 'figura', 'questao'];
   const semImagem = k => !!(takes()[k] && takes()[k].soVoz);
   const POSES = {explicando: 'Explicando', ideia: 'Ideia', resolvendo: 'Resolvendo', pensando: 'Pensando',
     desafiando: 'Desafiando', confiante: 'Confiante', estudando: 'Estudando', joinha: 'Joinha'};
@@ -942,7 +942,7 @@ Se não houver fala, devolva a lista vazia.`;
   const TRANSICOES = {nenhuma: 'Corte seco', zoom: 'Zoom', esmaecer: 'Esmaecer', deslizar: 'Deslizar', subir: 'Subir', flash: 'Flash', desfoque: 'Desfoque'};
   const CORES_TITULO = {laranja: [LAR, '#fff'], navy: [NAVY, '#fff'], branco: ['#fff', NAVY], amarelo: ['#FFD21F', NAVY], sem: [null, '#fff']};
   const TAM_TITULO = {P: 62, M: 80, G: 104};
-  const POS_TITULO = {alto: 0.17, centro: 0.42, baixo: 0.8};
+  const POS_TITULO = {topo: 0.09, alto: 0.17, centro: 0.42, baixo: 0.8};
   function est(k) {  // estilo do bloco k, com os padrões
     const todos = item.estilo || (item.estilo = []);
     const e = todos[k] || (todos[k] = {});
@@ -965,6 +965,9 @@ Se não houver fala, devolva a lista vazia.`;
     if (e.layout === 'escala' && !e.escala) e.escala = {cadeia: cadeiaPadrao(), sentido: 'sai'};
     return e;
   }
+  // imagem da questão (recortada do PDF) usada no layout "questao"
+  const imgQuestao = e => { const ims = item.imagens || {}, id = e.questaoImg && ims[e.questaoImg] ? e.questaoImg : ims.questao ? 'questao' : Object.keys(ims)[0];
+    return id ? imgFig({tipo: 'imagem', valor: id}) : null; };
   const layoutDe = (k, v) => { const l = est(k).layout; return l !== 'auto' ? l : v && v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia'; };
 
   /* ---------------------------------------------------------------- cada coisa no seu lugar (nada em cima de nada) */
@@ -977,7 +980,7 @@ Se não houver fala, devolva a lista vazia.`;
     let h = 0, base = 0;
     if (lay === 'visual') { h = 560 * e.tamMascote; base = H * 0.98; }
     else if (lay === 'mascote' || lay === 'mascote_fundo') { h = ALTURA_MASCOTE * e.tamMascote; base = H * 0.97; }
-    else if (lay === 'escala' || lay === 'clipe' || (lay === 'figura' && !e.mascoteCanto && k !== blocos.length - 1)) return null;
+    else if (lay === 'escala' || lay === 'clipe' || lay === 'questao' || (lay === 'figura' && !e.mascoteCanto && k !== blocos.length - 1)) return null;
     else if (e.mascoteCanto) { h = 430 * e.tamMascote; base = H * 0.95; }
     else if (k === blocos.length - 1 && opcoes().mascote) { h = 400 * e.tamMascote; base = H * 0.95; }
     else return null;
@@ -986,7 +989,7 @@ Se não houver fala, devolva a lista vazia.`;
     return [e.ladoMascote === 'dir' ? W - w - 20 : 20, base - h * 1.03, w, h * 1.03];
   }
   function yLegenda(k, lay) {  // a legenda sobe para não passar na frente da cabeça do mascote
-    const m = caixaMascote(k, lay), y = H * (lay === 'circulo' ? 0.71 : lay === 'figura' ? 0.77 : 0.68);  // no círculo, um pouco abaixo da câmera; na figura, abaixo dela
+    const m = caixaMascote(k, lay), y = H * (lay === 'circulo' ? 0.71 : lay === 'figura' ? 0.77 : lay === 'questao' ? 0.93 : 0.68);  // no círculo, um pouco abaixo da câmera; na figura, abaixo dela
     return m && m[1] < y + 70 ? Math.max(H * 0.5, m[1] - 75) : y;
   }
   function zonasDoBloco(ctx, k, lay) {
@@ -1065,7 +1068,7 @@ Se não houver fala, devolva a lista vazia.`;
       const n = cortados(c).filter(sg => sg[0] <= t + 0.05).length;
       lay = n % 2 === 1 || n === 0 ? (v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia') : 'mascote_fundo';
     }
-    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' || lay === 'figura' ||
+    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' || lay === 'figura' || lay === 'questao' ||
       (lay === 'escala' && fundoEscala(e, local, tamanho(k)) < 0.5);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const filtro = FILTROS[op.filtro] || 'none';
@@ -1099,6 +1102,19 @@ Se não houver fala, devolva a lista vazia.`;
       for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       desenharFigura(ctx, k, local);
       conta(ctx, k, lay, local);
+    } else if (lay === 'questao') {  // a questão como está na prova, num cartão entre a faixa do título e a da legenda
+      ctx.filter = 'none';
+      const im = imgQuestao(e);
+      if (im && im.naturalWidth) {
+        const [bx, by, bw, bh] = [36, H * 0.135, W - 72, H * 0.73], s0 = Math.min(bw / im.naturalWidth, bh / im.naturalHeight);
+        const z = 1 + 0.035 * Math.min(1, local / Math.max(2, tamanho(k)));  // zoom bem lento: dá vida sem atrapalhar a leitura
+        const w = im.naturalWidth * s0 * z, h = im.naturalHeight * s0 * z, x = W / 2 - w / 2, y = by + bh / 2 - h / 2;
+        ctx.save(); ctx.shadowColor = '#0F1B2D55'; ctx.shadowBlur = 30; ctx.fillStyle = '#fff'; ctx.fillRect(x - 10, y - 10, w + 20, h + 20); ctx.restore();
+        ctx.drawImage(im, x, y, w, h);
+      } else {
+        ctx.fillStyle = NAVY; ctx.font = '56px Anton, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('SEM A IMAGEM DA QUESTÃO', W / 2, H / 2);
+      }
     } else if (lay === 'escala') {  // zoom contínuo por uma sequência de desenhos (casa → cidade → … → galáxia)
       ctx.filter = 'none'; desenharEscala(ctx, e, local, tamanho(k));
     } else if (lay === 'clipe') {  // vídeo de apoio (banco grátis) cobrindo a tela; a voz é a sua
@@ -1727,6 +1743,7 @@ Se não houver fala, devolva a lista vazia.`;
     blocos.forEach((_, k) => {
       const e = est(k), lista = [...e.figs];
       if (e.layout === 'escala' && e.escala) lista.push(...e.escala.cadeia);
+      if (e.layout === 'questao') { const im = imgQuestao(e); if (im && !im.complete) ps.push(noMaximo(im.decode(), 2500)); }
       lista.forEach(f => { const im = f.tipo !== 'emoji' && imgFig(f); if (im && !im.complete) ps.push(noMaximo(im.decode(), 2500)); });
     });
     await Promise.all(ps);

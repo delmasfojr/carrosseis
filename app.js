@@ -5,8 +5,13 @@ const BASE = new URL('./', location.href).href;
 // para resolver questão (raciocínio com figura) tenta antes os modelos Pro: na conta gratuita eles respondem 429 e o app cai no Flash
 const MODELOS_PRO = ['gemini-pro-latest', 'gemini-3.1-pro-preview'];
 // a conferência usa os modelos gratuitos em outra ordem, para a segunda resolução sair de outro modelo
-const MODELOS_CONFERE = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
-const MODELOS = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3-flash-preview'];
+const MODELOS_CONFERE = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3-flash-preview'];
+// na conta grátis cada modelo tem a SUA cota por dia: quanto mais modelos na fila, mais pedidos grátis por dia
+const MODELOS = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3-flash-preview'];
+// modelos cuja cota grátis do dia acabou: o app nem tenta de novo até o dia virar
+const hojeG = () => new Date().toISOString().slice(0, 10);
+const esgotados = () => { try { const x = JSON.parse(localStorage.getItem('geminiEsgotados') || '{}'); return x.dia === hojeG() ? x.lista : []; } catch { return []; } };
+const esgotou = m => { try { localStorage.setItem('geminiEsgotados', JSON.stringify({dia: hojeG(), lista: [...new Set([...esgotados(), m])]})); } catch {} };
 const BLOCO = 30 * 60;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -88,7 +93,9 @@ function limparProvas(resp, chave) {
 async function chamarGemini(corpo, aviso, trecho = false, modelos = MODELOS) {
   let ultimo = '';
   for (let rodada = 0; rodada < 2; rodada++) {
-    for (const modelo of modelos) {
+    const fila = modelos.filter(m => !esgotados().includes(m));
+    if (!fila.length) break;
+    for (const modelo of fila) {
       aviso(`Pedindo ao Gemini (${modelo})… pode levar alguns minutos. Deixe o app aberto.`);
       const ctl = new AbortController(), relogio = setTimeout(() => ctl.abort(), 15 * 60 * 1000);
       let r, texto;
@@ -102,6 +109,7 @@ async function chamarGemini(corpo, aviso, trecho = false, modelos = MODELOS) {
       } finally { clearTimeout(relogio); }
       if (r.ok) return JSON.parse(JSON.parse(texto).candidates[0].content.parts[0].text);
       ultimo = `${modelo} (${r.status}): ${texto.slice(0, 300)}`;
+      if (r.status === 429 && /PerDay/.test(texto)) esgotou(modelo);  // cota grátis do dia acabou neste modelo
       if (r.status === 400 && trecho) {  // o trecho começa depois do fim do vídeo
         const e = new Error('O vídeo é mais curto que o trecho pedido.'); e.trecho = true; throw e;
       }
@@ -109,6 +117,8 @@ async function chamarGemini(corpo, aviso, trecho = false, modelos = MODELOS) {
     }
     if (rodada === 0) { aviso('Todos os modelos ocupados; tentando de novo em 60 s…'); await new Promise(r => setTimeout(r, 60000)); }
   }
+  if (modelos.every(m => esgotados().includes(m)))
+    throw new Error('A cota GRÁTIS do Gemini de hoje acabou (cada modelo tem um limite de pedidos por dia). Ela renova amanhã.');
   throw new Error('O Gemini não respondeu. Tente mais tarde.\n' + ultimo);
 }
 
