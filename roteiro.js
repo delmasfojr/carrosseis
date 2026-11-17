@@ -53,9 +53,241 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
   }
   const soVisual = () => !!(document.querySelector('#visual') && document.querySelector('#visual').checked);
 
+  /* ---------------------------------------------------------------- duração escolhida pelo professor */
+  const DURACOES = {30: '30 s', 45: '45 s', 60: '1 min', 90: '1min30', 120: '2 min', 180: '3 min'};
+  const duracaoEscolhida = () => { const n = Number(localStorage.getItem('duracao')); return DURACOES[n] ? n : 45; };
+  function regraDuracao(seg = duracaoEscolhida()) {
+    const rot = DURACOES[seg] || `${seg} s`, nb = Math.max(4, Math.round((seg - 3) / 8));
+    return `
+
+DURAÇÃO ESCOLHIDA PELO PROFESSOR: ${rot} (vale ACIMA da regra 7, do número de blocos e do limite de caracteres da fala)
+- Fala total: cerca de ${Math.round(seg * 2.5)} palavras (2,5 por segundo), contando o gancho.
+- blocos: cerca de ${nb} blocos (sem contar o gancho), cada um com 5 a 10 s de fala (até ${seg > 60 ? 220 : 160} caracteres).
+- tempo de cada bloco coerente com essa duração; duracao: "${rot}".` + (seg >= 60 ? `
+- Vídeo mais longo: a cada 15 a 20 s, uma virada que renova a curiosidade ("mas tem um detalhe…", "agora vem o pulo do gato",
+  "e aqui quase todo mundo erra"). O tempo a mais é para explicar com calma, passo a passo, nunca para repetir ou enrolar.` : '');
+  }
+
+  /* ---------------------------------------------------------------- 📄 questão de um PDF (ou foto) */
+  // PDF pequeno vai inteiro (o Gemini lê texto e imagens). PDF grande (ex.: prova digitalizada de 35 MB) ou com página indicada:
+  // as páginas viram imagens aqui no aparelho (pdf.js) e vão como fotos, então as figuras das questões continuam legíveis.
+  const LIMITE_INLINE = 14 * 1024 * 1024;
+  const b64 = async blob => { const u = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+  async function paginasComoImagens(arquivo, pagina, avisar) {
+    const pdfjs = await import(BASE + 'vendor/pdfjs/pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = BASE + 'vendor/pdfjs/pdf.worker.min.mjs';
+    const doc = await pdfjs.getDocument({data: new Uint8Array(await arquivo.arrayBuffer()), isEvalSupported: false}).promise;
+    const n = doc.numPages;
+    let nums = pagina ? [pagina, pagina + 1].filter(x => x >= 1 && x <= n) : Array.from({length: n}, (_, i) => i + 1);
+    if (!nums.length) throw new Error(`o PDF tem ${n} páginas; a página ${pagina} não existe.`);
+    if (nums.length > 40) throw new Error(`o PDF tem ${n} páginas. Diga em que página está a questão (campo "Página").`);
+    // página indicada: alta resolução (a figura sai nítida); PDF inteiro: o bastante para ler texto e figuras
+    for (const [larg, qual] of (pagina ? [[2400, 0.88], [1800, 0.82]] : [[1200, 0.75], [1000, 0.68], [800, 0.6]])) {
+      const partes = []; let total = 0;
+      for (const [i, p] of nums.entries()) {
+        avisar(`Preparando a página ${p} (${i + 1} de ${nums.length})…`);
+        const pg = await doc.getPage(p), v0 = pg.getViewport({scale: 1}), v = pg.getViewport({scale: larg / v0.width});
+        const cv = Object.assign(document.createElement('canvas'), {width: Math.round(v.width), height: Math.round(v.height)});
+        const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+        await pg.render({canvasContext: cx, viewport: v}).promise;
+        const dado = cv.toDataURL('image/jpeg', qual).split(',')[1];
+        total += dado.length;
+        partes.push({text: `Página ${p} do documento:`}, {inlineData: {mimeType: 'image/jpeg', data: dado}});
+      }
+      if (total < 15 * 1024 * 1024) return partes;
+    }
+    throw new Error('o PDF é grande demais. Diga em que página está a questão (campo "Página").');
+  }
+  async function partesDoArquivo(arquivo, pagina, avisar) {
+    if (/^image\//.test(arquivo.type)) {
+      if (arquivo.size > LIMITE_INLINE) throw new Error('a foto é grande demais (mais de 14 MB).');
+      return [{inlineData: {mimeType: arquivo.type, data: await b64(arquivo)}}];
+    }
+    if (!pagina && arquivo.size <= LIMITE_INLINE) return [{inlineData: {mimeType: 'application/pdf', data: await b64(arquivo)}}];
+    return paginasComoImagens(arquivo, pagina, avisar);
+  }
+  const ROTEIRO_OBJ = ESQUEMA.properties.roteiros.items;
+  const ESQUEMA_PDF = obj({prova_citada: S, questao: obj({achou: {type: 'BOOLEAN'}, numero: S, pagina: S, enunciado: S, figura_descricao: S,
+    alternativas: S, resolucao: S, resposta: S, gabarito_documento: S, confere: {type: 'STRING', enum: ['sim', 'nao', 'sem_gabarito']}, alerta: S,
+    figura_pagina: {type: 'INTEGER'}, figura_caixa: lista({type: 'NUMBER'})}), roteiros: lista(ROTEIRO_OBJ)});
+  ESQUEMA_PDF.propertyOrdering = ['prova_citada', 'questao', 'roteiros'];
+  ESQUEMA_PDF.properties.questao.propertyOrdering = ['achou', 'numero', 'pagina', 'enunciado', 'figura_descricao', 'alternativas', 'resolucao', 'resposta', 'gabarito_documento', 'confere', 'alerta', 'figura_pagina', 'figura_caixa'];
+  async function acharPagina(arquivo, numero, obs) {
+    const partes = await partesDoArquivo(arquivo, 0, aviso);
+    aviso('📄 Procurando a questão no arquivo…');
+    const corpo = JSON.stringify({contents: [{parts: [...partes, {text: `Em que página deste documento está a questão número ${numero}
+(a que o documento numera como ${numero}: "QUESTÃO ${numero}", "${numero}.", "${numero})" etc.)?${obs ? ` Dica do professor: "${obs}".` : ''}
+pagina = número da página no ARQUIVO, contando a partir de 1 (se as páginas vieram como imagens, é o número escrito antes de cada imagem).
+Se a questão começa numa página e continua na outra, dê a primeira. achou = false se ela não estiver no documento.`}]}],
+      generationConfig: {responseMimeType: 'application/json', temperature: 0,
+        responseSchema: {type: 'OBJECT', properties: {achou: {type: 'BOOLEAN'}, pagina: {type: 'INTEGER'}}, required: ['achou', 'pagina']}}});
+    const r = await chamarGemini(corpo, t => aviso('📄 ' + t));
+    return r.achou && r.pagina > 0 ? r.pagina : 0;
+  }
+  const letraDe = r => { const m = String(r || '').toUpperCase().match(/(?:^|[^A-Z])([A-E])(?:\)|\s|$|[^A-Z])/); return m ? m[1] : String(r || '').trim(); };
+  async function resolverDeNovo(partes, numero, modelos, n) {
+    const corpo = JSON.stringify({contents: [{parts: [...partes, {text: `Resolva a questão número ${numero} deste documento, sozinho, do zero.
+1. Primeiro DESCREVA a figura em figura: onde está cada ponto/objeto, de onde sai e aonde chega cada linha, o que cada medida indica
+   (com as coordenadas). Confira essa descrição com a imagem antes de seguir.
+2. Depois resolva em resolucao, passo a passo, numerado. A resposta TEM DE SAIR DA CONTA: proibido escolher alternativa por eliminação
+   ou por "parecer coerente". Confira por um segundo caminho. Ignore marcas de caneta de quem fez a prova.
+3. resposta: a letra e o valor (ex.: "C) 58").`}]}],
+      generationConfig: {responseMimeType: 'application/json', temperature: 0.3, responseSchema: {type: 'OBJECT',
+        properties: {figura: {type: 'STRING'}, resolucao: {type: 'STRING'}, resposta: {type: 'STRING'}}, required: ['figura', 'resolucao', 'resposta'],
+        propertyOrdering: ['figura', 'resolucao', 'resposta']}}});
+    return chamarGemini(corpo, t => aviso(`🔎 Conferência ${n} de 2: ` + t), false, modelos);
+  }
+  // Votação: a resolução principal + 2 conferências independentes, cada uma num modelo diferente (o mesmo modelo tende a repetir o mesmo erro).
+  async function conferirResolucao(partes, numero, questao) {
+    const ordens = [[...MODELOS_PRO, ...MODELOS_CONFERE], [...MODELOS_PRO, ...MODELOS_CONFERE.slice(1), MODELOS_CONFERE[0]]];
+    const extras = [];
+    for (const [n, ordem] of ordens.entries()) {
+      try { extras.push(await resolverDeNovo(partes, numero, ordem, n + 1)); } catch (e) { extras.push({erro: e.message}); }
+    }
+    const votos = [questao.resposta, ...extras.filter(x => !x.erro).map(x => x.resposta)].map(letraDe);
+    const conta = {}; votos.forEach(v => { conta[v] = (conta[v] || 0) + 1; });
+    const [maioria, nMaioria] = Object.entries(conta).sort((a, b) => b[1] - a[1])[0] || ['', 0];
+    return {votos: votos.length, maioria, nMaioria, unanime: votos.length === 3 && nMaioria === 3,
+      principalNaMaioria: letraDe(questao.resposta) === maioria && nMaioria >= 2, extras};
+  }
+  async function pedirPdf(arquivo, numero, pagina, obs, res) {
+    // PDF sem página informada: primeiro acha a página; depois só ela (e a seguinte) vai em alta resolução,
+    // para a IA enxergar os detalhes da figura (com 30 páginas de uma vez, cada figura chega pequena demais)
+    if (!pagina && !/^image\//.test(arquivo.type)) {
+      pagina = await acharPagina(arquivo, numero, obs);
+      if (!pagina) throw new Error(`não achei a questão ${numero} no arquivo. Confira o número ou diga a página.`);
+    }
+    const partes = await partesDoArquivo(arquivo, pagina, aviso);
+    const prompt = PROMPT_R + SO_VISUAL + `
+
+NÃO HÁ VÍDEO DO YOUTUBE NESTE PEDIDO (vale acima de tudo o que fala em "vídeo enviado")
+O professor mandou um DOCUMENTO (PDF ou foto de uma prova/lista) e quer um Reels resolvendo UMA questão dele:
+a questão número ${numero}${pagina ? ` (na página ${pagina} do arquivo)` : ''}.${obs ? `\nObservação do professor: """${obs}"""` : ''}
+
+1. ACHE a questão${pagina ? ` (ela está na página ${pagina} enviada)` : ''}: é a que o documento numera como ${numero} ("QUESTÃO ${numero}", "${numero}.", "${numero})" etc.), não a ${numero}ª que
+   aparece na página. Se não achar, achou = false e explique em enunciado o que encontrou; o resto pode ficar vazio.
+2. LEIA TUDO, inclusive as IMAGENS: figura, gráfico, tabela, desenho, mapa. Dados que só aparecem na figura (medidas, rótulos,
+   ângulos, posições, valores de eixos) são essenciais: transcreva TODOS em figura_descricao, com a posição de cada coisa,
+   de um jeito que dê para redesenhar a figura sem vê-la. Se algum dado da figura estiver ilegível, diga qual.
+3. enunciado: o enunciado completo com suas palavras e todos os dados (sem as alternativas). alternativas: "A) … B) …" ou "" se for aberta.
+${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor, é esta:
+"""${res}"""
+   Organize-a em resolucao (passo a passo, numerado, com os MESMOS números e o MESMO caminho) e copie a resposta dela em resposta
+   (letra e valor). O roteiro segue EXATAMENTE essa resolução. Se algo nela parecer errado ou não bater com a questão, NÃO corrija:
+   explique em alerta (senão alerta = ""). Ignore o item 4b.
+4b. ` : '4. '}RESOLVA passo a passo em resolucao (texto corrido, numerado), conferindo cada conta duas vezes. resposta: a letra e o valor.
+   A resposta TEM DE SAIR DA CONTA. Proibido escolher alternativa por eliminação, por "parecer coerente" ou testando a alternativa
+   e achando que "encaixa". Antes de responder, confira por um SEGUNDO caminho (ex.: refaça o último trecho de trás para frente,
+   ou substitua o resultado nos dados). Se os dois caminhos não baterem, releia a figura: a posição de cada ponto importa.
+   Antes de resolver, monte a figura em coordenadas (onde está cada ponto, de onde sai e aonde chega cada linha) e confira com a imagem.
+5. GABARITO: só vale um gabarito IMPRESSO no documento (página ou tabela de gabarito, "Resposta: C" impresso no fim da lista).
+   Marcas de caneta, letras riscadas, círculos ou rabiscos de quem fez a prova NÃO são gabarito: ignore-as por completo
+   (inclusive na resolução). Achou gabarito impresso: copie em gabarito_documento e diga em confere se bate ("sim"/"nao");
+   se não bater, revise a resolução. Não achou: gabarito_documento = "" e confere = "sem_gabarito". Nunca invente gabarito.
+6. pagina: em que página do arquivo a questão está.
+6b. figura_pagina e figura_caixa: se a questão tem figura, gráfico ou tabela, a página dela (o número escrito antes da imagem) e a caixa
+   da figura nessa imagem, [ymin, xmin, ymax, xmax] de 0 a 1000, pegando a figura inteira com os rótulos e medidas (sem o texto
+   do enunciado nem as alternativas). Sem figura: figura_pagina = 0 e figura_caixa = [].
+7. Faça EXATAMENTE 1 roteiro: o Reels da RESOLUÇÃO dessa questão (não um macete genérico).
+   - Gancho que prende ligado à questão ("A questão que derrubou metade da sala…"). prova_citada: a prova que o documento diz
+     ser (ENEM, Fuvest, concurso…), ou "" se o documento não disser; só cite essa.
+   - Os blocos seguem a resolução, um passo por bloco, na ordem; o penúltimo revela a resposta (a letra).
+   - O vídeo terá uma FIGURA ANIMADA desenhada no ritmo da fala: na fala, diga os NÚMEROS e os NOMES das partes da figura
+     (ex.: "a bola branca", "a tabela de baixo", "o lado de 6 metros") no momento em que eles importam.
+   - Não leia o enunciado inteiro: resuma os dados que importam, em frases curtas.` + regraDuracao();
+    const corpo = JSON.stringify({contents: [{parts: [...partes, {text: prompt}]}],
+      generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA_PDF, temperature: 0.4}});
+    const r = await chamarGemini(corpo, aviso, false, [...MODELOS_PRO, ...MODELOS]);
+    if (!r.questao || r.questao.achou === false) throw new Error(`não achei a questão ${numero}. ` + ((r.questao && r.questao.enunciado) || '') + '\nTente informar a página.');
+    if (res) r.questao.conferencia = {professor: true};  // a resolução é do professor: não há o que votar
+    else try { r.questao.conferencia = await conferirResolucao(partes, numero, r.questao); } catch (e) { r.questao.conferencia = {erro: e.message}; }
+    return {questao: r.questao, roteiros: garantirSeguir(limparProvas(r, 'roteiros')).slice(0, 1), partes};
+  }
+  // recorta a figura ORIGINAL da questão da página (vai no gancho do vídeo: é a própria prova, 100% fiel)
+  async function recortarFigura(partes, questao) {
+    const cx = questao.figura_caixa || [];
+    if (cx.length !== 4 || !(cx[2] > cx[0] && cx[3] > cx[1]) || (cx[2] - cx[0]) * (cx[3] - cx[1]) < 4000) return null;
+    let img = null;
+    for (let i = 0; i < partes.length; i++) {
+      const pt = partes[i];
+      if (!pt.inlineData || !/^image\//.test(pt.inlineData.mimeType)) continue;
+      const rot = partes[i - 1] && partes[i - 1].text, m = rot && rot.match(/Página (\d+)/);
+      if (!img || (m && Number(m[1]) === questao.figura_pagina)) img = pt.inlineData;
+    }
+    if (!img) return null;
+    const im = new Image(); im.src = `data:${img.mimeType};base64,${img.data}`; await im.decode();
+    const folga = 12, y0 = Math.max(0, cx[0] / 1000 * im.height - folga), x0 = Math.max(0, cx[1] / 1000 * im.width - folga);
+    const y1 = Math.min(im.height, cx[2] / 1000 * im.height + folga), x1 = Math.min(im.width, cx[3] / 1000 * im.width + folga);
+    const cv = Object.assign(document.createElement('canvas'), {width: Math.round(x1 - x0), height: Math.round(y1 - y0)});
+    cv.getContext('2d').drawImage(im, x0, y0, x1 - x0, y1 - y0, 0, 0, cv.width, cv.height);
+    return new Promise(ok => cv.toBlob(ok, 'image/jpeg', 0.9));
+  }
+  function resumoVotos(cf, questao) {
+    if (cf && cf.professor) return questao.alerta ? `⚠️ A IA achou algo estranho na sua resolução: ${questao.alerta}` : '✅ Resolução sua: a IA só montou o vídeo em cima dela.';
+    if (!cf || !cf.votos || cf.votos < 2) return '⚠️ As conferências não saíram (Gemini ocupado): confira você.';
+    const outras = (cf.extras || []).filter(x => !x.erro).map(x => x.resposta).join(' e ');
+    if (cf.unanime) return '✅ 3 resoluções independentes deram a mesma resposta.';
+    if (cf.principalNaMaioria) return `⚠️ ${cf.nMaioria} de ${cf.votos} resoluções deram ${cf.maioria}; as conferências deram ${outras}. Dê uma olhada.`;
+    if (cf.nMaioria >= 2) return `⚠️ A MAIORIA (${cf.nMaioria} de ${cf.votos}) deu ${cf.maioria}, diferente do roteiro (${questao.resposta}). Confira antes de gravar!`;
+    return `⚠️ As resoluções deram respostas diferentes (${questao.resposta} e ${outras}). Confira com calma antes de gravar!`;
+  }
+  async function gerarPdf(arquivo, numero, pagina, obs, res = '') {
+    if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
+    $('#gerar').disabled = true;
+    try {
+      aviso('📄 Lendo o arquivo…');
+      const {questao, roteiros, partes} = await pedirPdf(arquivo, numero, pagina, obs, res);
+      const conteudo = roteiros[0];
+      const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '', assunto: `Questão ${numero} de ${arquivo.name}`,
+        conteudo, gancho: 0, visual: true, edicao: {soVoz: true}, questao,
+        enunciado: [questao.enunciado, questao.alternativas, questao.figura_descricao ? 'FIGURA: ' + questao.figura_descricao : ''].filter(Boolean).join('\n')};
+      // a figura animada já sai junto, presa às palavras do roteiro (o professor lê o roteiro ao gravar)
+      try {
+        aviso('📐 Desenhando a figura da questão…');
+        const falas = [conteudo.ganchos[0], ...conteudo.blocos.map(b => b.fala)];
+        const textoBlocos = falas.map((f, k) => `Bloco ${k + 1}: "${f}"`).join('\n');
+        const r = await Gravador.pedirFigura(conteudo.tema, item.enunciado + '\nRESOLUÇÃO: ' + questao.resolucao, textoBlocos, aviso,
+          partes.filter(x => x.inlineData && /^image\//.test(x.inlineData.mimeType)));
+        item.figura = r.figura;
+        const usados = new Set(r.figura.camadas.map(cm => (cm.bloco || 1) - 1)), ult = Math.max(...usados);
+        item.estilo = falas.map((_, k) => (k <= ult && (usados.has(k) || k > 0)) ? {layout: 'figura'} : {});
+        for (const x of r.contas) {
+          const k = x.bloco - 1, conta = String(x.conta || '').slice(0, 40);
+          if (k === 0) conteudo.gancho_quadro = conta; else if (conteudo.blocos[k - 1]) conteudo.blocos[k - 1].quadro = conta;
+        }
+      } catch (e) { item.erroFigura = e.message; }
+      // gancho com a figura ORIGINAL da prova (recortada da página); a figura animada entra a partir do bloco 2
+      try {
+        const real = await recortarFigura(partes, questao);
+        if (real) {
+          item.imagens = {real};
+          item.estilo = item.estilo || [];
+          item.estilo[0] = {layout: 'visual', pose: 'desafiando', figs: [{id: 'real', tipo: 'imagem', valor: 'real', x: 0.5, y: 0.45, tam: 760, ini: 0, fim: 60,
+            cheia: true, encaixe: 'inteira', anim: 'flutua'}]};  // a figura da prova ocupando a tela, com zoom lento
+          conteudo.gancho_quadro = '';
+        }
+      } catch (e) { /* sem o recorte: o gancho fica com a figura animada */ }
+      // o último bloco (comentar + seguir) fecha com o mascote, sem figura (o joinha não cobre a conta)
+      if (item.estilo && item.estilo.length > 1) item.estilo[item.estilo.length - 1] = {layout: 'visual', pose: 'joinha'};
+      const ehConta = q => /\d/.test(q || '') && String(q).length <= 30 && !/@/.test(q);
+      if (!ehConta(conteudo.gancho_quadro)) conteudo.gancho_quadro = '';
+      for (const b of conteudo.blocos) if (!ehConta(b.quadro)) b.quadro = '';
+      await salvarR(item);
+      aviso('');
+      const cf = questao.conferencia || {};
+      const conf = (questao.confere === 'sim' ? '✅ Bate com o gabarito do documento.' : questao.confere === 'nao' ? '⚠️ NÃO bate com o gabarito do documento: confira!' : 'O documento não trouxe gabarito.')
+        + '\n' + resumoVotos(cf, questao);
+      alert(`Pronto! Questão ${numero}: resposta ${questao.resposta}.\n${conf}` + (item.erroFigura ? `\n(A figura não saiu: ${item.erroFigura}. Dá para desenhar depois no editor.)` : '\nA figura animada já está montada.'));
+      tela('roteiros'); abrir(item.id);
+    } catch (e) {
+      aviso('');
+      alert('Deu erro: ' + e.message);
+    } finally { $('#gerar').disabled = false; }
+  }
+
   async function pedir(link, inicio, fim) {
     const video = {fileData: {fileUri: link}};
-    let prompt = PROMPT_R + (soVisual() ? SO_VISUAL : '');
+    let prompt = PROMPT_R + (soVisual() ? SO_VISUAL : '') + regraDuracao();
     if (inicio != null) {
       video.videoMetadata = {startOffset: `${inicio}s`, endOffset: `${fim}s`};
       prompt += `\n\nATENÇÃO: você recebeu só um TRECHO de um vídeo longo (de ${mmss(inicio)} até ${mmss(fim)}). Use apenas este trecho.`;
@@ -78,7 +310,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
 - Se ele deu uma ideia, um exemplo ou um macete, use-o; se deu só o tema, escolha você os macetes,
   pegadinhas e curiosidades que mais prendem a atenção nesse tema.
 - Faça 3 roteiros com ângulos DIFERENTES (ex.: um macete, uma pegadinha, um desafio).
-- prova_citada: "" e não cite prova nenhuma, a não ser que o assunto acima cite.`;
+- prova_citada: "" e não cite prova nenhuma, a não ser que o assunto acima cite.` + regraDuracao();
     const corpo = JSON.stringify({
       contents: [{parts: [{text: prompt}]}],
       generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.9},
@@ -148,6 +380,20 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     tela('verroteiro');
     $('#rtitulo').textContent = c.tema;
     $('#rcorpo').innerHTML = `
+      ${atual.questao ? `<div class="bloco rquestao"><b>📄 Questão ${esc(atual.questao.numero)}</b> · resposta da IA: <b>${esc(atual.questao.resposta)}</b><br>
+        <small>${atual.questao.confere === 'sim' ? '✅ bate com o gabarito do documento' : atual.questao.confere === 'nao' ? '⚠️ NÃO bate com o gabarito do documento (' + esc(atual.questao.gabarito_documento) + '): confira!' : 'o documento não trouxe gabarito'}</small>
+        ${(cf => !cf ? '' : `<br>${cf.unanime || (cf.professor && !atual.questao.alerta) ? '<small>' : '<b style="color:#c0392b">'}${esc(resumoVotos(cf, atual.questao))}${cf.unanime || (cf.professor && !atual.questao.alerta) ? '</small>' : '</b>'}
+          ${(cf.extras || []).map((x, n) => x.erro ? '' : `<details><summary>Conferência ${n + 1}: ${esc(x.resposta)}</summary>
+            <p style="white-space:pre-wrap"><b>Figura:</b> ${esc(x.figura)}\n\n${esc(x.resolucao)}</p></details>`).join('')}`)(atual.questao.conferencia)}
+        ${atual.imagens && atual.imagens.real ? `<img id="rfigreal" style="width:100%;margin:8px 0;border-radius:8px;border:1px solid #ddd" alt="figura da prova"><small>Figura original da prova: aparece no gancho do vídeo.</small>` : ''}
+        <details><summary>Enunciado e figura (como a IA leu)</summary><p style="white-space:pre-wrap">${esc(atual.enunciado || '')}</p></details>
+        <details><summary>Resolução da IA</summary><p style="white-space:pre-wrap">${esc(atual.questao.resolucao)}</p></details>
+        ${atual.figura ? '<small>📐 Figura animada pronta: grave a voz lendo o roteiro.</small>' : atual.erroFigura ? '<small>📐 A figura não saiu; dá para desenhar no editor.</small>' : ''}</div>` : ''}
+      ${atual.figura ? `<div class="bloco"><b>📐 Prévia da figura</b> <small>(confira antes de gravar)</small>
+        <canvas id="rfigcv" style="width:100%;display:block;margin:8px 0;border-radius:10px"></canvas>
+        <div style="display:flex;gap:6px;align-items:center"><button id="rfigant" class="sec" style="flex:0 0 46px">◀</button>
+          <small id="rfigtx" style="flex:1;text-align:center"></small><button id="rfigprox" class="sec" style="flex:0 0 46px">▶</button></div>
+        <div style="display:flex;gap:6px;margin-top:6px"><button id="rfigx" class="sec" style="flex:1">↔ Espelhar</button><button id="rfigy" class="sec" style="flex:1">↕ Espelhar</button></div></div>` : ''}
       <p class="rnota">${fogo(c.nota_viral)} <b>${c.nota_viral}/10</b> · ${esc(c.duracao)}<br><small>${esc(c.por_que)}</small></p>
       <p class="rcapa">Capa do Reels: <b>${esc(c.texto_capa)}</b></p>
       <h3>Gancho (0–3 s) <small>escolha um</small></h3>
@@ -161,6 +407,23 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       </div>`).join('')}
       <h3>Comentário para fixar</h3><p class="bloco">${esc(c.comentario_fixado)}</p>`;
     $('#rcorpo').querySelectorAll('input[name=gancho]').forEach(r => r.onchange = async () => { atual.gancho = Number(r.value); await salvarR(atual); });
+    if ($('#rfigreal')) $('#rfigreal').src = URL.createObjectURL(atual.imagens.real);
+    if (atual.figura && $('#rfigcv')) {  // prévia da figura: um passo por camada, com a palavra que faz cada uma entrar
+      let passo = (atual.figura.camadas || []).length - 1;
+      const falas = [c.ganchos[atual.gancho] || c.ganchos[0], ...c.blocos.map(b => b.fala)];
+      const mostrar = () => {
+        const cs = atual.figura.camadas || []; passo = Math.max(0, Math.min(cs.length - 1, passo));
+        Gravador.previaFigura($('#rfigcv'), atual.figura, passo);
+        const cm = cs[passo] || {};
+        $('#rfigtx').textContent = `Passo ${passo + 1} de ${cs.length} · bloco ${cm.bloco || 1} · ` + (cm.gatilho ? `entra em “${cm.gatilho}”` : 'entra no começo do bloco') +
+          (cm.gatilho && !(falas[(cm.bloco || 1) - 1] || '').toLowerCase().includes(String(cm.gatilho).toLowerCase().split(' ')[0]) ? ' ⚠️ palavra não está na fala' : '');
+      };
+      $('#rfigant').onclick = () => { passo--; mostrar(); };
+      $('#rfigprox').onclick = () => { passo++; mostrar(); };
+      const espelhar = async e => { atual.figura = Gravador.espelharFigura(atual.figura, e); await salvarR(atual); mostrar(); };
+      $('#rfigx').onclick = () => espelhar('x'); $('#rfigy').onclick = () => espelhar('y');
+      document.fonts.load('60px Anton').then(mostrar, mostrar);
+    }
     $('#rlegenda').value = (c.legenda || '').replace(/\\n/g, '\n');
     $('#rmarcar').textContent = atual.gravado ? 'Desmarcar gravado' : 'Marcar como gravado';
     $('#rvideo').href = atual.link || '#'; $('#rvideo').hidden = !atual.link;  // roteiro por assunto não tem vídeo de origem
@@ -369,6 +632,24 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       await salvarR(atual);
       Gravador.abrir(atual, salvarR, () => abrir(atual.id));
     };
+    // roteiro pronto em arquivo (ex.: feito pelo Claude no computador): entra na lista como qualquer outro
+    $('#rimportar').onchange = async e => {
+      const arq = e.target.files[0]; e.target.value = ''; if (!arq) return;
+      let it;
+      try {
+        it = JSON.parse(await arq.text());
+        const c = it.conteudo;
+        if (!c || !Array.isArray(c.ganchos) || !c.ganchos.length || !Array.isArray(c.blocos) || !c.blocos.length) throw new Error('falta conteudo.ganchos ou conteudo.blocos');
+      } catch (err) { return alert('Esse arquivo não é um roteiro do app: ' + err.message); }
+      Object.assign(it, {id: `${Date.now()}-imp`, criado: new Date().toISOString(), gancho: it.gancho || 0, takes: [], gravado: false});
+      delete it.video;
+      if (it.visual !== false) { it.visual = true; it.edicao = Object.assign({soVoz: true}, it.edicao || {}); }
+      const c = it.conteudo;
+      for (const [k, v] of Object.entries({tema: 'Roteiro importado', nota_viral: 0, por_que: '', texto_capa: '', comentario_fixado: '', duracao: '', legenda: ''})) if (c[k] == null) c[k] = v;
+      await salvarR(it);
+      alert(`Roteiro “${c.tema}” importado${it.figura ? ', com a figura animada' : ''}.`);
+      await mostrarLista(); abrir(it.id);
+    };
     $('#rapagargravados').onclick = async () => {
       const g = (await todosR()).filter(i => i.gravado);
       if (!confirm(`Apagar do celular os ${g.length} roteiros marcados como gravados? (não dá para desfazer)`)) return;
@@ -410,5 +691,5 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       catch (e) { alert('Não funcionou: ' + e.message); }
     };
   }
-  return {iniciar, gerar, gerarAssunto, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
+  return {iniciar, gerar, gerarAssunto, gerarPdf, DURACOES, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
 })();

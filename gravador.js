@@ -780,7 +780,7 @@ Se não houver fala, devolva a lista vazia.`;
     const ts = toks.map(() => null);
     let j = 0;
     toks.forEach((tk, i) => {  // casa cada pedaço com a próxima palavra falada que combina (sempre para a frente)
-      const ks = chavesToken(tk), jan = tk.op ? 4 : 12;
+      const ks = chavesToken(tk), jan = tk.op ? 4 : /^\d/.test(tk.s) ? 20 : 12;  // número: procura mais longe (ex.: "um quarto de 340")
       for (let m = j; m < Math.min(pal.length, j + jan); m++) {
         const w = normal(pal[m].w), w2 = w.replace(/%$/, '');
         if (w && ks.some(x => x === w || x === w2 || (x.length >= 4 && w.startsWith(x)))) { ts[i] = loc(pal[m]); j = m + 1; break; }
@@ -843,7 +843,7 @@ Se não houver fala, devolva a lista vazia.`;
     return L;
   }
   // onde fica a conta em cada layout com fundo creme: altura do centro (fração da tela), largura e letra máxima
-  const CONTA_POS = {circulo: [0.36, W - 160, 120], dividida: [0.3, W - 140, 120], canto: [0.38, W - 140, 140], visual: [0.42, W - 140, 150]};
+  const CONTA_POS = {circulo: [0.36, W - 160, 120], dividida: [0.3, W - 140, 120], canto: [0.38, W - 140, 140], visual: [0.42, W - 140, 150], figura: [0.865, W - 140, 110]};
   function conta(ctx, k, lay, local) {
     const [y, larg, tam] = CONTA_POS[lay];
     return contaViva(ctx, k, blocos[k].quadro, H * y, larg, tam, local);
@@ -931,13 +931,13 @@ Se não houver fala, devolva a lista vazia.`;
   const LAYOUTS = {auto: 'Automático', cheia: 'Câmera cheia', inteira: 'Câmera inteira', circulo: 'Conta + círculo',
     dividida: 'Tela dividida', canto: 'Conta + rosto no canto', mascote: 'Mascote + lousa',
     mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote', visual: 'Visual: conta + mascote',
-    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio'};
+    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio', figura: '📐 Figura animada'};
   // take gravado só com a voz não tem imagem: só valem os layouts sem câmera
-  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe'];
+  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe', 'figura'];
   const semImagem = k => !!(takes()[k] && takes()[k].soVoz);
   const POSES = {explicando: 'Explicando', ideia: 'Ideia', resolvendo: 'Resolvendo', pensando: 'Pensando',
     desafiando: 'Desafiando', confiante: 'Confiante', estudando: 'Estudando', joinha: 'Joinha'};
-  const COM_TEXTO = ['circulo', 'dividida', 'canto', 'mascote', 'mascote_fundo', 'alternar', 'visual'];
+  const COM_TEXTO = ['circulo', 'dividida', 'canto', 'mascote', 'mascote_fundo', 'alternar', 'visual', 'figura'];
   const COM_MASCOTE = ['mascote', 'mascote_fundo', 'alternar', 'visual'];
   const TRANSICOES = {nenhuma: 'Corte seco', zoom: 'Zoom', esmaecer: 'Esmaecer', deslizar: 'Deslizar', subir: 'Subir', flash: 'Flash', desfoque: 'Desfoque'};
   const CORES_TITULO = {laranja: [LAR, '#fff'], navy: [NAVY, '#fff'], branco: ['#fff', NAVY], amarelo: ['#FFD21F', NAVY], sem: [null, '#fff']};
@@ -977,7 +977,7 @@ Se não houver fala, devolva a lista vazia.`;
     let h = 0, base = 0;
     if (lay === 'visual') { h = 560 * e.tamMascote; base = H * 0.98; }
     else if (lay === 'mascote' || lay === 'mascote_fundo') { h = ALTURA_MASCOTE * e.tamMascote; base = H * 0.97; }
-    else if (lay === 'escala' || lay === 'clipe') return null;
+    else if (lay === 'escala' || lay === 'clipe' || (lay === 'figura' && !e.mascoteCanto && k !== blocos.length - 1)) return null;
     else if (e.mascoteCanto) { h = 430 * e.tamMascote; base = H * 0.95; }
     else if (k === blocos.length - 1 && opcoes().mascote) { h = 400 * e.tamMascote; base = H * 0.95; }
     else return null;
@@ -986,7 +986,7 @@ Se não houver fala, devolva a lista vazia.`;
     return [e.ladoMascote === 'dir' ? W - w - 20 : 20, base - h * 1.03, w, h * 1.03];
   }
   function yLegenda(k, lay) {  // a legenda sobe para não passar na frente da cabeça do mascote
-    const m = caixaMascote(k, lay), y = H * (lay === 'circulo' ? 0.71 : 0.68);  // no círculo, um pouco abaixo da câmera
+    const m = caixaMascote(k, lay), y = H * (lay === 'circulo' ? 0.71 : lay === 'figura' ? 0.77 : 0.68);  // no círculo, um pouco abaixo da câmera; na figura, abaixo dela
     return m && m[1] < y + 70 ? Math.max(H * 0.5, m[1] - 75) : y;
   }
   function zonasDoBloco(ctx, k, lay) {
@@ -1002,6 +1002,7 @@ Se não houver fala, devolva a lista vazia.`;
     }
     if (b.quadro && (lay === 'mascote' || lay === 'mascote_fundo')) { const h = alturaLousa(ctx, b.quadro); add(60, H * LOUSA_Y - h / 2, W - 120, h, 10); }
     if (lay === 'circulo') add(W / 2 - 200, H * 0.53 + 30 - 200, 400, 400, 16);
+    if (lay === 'figura') add(...AREA_FIG, 10);
     if (lay === 'canto') add(W - 340, H * 0.56 - 150, 300, 300, 16);
     if (lay === 'dividida') add(0, H * 0.48, W, H * 0.52, 0);
     const m = caixaMascote(k, lay);
@@ -1064,7 +1065,7 @@ Se não houver fala, devolva a lista vazia.`;
       const n = cortados(c).filter(sg => sg[0] <= t + 0.05).length;
       lay = n % 2 === 1 || n === 0 ? (v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia') : 'mascote_fundo';
     }
-    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' ||
+    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' || lay === 'figura' ||
       (lay === 'escala' && fundoEscala(e, local, tamanho(k)) < 0.5);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const filtro = FILTROS[op.filtro] || 'none';
@@ -1091,6 +1092,13 @@ Se não houver fala, devolva a lista vazia.`;
       for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       conta(ctx, k, lay, local);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.98, 560 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
+    } else if (lay === 'figura') {  // sem câmera: folha de caderno, figura desenhada no ritmo da fala e a conta embaixo
+      ctx.filter = 'none';
+      ctx.strokeStyle = '#0F1B2D14'; ctx.lineWidth = 3;
+      for (let x = 60; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+      desenharFigura(ctx, k, local);
+      conta(ctx, k, lay, local);
     } else if (lay === 'escala') {  // zoom contínuo por uma sequência de desenhos (casa → cidade → … → galáxia)
       ctx.filter = 'none'; desenharEscala(ctx, e, local, tamanho(k));
     } else if (lay === 'clipe') {  // vídeo de apoio (banco grátis) cobrindo a tela; a voz é a sua
@@ -1201,6 +1209,287 @@ Se não houver fala, devolva a lista vazia.`;
       ctx.lineWidth = 10; ctx.lineJoin = 'round'; ctx.strokeStyle = fp < 0.5 ? '#fff' : NAVY; ctx.fillStyle = fp < 0.5 ? NAVY : '#fff';
       ctx.strokeText(rot, W / 2, cy + T * 0.6); ctx.fillText(rot, W / 2, cy + T * 0.6); ctx.restore();
     }
+  }
+
+  /* ---------------------------------------------------------------- 📐 figura animada (geometria desenhada no ritmo da fala) */
+  // item.figura = {vb: [x0, y0, x1, y1], camadas: [{bloco, gatilho, sai, vista, itens: [...]}]} vale para o vídeo todo.
+  // Coordenadas da figura com o y para CIMA (como no caderno). Cada camada entra quando a voz fala o "gatilho" no bloco
+  // dela (bloco 1 = gancho); as camadas de blocos anteriores já estão na tela. "sai" = palavra em que a camada some
+  // (no bloco "saiBloco", se for outro).
+  // "vista" = novo enquadramento [x0, y0, x1, y1]: a câmera desliza/afasta até ele (ex.: para mostrar a mesa desdobrada).
+  // "apaga" = gatilhos de camadas anteriores que somem quando esta entra.
+  // Itens: ret {x, y, w, h}, poligono {pts}, linha {pts, tracejado, seta}, bola {x, y, r}, texto {x, y, t, tam},
+  // cota {de, ate, t, lado}; todos com cor/fundo/larg opcionais e "pisca" (brilha ao entrar). Linhas são traçadas aos poucos.
+  const AREA_FIG = [30, H * 0.205, W - 60, H * 0.51];
+  const CORES_FIG = {navy: NAVY, laranja: LAR, creme: CREME, branco: '#fff', amarelo: '#FFC928', verde: '#1E9E5A', mesa: '#2E8B57',
+    madeira: '#7A4A22', azul: '#2F6FDB', vermelho: '#E0412F', cinza: '#9AA3AE', roxo: '#7B4FD6',
+    // claras = transparentes, para cópias, reflexos, regiões e destaques sem esconder o que está embaixo
+    mesa_clara: '#2E8B5766', azul_claro: '#2F6FDB33', laranja_claro: '#FF7A0055', verde_claro: '#1E9E5A40', amarelo_claro: '#FFC92866',
+    vermelho_claro: '#E0412F40', cinza_claro: '#9AA3AE40', roxo_claro: '#7B4FD640'};
+  const CLARAS = ['#fff', '#FFC928', CREME, '#FFFFFF'];  // texto nessas cores ganha contorno escuro (senão some no contorno branco)
+  const corFig = (c, padrao) => c ? CORES_FIG[c] || c : padrao;
+  const camadasFig = () => (item.figura && Array.isArray(item.figura.camadas)) ? item.figura.camadas : [];
+  const temFigura = k => camadasFig().some(cm => (cm.bloco || 1) - 1 <= k);
+  const cacheTemposFig = new Map();
+  function acharFala(pal, gatilho, de) {  // índice da palavra falada que casa com o gatilho (aceita 2–3 palavras), a partir de "de"
+    const alvo = String(gatilho || '').split(/\s+/).map(normal).filter(Boolean);
+    if (!alvo.length) return -1;
+    const casa = (w, x) => w === x || (x.length >= 4 && w.startsWith(x)) || (w.length >= 4 && x.startsWith(w));
+    for (let m = de; m < pal.length; m++)
+      if (alvo.every((x, n) => m + n < pal.length && casa(normal(pal[m + n].w), x))) return m;
+    for (let m = de; m < pal.length; m++) if (casa(normal(pal[m].w), alvo[0])) return m;  // só a 1ª palavra
+    return -1;
+  }
+  function temposFigura(k) {  // [entra, sai] de cada camada, em segundos dentro do bloco k (-Infinity = já estava)
+    const cs = camadasFig(), c = takes()[k], pal = palavrasDe(k), dur = tamanho(k);
+    const chave_ = JSON.stringify([cs.map(x => [x.bloco, x.gatilho, x.sai, x.saiBloco, x.apaga]), pal.map(p => p.w + p.a.toFixed(2)), c.ini, vel(c)]);
+    const ant = cacheTemposFig.get(k);
+    if (ant && ant.chave === chave_) return ant.ts;
+    const loc = p => Math.max(0, (p.a - c.ini) / vel(c));
+    const blocoSai = cm => cm.sai && !(cm.saiBloco && cm.saiBloco < (cm.bloco || 1)) ? Math.max(cm.saiBloco || 0, cm.bloco || 1) - 1 : Infinity;
+    const ts = cs.map(cm => { const b = (cm.bloco || 1) - 1; return b < k ? [-Infinity, blocoSai(cm) < k ? -Infinity : Infinity] : b > k ? [Infinity, Infinity] : null; });
+    let j = 0;
+    const doBloco = cs.map((cm, n) => n).filter(n => !ts[n]);
+    for (const n of doBloco) {  // sempre para a frente na fala, como a conta
+      const cm = cs[n];
+      if (!cm.gatilho) { ts[n] = [0, Infinity]; continue; }
+      const m = acharFala(pal, cm.gatilho, j);
+      ts[n] = [m < 0 ? null : loc(pal[m]), Infinity];
+      if (m >= 0) j = m;
+    }
+    doBloco.forEach((n, i) => {  // gatilho não falado: entre as camadas vizinhas (ou espalhado pela fala)
+      if (ts[n][0] != null) return;
+      const a = doBloco.slice(0, i).reverse().find(x => ts[x][0] != null), b = doBloco.slice(i + 1).find(x => ts[x][0] != null);
+      ts[n][0] = a != null && b != null ? (ts[a][0] + ts[b][0]) / 2 : a != null ? Math.min(dur - 0.8, ts[a][0] + 1) : b != null ? Math.max(0, ts[b][0] - 1)
+        : dur * (i + 1) / (doBloco.length + 1);
+    });
+    cs.forEach((cm, n) => {  // quando some (no bloco dela ou num bloco depois)
+      if (blocoSai(cm) !== k || ts[n][0] === Infinity) return;
+      const ini = ts[n][0] === -Infinity ? 0 : pal.findIndex(p => loc(p) >= ts[n][0] + 0.05), m = ini < 0 ? -1 : acharFala(pal, cm.sai, ini);
+      if (m >= 0) ts[n][1] = loc(pal[m]);
+    });
+    // "apaga": ao entrar, a camada tira da tela as camadas anteriores com esses gatilhos (ex.: a reta nova apaga a trajetória antiga).
+    // A IA às vezes escreve isso como sai + saiBloco ANTERIOR ao bloco da camada: é o mesmo pedido.
+    cs.forEach((cm, m) => {
+      const alvos = [...(Array.isArray(cm.apaga) ? cm.apaga : cm.apaga ? [cm.apaga] : [])];
+      if (cm.sai && cm.saiBloco && cm.saiBloco < (cm.bloco || 1)) alvos.push(cm.sai);
+      if (!alvos.length || ts[m][0] === Infinity) return;
+      const nomes = alvos.map(x => String(x).split(/\s+/).map(normal).join(' '));
+      cs.forEach((alvo, n) => {
+        if (n >= m || !nomes.includes(String(alvo.gatilho || '').split(/\s+/).map(normal).join(' '))) return;
+        ts[n][1] = Math.min(ts[n][1], ts[m][0]);
+      });
+    });
+    cacheTemposFig.set(k, {chave: chave_, ts});
+    return ts;
+  }
+  const voltaE = x => 1 + 2.7 * Math.pow(x - 1, 3) + 1.7 * Math.pow(x - 1, 2);  // "pula" um pouco ao entrar
+  function seta(ctx, [x1, y1], [x2, y2], tam) {
+    const a = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath(); ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - tam * Math.cos(a - 0.45), y2 - tam * Math.sin(a - 0.45));
+    ctx.lineTo(x2 - tam * Math.cos(a + 0.45), y2 - tam * Math.sin(a + 0.45));
+    ctx.closePath(); ctx.fill();
+  }
+  function tracar(ctx, pts, p) {  // polilinha até a fração p do comprimento; devolve o último ponto e o anterior
+    const ls = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1]));
+    let resta = p * ls.reduce((a, b) => a + b, 0), ult = pts[0], pen = pts[0];
+    ctx.beginPath(); ctx.moveTo(...pts[0]);
+    for (let i = 0; i < ls.length; i++) {
+      if (resta >= ls[i]) { ctx.lineTo(...pts[i + 1]); resta -= ls[i]; pen = pts[i]; ult = pts[i + 1]; continue; }
+      const f = ls[i] ? resta / ls[i] : 0;
+      pen = pts[i]; ult = [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f];
+      ctx.lineTo(...ult); break;
+    }
+    ctx.stroke();
+    return [pen, ult];
+  }
+  function fonteFig(ctx, t, tam) {  // letras gregas (α, β, θ…) e símbolos que a Anton não tem: fonte de matemática, em itálico
+    ctx.font = /[Ͱ-Ͽ√∞≅≡∠°]/.test(t) ? `italic bold ${tam * 1.1}px "Cambria Math", "Times New Roman", serif` : `${tam}px Anton, Impact, sans-serif`;
+  }
+  function textoFig(ctx, t, x, y, tam, cor, ancora = 'center') {
+    fonteFig(ctx, t, tam);
+    ctx.textAlign = ancora; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(6, tam * 0.16);
+    ctx.strokeStyle = CLARAS.includes(cor) ? NAVY : '#fff';
+    ctx.strokeText(t, x, y); ctx.fillStyle = cor; ctx.fillText(t, x, y);
+  }
+  // rótulo não cai em cima de outro: tenta o lugar pedido e, se estiver ocupado, acima, abaixo, dos lados (sempre na mesma ordem,
+  // então nada fica pulando de um quadro para o outro). Devolve o deslocamento [dx, dy].
+  function lugarRotulo(ctx, ocupa, t, tam, x, y, ancora) {
+    fonteFig(ctx, t, tam);
+    const w = ctx.measureText(t).width + 16, h = tam * 1.05, x0 = ancora === 'left' ? x - 8 : ancora === 'right' ? x - w + 8 : x - w / 2;
+    const [ax, ay, aw, ah] = AREA_FIG;
+    const tenta = [[0, 0], [0, -h * 1.1], [0, h * 1.1], [w * 0.6 + 10, 0], [-w * 0.6 - 10, 0], [0, -h * 2.2], [0, h * 2.2], [w * 0.6, -h * 1.1], [-w * 0.6, -h * 1.1]];
+    const bate = r => ocupa.some(o => r[0] < o[0] + o[2] && o[0] < r[0] + r[2] && r[1] < o[1] + o[3] && o[1] < r[1] + r[3]);
+    const fora = r => r[0] < ax - 20 || r[0] + r[2] > ax + aw + 20 || r[1] < ay - 50 || r[1] + r[3] > ay + ah + 50;
+    const d = tenta.find(([dx, dy]) => { const r = [x0 + dx, y - h / 2 + dy, w, h]; return !bate(r) && !fora(r); }) || [0, 0];
+    ocupa.push([x0 + d[0], y - h / 2 + d[1], w, h]);
+    return d;
+  }
+  function itemFig(ctx, it, P, s, dt, alfa, ocupa = []) {
+    const linhaTipo = it.tipo === 'linha' || it.tipo === 'cota' || it.tipo === 'elipse';
+    const p = Math.min(1, Math.max(0, dt / (it.dur || (linhaTipo ? 0.9 : 0.35))));
+    if (p <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = alfa * (linhaTipo ? 1 : Math.min(1, p * 1.5));
+    if (it.pisca && dt < 1.8) { ctx.shadowColor = LAR; ctx.shadowBlur = 40 * Math.abs(Math.sin(dt * Math.PI * 1.6)); }
+    const cor = corFig(it.cor, NAVY), larg = it.larg || 6;
+    ctx.strokeStyle = cor; ctx.fillStyle = cor; ctx.lineWidth = larg; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (it.tipo === 'ret' || it.tipo === 'poligono') {
+      const pts = it.tipo === 'ret' ? [[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h]].map(P) : (it.pts || []).map(P);
+      if (pts.length < 2) { ctx.restore(); return; }
+      ctx.beginPath(); ctx.moveTo(...pts[0]); pts.slice(1).forEach(q => ctx.lineTo(...q)); ctx.closePath();
+      if (it.fundo) { ctx.fillStyle = corFig(it.fundo); ctx.fill(); }
+      if (it.cor || !it.fundo) { ctx.shadowBlur = 0; ctx.stroke(); }
+    } else if (it.tipo === 'elipse') {  // desenhada aos poucos, como a linha; ini/fim (graus) = só um arco
+      const [cx0, cy0] = P([it.x, it.y]), rx = Math.max(2, (it.rx || it.r || 1) * s), ry = Math.max(2, (it.ry || it.r || it.rx || 1) * s);
+      const a0 = -(it.ini || 0) * Math.PI / 180, giro = ((it.fim == null ? 360 : it.fim) - (it.ini || 0)) * Math.PI / 180;
+      const q = suaveE(Math.min(1, dt / (it.dur || 0.8)));
+      if (it.fundo) { ctx.save(); ctx.globalAlpha *= Math.min(1, q * 1.4); ctx.beginPath(); ctx.ellipse(cx0, cy0, rx, ry, 0, a0, a0 - giro, true); ctx.fillStyle = corFig(it.fundo); ctx.fill(); ctx.restore(); }
+      if (it.cor || !it.fundo) {
+        if (it.tracejado) ctx.setLineDash([larg * 2.2, larg * 1.8]);
+        ctx.shadowBlur = it.pisca && dt < 1.8 ? ctx.shadowBlur : 0;
+        ctx.beginPath(); ctx.ellipse(cx0, cy0, rx, ry, 0, a0, a0 - giro * q, true); ctx.stroke(); ctx.setLineDash([]);
+      }
+    } else if (it.tipo === 'linha') {
+      const pts = (it.pts || []).map(P); if (pts.length < 2) { ctx.restore(); return; }
+      if (it.tracejado) ctx.setLineDash([larg * 2.2, larg * 1.8]);
+      const [pen, ult] = tracar(ctx, pts, suaveE(p));
+      ctx.setLineDash([]);
+      if (it.seta) seta(ctx, pen, ult, larg * 4.5);
+    } else if (it.tipo === 'bola') {
+      const [x, y] = P([it.x, it.y]), r = Math.max(10, (it.r || 4) * s) * voltaE(p);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = corFig(it.fundo, '#fff'); ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = corFig(it.cor, NAVY); ctx.shadowBlur = 0; ctx.stroke();
+    } else if (it.tipo === 'texto') {
+      const [x, y] = P([it.x, it.y]), sc = voltaE(p), anc = it.ancora === 'esq' ? 'left' : it.ancora === 'dir' ? 'right' : 'center';
+      const tam = Math.max(48, it.tam || 54);  // menor que isso some na tela do celular
+      const [dx, dy] = lugarRotulo(ctx, ocupa, String(it.t), tam, x, y, anc);
+      ctx.translate(x + dx, y + dy); ctx.scale(sc, sc);
+      textoFig(ctx, String(it.t), 0, 0, tam, cor, anc);
+    } else if (it.tipo === 'cota') {
+      const a = P(it.de), b = P(it.ate), ex = Math.max(0, Math.min(1, p * 1.25));
+      const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], ab = [m[0] + (a[0] - m[0]) * suaveE(ex), m[1] + (a[1] - m[1]) * suaveE(ex)],
+        bb = [m[0] + (b[0] - m[0]) * suaveE(ex), m[1] + (b[1] - m[1]) * suaveE(ex)];
+      ctx.lineWidth = it.larg || 4;
+      ctx.beginPath(); ctx.moveTo(...ab); ctx.lineTo(...bb); ctx.stroke();
+      seta(ctx, bb, ab, 22); seta(ctx, ab, bb, 22);
+      if (it.t && p > 0.4) {
+        const tam = Math.max(48, it.tam || 56), d = tam * 0.75 + 8, o = {cima: [0, -d], baixo: [0, d], esq: [-d, 0], dir: [d, 0]}[it.lado || 'cima'] || [0, -d];
+        const q = Math.min(1, (p - 0.4) / 0.4), sc = voltaE(q), anc = it.lado === 'esq' ? 'right' : it.lado === 'dir' ? 'left' : 'center';
+        const [dx, dy] = lugarRotulo(ctx, ocupa, String(it.t), tam, m[0] + o[0], m[1] + o[1], anc);
+        ctx.translate(m[0] + o[0] + dx, m[1] + o[1] + dy); ctx.scale(sc, sc);
+        textoFig(ctx, String(it.t), 0, 0, tam, cor, anc);
+      }
+    }
+    ctx.restore();
+  }
+  // Enquadramentos de verdade: camada a camada, se o que entra não cabe no enquadramento atual, a câmera afasta NA HORA em que
+  // aquilo entra (vista automática), com folga para os rótulos. Assim nada nasce cortado, mesmo se a IA errar ou esquecer a vista,
+  // e a figura não começa pequena por causa de algo que só aparece depois.
+  function caixaItem(it) {
+    const pts = it.tipo === 'ret' ? [[it.x, it.y], [it.x + it.w, it.y + it.h]] : it.tipo === 'cota' ? [it.de, it.ate]
+      : it.tipo === 'bola' ? [[it.x - (it.r || 0), it.y - (it.r || 0)], [it.x + (it.r || 0), it.y + (it.r || 0)]]
+      : it.tipo === 'elipse' ? [[it.x - (it.rx || it.r || 0), it.y - (it.ry || it.r || it.rx || 0)], [it.x + (it.rx || it.r || 0), it.y + (it.ry || it.r || it.rx || 0)]] : it.pts || [[it.x, it.y]];
+    return (pts || []).filter(q => Array.isArray(q) && isFinite(q[0]) && isFinite(q[1]));
+  }
+  const cacheVistas = new WeakMap();
+  function vistasFig(F) {
+    if (cacheVistas.has(F)) return cacheVistas.get(F);
+    const cs = F.camadas || [], ok = v => Array.isArray(v) && v.length === 4 && v.every(isFinite) && v[2] > v[0] && v[3] > v[1];
+    const res = {base: ok(F.vb) ? F.vb.slice() : [0, 0, 10, 10], por: new Map()};
+    const junta = (v, cm) => {  // v crescido para caber os itens da camada (com folga de 10% para os rótulos)
+      const pts = (cm.itens || []).flatMap(caixaItem);
+      if (!pts.length) return v;
+      const mx = Math.max(v[2] - v[0], v[3] - v[1]) * 0.1, xs = pts.map(q => q[0]), ys = pts.map(q => q[1]);
+      const cabe = Math.min(...xs) >= v[0] + mx * 0.3 && Math.max(...xs) <= v[2] - mx * 0.3 && Math.min(...ys) >= v[1] + mx * 0.3 && Math.max(...ys) <= v[3] - mx * 0.3;
+      return cabe ? v : [Math.min(v[0], Math.min(...xs) - mx), Math.min(v[1], Math.min(...ys) - mx), Math.max(v[2], Math.max(...xs) + mx), Math.max(v[3], Math.max(...ys) + mx)];
+    };
+    let atual = res.base;
+    cs.forEach((cm, n) => {
+      if (n === 0) { atual = junta(ok(cm.vista) ? cm.vista.slice() : atual, cm); res.base = atual; return; }
+      const v = junta(ok(cm.vista) ? cm.vista.slice() : atual, cm);
+      if (ok(cm.vista) || v !== atual) res.por.set(n, v);  // vista pedida, ou automática (o que entrou não cabia)
+      atual = v;
+    });
+    cacheVistas.set(F, res);
+    return res;
+  }
+  function desenharFigura(ctx, k, local) {
+    const F = item.figura; if (!F || !F.vb) return;
+    pintarFigura(ctx, F, camadasFig(), temposFigura(k), local);
+  }
+  function pintarFigura(ctx, F, cs, ts, local) {
+    const VF = vistasFig(F);
+    // enquadramento: a última "vista" que já entrou; desliza da anterior até ela em 1 s
+    const vistas = cs.map((cm, n) => [{vista: VF.por.get(n)}, ts[n][0]]).filter(([v, a]) => v.vista && a <= local).sort((x, y) => x[1] === y[1] ? 0 : x[1] - y[1]);
+    const vAt = vistas.length ? vistas[vistas.length - 1] : [{vista: VF.base}, -Infinity], vAn = vistas.length > 1 ? vistas[vistas.length - 2][0].vista : VF.base;
+    const q = suaveE(Math.min(1, Math.max(0, (local - vAt[1]) / 1)));
+    const vb = vAt[0].vista.map((v, i) => vAn[i] + (v - vAn[i]) * q);
+    const [ax, ay, aw, ah] = AREA_FIG, fw = vb[2] - vb[0] || 1, fh = vb[3] - vb[1] || 1, s = Math.min(aw / fw, ah / fh);
+    const ox = ax + (aw - fw * s) / 2, oy = ay + (ah - fh * s) / 2;
+    const P = ([x, y]) => [ox + (x - vb[0]) * s, oy + (vb[3] - y) * s];
+    ctx.save(); ctx.beginPath(); ctx.rect(0, ay - 30, W, ah + 60); ctx.clip();  // zoom não vaza para o título nem para a legenda (dos lados pode ir até a borda)
+    const ROTULO = ['texto', 'cota'], ocupa = [];  // rótulos e medidas por cima de tudo (nada cobre um número), sem se encavalar
+    const nomeDe = t => { const m = String(t || '').match(/^\s*(.+?)\s*=\s*(.*)$/); return m ? [m[1].trim(), m[2].trim()] : null; };
+    const respondidos = new Set();  // nomes cuja resposta já está na tela
+    cs.forEach((cm, n) => { if (local >= ts[n][0] && local <= ts[n][1]) for (const it of cm.itens || []) {
+      const nm = nomeDe(it.t); if (nm && nm[1] && nm[1] !== '?') respondidos.add(nm[0]);
+    } });
+    const perguntaRespondida = it => { const nm = nomeDe(it.t); return nm && nm[1] === '?' && respondidos.has(nm[0]); };
+    for (const rotulos of [false, true]) cs.forEach((cm, n) => {
+      const [a, b] = ts[n]; if (local < a) return;
+      const alfa = local > b ? Math.max(0, 1 - (local - b) / 0.45) : 1; if (alfa <= 0) return;
+      for (const it of cm.itens || []) if (ROTULO.includes(it.tipo) === rotulos && !perguntaRespondida(it)) itemFig(ctx, it, P, s, local - a - (it.atraso || 0), alfa, ocupa);
+    });
+    ctx.restore();
+  }
+
+  // Prévia na tela do roteiro, antes de gravar: a figura depois do passo n (camada n já entrou), sem relógio nem voz.
+  function previaFigura(cv, F, n) {
+    const cs = (F && F.camadas) || []; if (!F || !F.vb || !cs.length) return;
+    n = Math.max(0, Math.min(cs.length - 1, n));
+    const norm = x => String(x || '').split(/\s+/).map(normal).join(' ');
+    const blocoN = cs[n].bloco || 1;
+    const ts = cs.map((cm, i) => {
+      if (i > n) return [Infinity, Infinity];
+      const apagada = cs.slice(i + 1, n + 1).some(m => [].concat(m.apaga || []).map(norm).includes(norm(cm.gatilho)));
+      const blocoSai = Math.max(cm.saiBloco || 0, cm.bloco || 1);  // some em algum ponto desse bloco: na prévia, já no começo dele
+      const saiu = cm.sai && (blocoN > blocoSai || (blocoN === blocoSai && (cm.bloco || 1) < blocoSai));
+      return [-Infinity, apagada || saiu ? -Infinity : Infinity];
+    });
+    const tela = document.createElement('canvas'); tela.width = W; tela.height = H;
+    const ctx = tela.getContext('2d');
+    ctx.fillStyle = CREME; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#0F1B2D14'; ctx.lineWidth = 3;
+    for (let x = 60; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    pintarFigura(ctx, F, cs, ts, 0);
+    const [, ay, , ah] = AREA_FIG, y0 = ay - 30, h0 = ah + 60;
+    cv.width = W; cv.height = h0;
+    cv.getContext('2d').drawImage(tela, 0, y0, W, h0, 0, 0, W, h0);
+  }
+  // A IA às vezes desenha a figura espelhada: devolve a figura desvirada (pontos, retângulos, cotas, enquadramentos)
+  function espelharFigura(F0, eixo) {
+    const F = JSON.parse(JSON.stringify(F0)), i = eixo === 'x' ? 0 : 1, c = F.vb[i] + F.vb[i + 2];
+    const pt = q => { if (Array.isArray(q)) q[i] = +(c - q[i]).toFixed(2); };
+    const caixa = v => { if (Array.isArray(v) && v.length === 4) { const a = c - v[i + 2], b = c - v[i]; v[i] = +a.toFixed(2); v[i + 2] = +b.toFixed(2); } };
+    for (const cm of F.camadas || []) {
+      caixa(cm.vista);
+      for (const it of cm.itens || []) {
+        (it.pts || []).forEach(pt); pt(it.de); pt(it.ate);
+        if (it.tipo === 'ret') { if (eixo === 'x') it.x = +(c - it.x - it.w).toFixed(2); else it.y = +(c - it.y - it.h).toFixed(2); }
+        else if ('x' in it && eixo === 'x') it.x = +(c - it.x).toFixed(2);
+        else if ('y' in it && eixo === 'y') it.y = +(c - it.y).toFixed(2);
+        if (it.lado) it.lado = eixo === 'x' ? ({esq: 'dir', dir: 'esq'}[it.lado] || it.lado) : ({cima: 'baixo', baixo: 'cima'}[it.lado] || it.lado);
+        if (it.ancora && eixo === 'x') it.ancora = {esq: 'dir', dir: 'esq'}[it.ancora] || it.ancora;
+        if (it.tipo === 'elipse' && (it.ini != null || it.fim != null)) {  // arco: espelha os ângulos
+          const a = it.ini || 0, b = it.fim == null ? 360 : it.fim;
+          [it.ini, it.fim] = eixo === 'x' ? [180 - b, 180 - a] : [-b, -a];
+        }
+      }
+    }
+    return F;
   }
 
   /* ---------------------------------------------------------------- 🎞️ vídeo de apoio (Pexels / Pixabay, grátis) */
@@ -1705,12 +1994,13 @@ ${textoBlocos}`;
     for (const x of r.blocos || []) {
       const k = x.bloco - 1; if (!(k >= 0 && k < blocos.length)) continue;
       const e = est(k);
-      const lay = semImagem(k) && !SEM_CAMERA.includes(x.layout) ? 'visual' : x.layout;
+      const lay = e.layout === 'figura' && temFigura(k) ? 'figura' : semImagem(k) && !SEM_CAMERA.includes(x.layout) ? 'visual' : x.layout;  // a figura animada fica
       Object.assign(e, {layout: lay, pose: x.pose, mascoteCanto: !!x.mascote_canto && !COM_MASCOTE.includes(lay), corTitulo: x.cor_titulo});
       if (k > 0) e.transicao = x.transicao;
       setTexto(k, 'texto_tela', (x.titulo || '').slice(0, 40));
-      if (x.conta) setTexto(k, 'quadro', x.conta.slice(0, 40));
+      if (x.conta && lay !== 'figura') setTexto(k, 'quadro', x.conta.slice(0, 40));
       e.figs = e.figs.filter(f => !f.ia);  // troca só as figuras que a IA tinha posto; as suas ficam
+      if (lay === 'figura') continue;  // a figura já ocupa o meio da tela
       if (lay === 'escala') {
         const cad = (x.escala_cadeia || []).map(c => temDesenho(c.valor) ? {tipo: 'desenho', valor: c.valor, rotulo: (c.rotulo || '').toUpperCase().slice(0, 20)}
           : ehEmoji(c.valor) ? {tipo: 'emoji', valor: [...c.valor.trim()].slice(0, 2).join(''), rotulo: (c.rotulo || '').toUpperCase().slice(0, 20)} : null).filter(Boolean);
@@ -1748,6 +2038,126 @@ ${textoBlocos}`;
     selecionar(sel);
     alert(`✨ Pronto! A IA montou ${r.blocos ? r.blocos.length : 0} blocos e pôs ${nFig} figuras. Veja na prévia (▶) e ajuste o que quiser. Não gostou? Toque em ↩ Desfazer.`);
   }
+  // 📐 a IA desenha UMA figura para o vídeo todo, em camadas que entram nas palavras que você falou
+  // 📐 pede ao Gemini a figura animada (usada no editor e na criação do roteiro a partir de uma questão em PDF)
+  async function pedirFigura(tema, enunciado, textoBlocos, avisar = () => {}, imagens = []) {
+    const pedido = `Você desenha a FIGURA de um Reels de matemática (vídeo vertical) do professor Delmão. A figura vai sendo desenhada
+no ritmo da fala dele, como num quadro: cada camada aparece quando ele fala a palavra-gatilho. Tema: "${tema}".
+${enunciado ? `Enunciado da questão (e a figura dela, descrita):\n"""${enunciado}"""\n` : ''}
+O que ele fala em cada bloco:
+${textoBlocos}
+
+Regras:
+- UMA figura para o vídeo todo, em coordenadas do problema (ex.: centímetros), com o y para CIMA. Use as medidas REAIS do problema
+  e confira cada conta duas vezes: a figura tem de estar matematicamente certa.
+- vb = [x0, y0, x1, y1]: enquadramento inicial, com folga de ~10% em volta (a área da tela é quase quadrada, um pouco mais larga que alta).
+- camadas: na ordem da fala. bloco = número do bloco em que entra. gatilho = UMA ou DUAS palavras copiadas EXATAMENTE da fala desse
+  bloco (o momento em que ela aparece); "" = no começo do bloco. A 1ª camada (bloco 1, gatilho "") é a base da figura.
+  Uma ideia por camada (6 a 14 camadas no total); nada de mostrar a resposta antes de ele falar.
+- apaga: lista de gatilhos de camadas ANTERIORES que somem quando esta entra (ex.: a reta nova apaga a trajetória antiga: "apaga": ["três"]).
+- sai: palavra (desta camada em diante) em que ELA MESMA some; "" = fica. saiBloco: o bloco dessa palavra, se for depois do bloco da camada.
+- vista: [x0, y0, x1, y1] quando a câmera precisa afastar/aproximar (ex.: a figura cresce para o lado, ou zoom num detalhe); senão [].
+- itens de cada camada (tipo e só os campos dele):
+  ret: x, y (canto de baixo à esquerda), w, h, fundo e/ou cor (borda).  poligono: pts [[x,y],...], fundo, cor.
+  linha: pts [[x,y],...] (é traçada aos poucos), cor, larg (px, padrão 6), tracejado, seta.
+  elipse: x, y (centro), rx, ry (círculo: só r), fundo, cor, tracejado; ini e fim em graus para desenhar só um arco (0° = direita,
+  sentido anti-horário). Use para cilindro (elipse em cima e embaixo + 2 linhas), cone, circunferência, setor, arco de ângulo.  bola: x, y, r (no tamanho do problema), fundo, cor.
+  texto: x, y, t (curto: número, letra, "d = ?"), tam (px, 40 a 70), cor.  cota: de [x,y], ate [x,y], t (a medida), lado (cima, baixo, esq, dir).
+  pisca: true para destacar algo importante no instante em que aparece. atraso: segundos depois do gatilho (para encadear 2 itens).
+- contas: para cada bloco que mostra uma conta, a conta curta escrita embaixo da figura (até 26 caracteres, símbolos × ÷ − = →), igual ao que ele fala.
+  Números no padrão brasileiro: vírgula decimal (6,3; 158,40), nunca ponto.
+
+COMO FAZER UMA FIGURA BONITA E CLARA (o professor reprova figura poluída):
+1. A figura conta a mesma história da fala: cada ideia que ele fala vira algo novo na tela, na hora em que ele fala.
+2. Ideia de refletir, espelhar, desdobrar, girar, repetir ou empilhar: desenhe TODAS as cópias (ex.: 3 batidas = 3 mesas espelhadas),
+   com as coordenadas espelhadas certas, na versão CLARA da cor do original, cada cópia com atraso 0,4 s maior que a anterior.
+3. Rótulos curtíssimos (até 8 caracteres: "d = ?", "400", "α", "BRANCA"). NUNCA ponha frase nem conta dentro da figura: conta vai em "contas".
+   No máximo 1 rótulo por objeto, colado nele. Medida é sempre "cota" (com setinhas), não texto solto.
+4. Contraste: texto em cima de fundo escuro (mesa, navy, verde) = branco ou amarelo; em cima do creme = navy, laranja ou azul.
+5. A ideia-chave (a reta, o lado procurado, o triângulo semelhante) em laranja, larg 9 a 10, com pisca. O resto em navy, sem pisca.
+6. Regiões e cópias: cores claras (transparentes): mesa_clara, azul_claro, laranja_claro, verde_claro, amarelo_claro, vermelho_claro,
+   roxo_claro, cinza_claro. Objeto principal nunca em cinza.
+7. vista: tem de conter TUDO o que vai estar visível até a próxima vista, com folga para os rótulos. Ao voltar a um detalhe, use vista
+   e tire ("apaga") o que ficou para trás, para a tela não ficar cheia.
+   O que é perguntado leva "?" ("d = ?"); quando a resposta entrar com o mesmo nome ("d = 58"), o "?" some sozinho.
+8. Objetos minúsculos (bola de 3 cm numa mesa de 2 m, um ponto): use o tamanho real; o app aumenta sozinho para ficar visível.
+8b. FORA DE ESCALA quando precisar: se as medidas reais deixam a figura fina, achatada ou com o detalhe invisível (ex.: cilindro de
+   raio 10 e altura 100; espessura de 1 cm), desenhe esquemático, como a prova faz, com proporções que deixem tudo legível,
+   e ponha as medidas REAIS nos rótulos. O detalhe que a questão discute (espessura, diferença) tem de aparecer grande.
+9. MENOS É MAIS: nunca escreva coordenadas como "(103, 143)" na figura; cada medida aparece UMA vez (cota OU texto, nunca os dois);
+   no máximo 5 rótulos na tela ao mesmo tempo; o que já foi usado e não ajuda mais sai ("apaga").
+10. Linhas e pontos importantes nas coordenadas EXATAS (pontos de batida, pés de altura, interseções): calcule antes de escrever.
+Cores: navy (padrão), laranja, verde, mesa (verde de mesa de bilhar), madeira, amarelo, azul, vermelho, roxo, cinza, branco, creme + as claras.
+Fundo da tela: creme quadriculado.`;
+    // sem responseSchema: com o esquema cheio de campos opcionais o Gemini preenchia tudo e se perdia; um exemplo curto funciona melhor
+    // Exemplo completo de OUTRO problema (sombra do poste x sombra do prédio, semelhança), no padrão de qualidade que o professor aprovou
+    const exSombra = {vb: [-2, -2, 24, 8], camadas: [
+      {bloco: 1, gatilho: '', itens: [{tipo: 'linha', pts: [[-1, 0], [23, 0]], cor: 'madeira', larg: 8, dur: 0.5},
+        {tipo: 'linha', pts: [[2, 0], [2, 3]], cor: 'navy', larg: 10, atraso: 0.3}, {tipo: 'texto', x: 2, y: 3.8, t: 'POSTE', tam: 44}]},
+      {bloco: 1, gatilho: 'sombra', itens: [{tipo: 'poligono', pts: [[2, 0], [4, 0], [2, 3]], fundo: 'cinza_claro'},
+        {tipo: 'linha', pts: [[2, 3], [4, 0]], cor: 'amarelo', larg: 6, tracejado: true}]},
+      {bloco: 2, gatilho: 'três', itens: [{tipo: 'cota', de: [1.2, 0], ate: [1.2, 3], t: '3 m', lado: 'esq'}]},
+      {bloco: 2, gatilho: 'dois', itens: [{tipo: 'cota', de: [2, -0.8], ate: [4, -0.8], t: '2 m', lado: 'baixo'}]},
+      {bloco: 3, gatilho: 'prédio', vista: [-2, -3, 36, 30], itens: [{tipo: 'ret', x: 12, y: 0, w: 4, h: 27, fundo: 'azul_claro', cor: 'navy'},
+        {tipo: 'cota', de: [16, -1.5], ate: [34, -1.5], t: '18 m', lado: 'baixo', atraso: 0.6}, {tipo: 'linha', pts: [[16, 27], [34, 0]], cor: 'amarelo', larg: 6, tracejado: true, atraso: 0.6}]},
+      {bloco: 4, gatilho: 'mesmo', itens: [{tipo: 'poligono', pts: [[16, 0], [34, 0], [16, 27]], fundo: 'laranja_claro', cor: 'laranja', larg: 6, pisca: true}]},
+      {bloco: 4, gatilho: 'seis', itens: [{tipo: 'texto', x: 26, y: 18, t: '× 9', tam: 64, cor: 'laranja', pisca: true}]},
+      {bloco: 5, gatilho: 'vinte', itens: [{tipo: 'cota', de: [11, 0], ate: [11, 27], t: 'h = 27', lado: 'esq', cor: 'laranja', pisca: true}]}],
+      contas: [{bloco: 4, conta: '18 ÷ 2 = 9'}, {bloco: 5, conta: 'h = 3 × 9 = 27 m'}]};
+    // exemplos bons por tipo de questão (o mais parecido com a questão vai como modelo; tipo diferente = sombra)
+    const EXEMPLOS = {"semelhanca": null, "reflexao": {"vb": [-40, -30, 270, 245], "camadas": [{"bloco": 1, "gatilho": "", "itens": [{"tipo": "ret", "x": -9, "y": -9, "w": 224, "h": 224, "fundo": "madeira"}, {"tipo": "ret", "x": 0, "y": 0, "w": 206, "h": 206, "fundo": "mesa"}, {"tipo": "bola", "x": 103, "y": 143, "r": 6, "fundo": "branco", "atraso": 0.3}, {"tipo": "bola", "x": 103, "y": 200, "r": 6, "fundo": "amarelo", "atraso": 0.6}]}, {"bloco": 1, "gatilho": "três", "sai": "reta", "saiBloco": 4, "itens": [{"tipo": "linha", "pts": [[103, 143], [203, 58], [138.3, 3], [3, 118], [103, 200]], "cor": "branco", "larg": 7, "tracejado": true, "seta": true, "dur": 2.2}]}, {"bloco": 2, "gatilho": "branca", "itens": [{"tipo": "texto", "x": 103, "y": 168, "t": "BRANCA", "tam": 44}]}, {"bloco": 2, "gatilho": "amarela", "itens": [{"tipo": "texto", "x": 103, "y": 225, "t": "AMARELA", "tam": 44}]}, {"bloco": 2, "gatilho": "esse d", "sai": "58", "saiBloco": 7, "itens": [{"tipo": "cota", "de": [225, 0], "ate": [225, 58], "t": "d = ?", "lado": "dir", "cor": "laranja", "pisca": true}]}, {"bloco": 3, "gatilho": "espelho", "itens": [{"tipo": "texto", "x": 186, "y": 76, "t": "α", "tam": 50, "cor": "laranja", "pisca": true}, {"tipo": "texto", "x": 186, "y": 40, "t": "α", "tam": 50, "cor": "laranja", "pisca": true, "atraso": 0.3}], "sai": "E", "saiBloco": 7}, {"bloco": 3, "gatilho": "reflete", "vista": [-25, -225, 640, 240], "itens": [{"tipo": "ret", "x": 203, "y": 3, "w": 200, "h": 200, "fundo": "#2E8B5766", "cor": "#7A4A2299", "larg": 4, "atraso": 0.5, "dur": 0.5}, {"tipo": "ret", "x": 203, "y": -197, "w": 200, "h": 200, "fundo": "#2E8B5766", "cor": "#7A4A2299", "larg": 4, "atraso": 1.0, "dur": 0.5}, {"tipo": "ret", "x": 403, "y": -197, "w": 200, "h": 200, "fundo": "#2E8B5766", "cor": "#7A4A2299", "larg": 4, "atraso": 1.5, "dur": 0.5}, {"tipo": "bola", "x": 503, "y": -194, "r": 6, "fundo": "#FFC928AA", "atraso": 1.9}], "sai": "E", "saiBloco": 7}, {"bloco": 4, "gatilho": "reta", "itens": [{"tipo": "linha", "pts": [[103, 143], [503, -194]], "cor": "laranja", "larg": 10, "seta": true, "dur": 1.4, "pisca": true}]}, {"bloco": 5, "gatilho": "400", "itens": [{"tipo": "cota", "de": [103, 143], "ate": [503, 143], "t": "400", "lado": "cima", "cor": "navy"}], "sai": "E", "saiBloco": 7}, {"bloco": 5, "gatilho": "340", "itens": [{"tipo": "cota", "de": [503, 143], "ate": [503, -194], "t": "340", "lado": "dir", "cor": "navy"}], "sai": "E", "saiBloco": 7}, {"bloco": 6, "gatilho": "100", "itens": [{"tipo": "poligono", "pts": [[103, 143], [203, 143], [203, 58]], "fundo": "#FF7A0066", "cor": "laranja", "larg": 5, "pisca": true}, {"tipo": "texto", "x": 153, "y": 112, "t": "100", "tam": 50, "cor": "laranja"}]}, {"bloco": 6, "gatilho": "85", "itens": [{"tipo": "texto", "x": 222, "y": 100, "t": "85", "tam": 50, "cor": "laranja", "ancora": "esq", "pisca": true}]}, {"bloco": 7, "gatilho": "", "vista": [-60, -30, 300, 245], "itens": []}, {"bloco": 7, "gatilho": "143", "itens": [{"tipo": "cota", "de": [-22, 0], "ate": [-22, 143], "t": "143", "lado": "esq", "cor": "azul"}]}, {"bloco": 7, "gatilho": "58", "itens": [{"tipo": "cota", "de": [225, 0], "ate": [225, 58], "t": "d = 58", "lado": "dir", "cor": "laranja", "pisca": true}]}], "contas": [{"bloco": 6, "conta": "340 ÷ 4 = 85"}, {"bloco": 7, "conta": "d = 143 − 85 = 58"}]}, "pitagoras": {"vb": [-1.5, -1, 6, 5.5], "camadas": [{"bloco": 1, "gatilho": "", "itens": [{"tipo": "linha", "pts": [[-0.5, 0], [5.5, 0]], "cor": "madeira", "larg": 8, "dur": 0.5}, {"tipo": "ret", "x": -0.5, "y": 0, "w": 0.5, "h": 5, "fundo": "cinza_claro", "cor": "navy", "larg": 4}, {"tipo": "texto", "x": -0.25, "y": 5.3, "t": "MURO", "tam": 44}]}, {"bloco": 1, "gatilho": "escada", "itens": [{"tipo": "linha", "pts": [[3, 0], [0, 4]], "cor": "navy", "larg": 11}]}, {"bloco": 2, "gatilho": "pé", "itens": [{"tipo": "cota", "de": [0, -0.45], "ate": [3, -0.45], "t": "3 m", "lado": "baixo"}]}, {"bloco": 2, "gatilho": "cinco", "itens": [{"tipo": "texto", "x": 2, "y": 2.4, "t": "5 m", "tam": 56}]}, {"bloco": 3, "gatilho": "altura", "itens": [{"tipo": "cota", "de": [-0.9, 0], "ate": [-0.9, 4], "t": "h = ?", "lado": "esq", "cor": "laranja", "pisca": true}]}, {"bloco": 3, "gatilho": "quatro", "itens": [{"tipo": "cota", "de": [-0.9, 0], "ate": [-0.9, 4], "t": "h = 4", "lado": "esq", "cor": "laranja"}]}, {"bloco": 4, "gatilho": "escorrega", "apaga": ["escada", "pé", "cinco"], "itens": [{"tipo": "linha", "pts": [[4, 0], [0, 3]], "cor": "laranja", "larg": 11, "pisca": true}, {"tipo": "cota", "de": [0, -0.45], "ate": [4, -0.45], "t": "4 m", "lado": "baixo", "atraso": 0.6}]}, {"bloco": 5, "gatilho": "três", "itens": [{"tipo": "cota", "de": [0.45, 0], "ate": [0.45, 3], "t": "3", "lado": "dir", "cor": "azul"}]}, {"bloco": 6, "gatilho": "desceu", "itens": [{"tipo": "cota", "de": [0.45, 3], "ate": [0.45, 4], "t": "1 m", "lado": "dir", "cor": "vermelho", "pisca": true}]}], "contas": [{"bloco": 3, "conta": "3² + h² = 5² → h = 4"}, {"bloco": 5, "conta": "4² + h² = 5² → h = 3"}, {"bloco": 6, "conta": "4 − 3 = 1 m"}]}, "funcao": {"vb": [-1.5, -2, 5.5, 5], "camadas": [{"bloco": 1, "gatilho": "", "itens": [{"tipo": "linha", "pts": [[-1, 0], [5, 0]], "cor": "navy", "larg": 4, "seta": true, "dur": 0.5}, {"tipo": "linha", "pts": [[0, -1.6], [0, 4.6]], "cor": "navy", "larg": 4, "seta": true, "dur": 0.5}, {"tipo": "texto", "x": 5.1, "y": -0.45, "t": "x", "tam": 48}, {"tipo": "texto", "x": 0.35, "y": 4.6, "t": "y", "tam": 48}]}, {"bloco": 2, "gatilho": "parábola", "itens": [{"tipo": "linha", "pts": [[-0.2, 3.84], [0.2, 2.24], [0.6, 0.96], [1.0, 0.0], [1.4, -0.64], [1.8, -0.96], [2.2, -0.96], [2.6, -0.64], [3.0, 0.0], [3.4, 0.96], [3.8, 2.24], [4.2, 3.84]], "cor": "azul", "larg": 8, "dur": 1.6}]}, {"bloco": 3, "gatilho": "raízes", "itens": [{"tipo": "bola", "x": 1, "y": 0, "r": 0.12, "fundo": "laranja", "pisca": true}, {"tipo": "bola", "x": 3, "y": 0, "r": 0.12, "fundo": "laranja", "pisca": true, "atraso": 0.4}, {"tipo": "texto", "x": 1, "y": 0.55, "t": "1", "tam": 52, "cor": "laranja"}, {"tipo": "texto", "x": 3, "y": 0.55, "t": "3", "tam": 52, "cor": "laranja", "atraso": 0.4}]}, {"bloco": 4, "gatilho": "vértice", "itens": [{"tipo": "linha", "pts": [[2, 0], [2, -1]], "cor": "cinza", "larg": 4, "tracejado": true}, {"tipo": "bola", "x": 2, "y": -1, "r": 0.12, "fundo": "laranja", "pisca": true}, {"tipo": "texto", "x": 2, "y": -1.6, "t": "V(2, −1)", "tam": 52, "cor": "laranja"}]}], "contas": [{"bloco": 3, "conta": "x² − 4x + 3 = 0 → x = 1 ou 3"}, {"bloco": 4, "conta": "xv = (1 + 3) ÷ 2 = 2"}]}};
+    const txt = (tema + ' ' + enunciado + ' ' + textoBlocos).toLowerCase();
+    const tipoEx = /bilhar|sinuca|reflex|espelh|rebat|tabela da|desdobr/.test(txt) ? 'reflexao'
+      : /fun[cç][aã]o|gr[aá]fico|par[aá]bola|plano cartesiano|v[eé]rtice|ra[ií]zes|eixo/.test(txt) ? 'funcao'
+      : /escada|pit[aá]goras|hipotenusa|tri[aâ]ngulo ret|cateto/.test(txt) ? 'pitagoras' : 'semelhanca';
+    const exemplo = EXEMPLOS[tipoEx] || exSombra;
+    const pedidoFinal = pedido + `
+- Responda SÓ o JSON, compacto, neste formato. Exemplo de OUTRO problema, no padrão de qualidade que o professor aprovou
+  (copie o ESTILO: poucas coisas na tela, uma ideia por camada, cores, cotas, o que entra e o que sai; NÃO copie os números):
+${JSON.stringify(exemplo)}
+- Em cada item, ponha SÓ os campos que ele usa. Números com no máximo 1 casa decimal. No máximo 6 itens por camada.`;
+    let r = null, erro = null;
+    for (let tent = 0; tent < 2 && !r; tent++) {
+      try {
+        r = await chamarGemini(JSON.stringify({contents: [{parts: [...imagens, {text: (imagens.length ? `ACIMA ESTÁ A PÁGINA ORIGINAL DA QUESTÃO.
+Copie a DISPOSIÇÃO da figura original: o que está à direita fica à direita, o que está em cima fica em cima, a mesma orientação,
+os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a figura da prova ganhando vida, não uma figura nova.
+
+` : '') + pedidoFinal}]}],
+          generationConfig: {responseMimeType: 'application/json', temperature: 0.3, maxOutputTokens: 16000}}), t => avisar('📐 ' + t));
+        if (!r || !Array.isArray(r.vb) || r.vb.length !== 4 || !Array.isArray(r.camadas) || !r.camadas.length) throw new Error('a figura veio incompleta');
+      } catch (e) { r = null; erro = e; if (tent === 0) avisar('📐 A resposta veio com defeito; pedindo de novo…'); }
+    }
+    if (!r) throw erro;
+    const limpa = o => { for (const [x, v] of Object.entries(o)) if (v === '' || v === 0 && x === 'saiBloco' || (Array.isArray(v) && !v.length)) delete o[x]; return o; };
+    return {figura: {vb: r.vb, camadas: (r.camadas || []).map(cm => { limpa(cm); cm.itens = (cm.itens || []).map(limpa); return cm; })}, contas: r.contas || []};
+  }
+  async function desenharFiguraIA() {
+    if (!chave()) return alert('Para desenhar com IA, cole a chave do Gemini na ⚙️.');
+    if (blocos.some((_, k) => !takes()[k])) return alert('Grave todos os blocos antes.');
+    const enunciado = window.prompt('Cole o enunciado da questão (com as medidas da figura). Pode deixar em branco: a IA usa só o que você falou.', item.enunciado || '');
+    if (enunciado === null) return;
+    item.enunciado = enunciado.trim();
+    pararPrevia(); ocupado = true;
+    if (opcoes().legendaVoz) {
+      const faltam = blocos.map((_, k) => k).filter(k => !takes()[k].transcricao);
+      for (const [n, k] of faltam.entries()) {
+        aviso(`Ouvindo a sua voz… (${n + 1} de ${faltam.length})`);
+        if (transcrevendo.has(k)) while (transcrevendo.has(k)) await espera(300); else await transcreverFundo(k);
+      }
+    }
+    aviso('📐 A IA está desenhando a figura…');
+    const textoBlocos = blocos.map((b, k) => `Bloco ${k + 1}: "${palavrasDe(k).map(p => p.w).join(' ')}"`).join('\n');
+    const r = await pedirFigura(item.conteudo.tema, item.enunciado, textoBlocos, aviso);
+    item.figura = r.figura;
+    cacheTemposFig.clear();
+    const usados = new Set(item.figura.camadas.map(cm => (cm.bloco || 1) - 1));
+    blocos.forEach((_, k) => { if (usados.has(k) || (k > 0 && est(k - 1).layout === 'figura' && k < blocos.length - 1)) est(k).layout = 'figura'; });
+    for (const x of r.contas || []) if (x.bloco >= 1 && x.bloco <= blocos.length) setTexto(x.bloco - 1, 'quadro', String(x.conta).slice(0, 40));
+    await salvar(item);
+    aviso(''); ocupado = false;
+    selecionar(sel);
+  }
   async function desfazerIA() {
     const a = item.antesIA; if (!a) return;
     item.estilo = a.estilo; item.conteudo.texto_capa = a.texto_capa; item.conteudo.gancho_quadro = a.gancho_quadro;
@@ -1766,7 +2176,7 @@ ${textoBlocos}`;
     blocos.forEach((_, k) => est(k));  // completa os padrões antes (senão abrir um bloco já pareceria uma alteração)
     const blobs = {};
     const s = JSON.stringify({estilo: item.estilo || [], conteudo: item.conteudo, edicao: item.edicao || {}, takes: takes(),
-      musica: item.musica || null, musicaNome: item.musicaNome || null, clipes: item.clipes || {}, antesIA: item.antesIA || null, montouIA: !!item.montouIA},
+      musica: item.musica || null, musicaNome: item.musicaNome || null, clipes: item.clipes || {}, antesIA: item.antesIA || null, montouIA: !!item.montouIA, figura: item.figura || null},
     (k, v) => {
       if (v instanceof Blob) { if (!idBlob.has(v)) idBlob.set(v, ++nBlob); const id = idBlob.get(v); blobs[id] = v; return {__blob: id}; }
       return v;
@@ -1803,6 +2213,7 @@ ${textoBlocos}`;
     item.clipes = d.clipes;
     if (d.antesIA) item.antesIA = d.antesIA; else delete item.antesIA;
     item.montouIA = d.montouIA;
+    if (d.figura) item.figura = d.figura; else delete item.figura;
     blocos = montarBlocos(item);
   }
   async function voltarHist(dir) {
@@ -1921,6 +2332,13 @@ ${textoBlocos}`;
       <div id="eclipew" hidden><label>Vídeo de apoio <small>(Pexels/Pixabay, grátis; em inglês acha mais)</small></label>
       <div class="ebusca"><input id="ecbusca" type="search" placeholder="ex.: earth from space, money, traffic"><button id="ecachar">Buscar</button></div>
       <div id="eclipes"></div><small id="ecred"></small></div>
+      <div id="efigw" hidden><label>📐 Figura animada <small>(uma figura para o vídeo todo; cada parte entra quando você fala a palavra dela)</small></label>
+      <div class="ebot"><button id="efigia">✨ Desenhar a figura com IA</button></div>
+      <div class="ebot"><button id="efigx">↔ Espelhar (esquerda/direita)</button><button id="efigy">↕ Espelhar (cima/baixo)</button></div>
+      <div id="efiginfo" style="font-size:13px;line-height:1.45"></div>
+      <details style="margin-top:8px"><summary style="font-size:13px">Editar à mão (avançado)</summary>
+      <textarea id="efigjson" spellcheck="false" style="min-height:220px;font:12px/1.35 monospace"></textarea>
+      <div class="ebot"><button id="efigok">Aplicar</button></div></details></div>
       <label class="echeck"><input id="ecanto" type="checkbox" ${est(k).mascoteCanto ? 'checked' : ''}> 🦸 Mascote no canto (em qualquer layout)</label>
       <div id="eposew"><label>Pose do mascote</label>
       <div class="ebot" style="flex-wrap:wrap">${Object.keys(POSES).map(x => `<button data-po="${x}" style="flex:1 0 22%;font-size:12px">${POSES[x]}</button>`).join('')}</div>
@@ -2013,9 +2431,32 @@ ${textoBlocos}`;
       g('econtaw').hidden = !COM_TEXTO.includes(e.layout);
       g('eposew').hidden = !(COM_MASCOTE.includes(e.layout) || e.mascoteCanto);
       est(k);  // cria a sequência padrão do zoom, se for o caso
-      g('eescalaw').hidden = e.layout !== 'escala'; g('eclipew').hidden = e.layout !== 'clipe';
+      g('eescalaw').hidden = e.layout !== 'escala'; g('eclipew').hidden = e.layout !== 'clipe'; g('efigw').hidden = e.layout !== 'figura';
       if (e.layout === 'escala') mostrarCadeia();
+      if (e.layout === 'figura') mostrarFig();
       if (e.layout === 'clipe') mostrarCredito();
+    };
+    const mostrarFig = () => {
+      const cs = camadasFig().filter(cm => (cm.bloco || 1) - 1 === k);
+      g('efiginfo').innerHTML = !item.figura ? 'Ainda não tem figura. Toque em ✨ para a IA desenhar pelo que você falou (dá para colar o enunciado da questão).'
+        : cs.length ? `Neste bloco entram ${cs.length} parte(s): ` + cs.map(cm => `<b>${esc(cm.gatilho || 'no começo')}</b>` + (cm.vista ? ' 🎥' : '')).join(' → ')
+        : 'Neste bloco a figura fica como estava (nenhuma parte nova).';
+      if (document.activeElement !== g('efigjson')) g('efigjson').value = item.figura ? JSON.stringify(item.figura, null, 1) : '';
+    };
+    g('efigia').onclick = () => desenharFiguraIA().then(() => { mostrarFig(); previa([k]); })
+      .catch(err => { aviso(''); ocupado = false; alert('A IA não conseguiu desenhar agora: ' + err.message); });
+    const espelhar = async eixo => {
+      if (!item.figura) return alert('Ainda não tem figura.');
+      item.figura = espelharFigura(item.figura, eixo); cacheTemposFig.clear();
+      await salvar(item); mostrarFig(); previa([k]);
+    };
+    g('efigx').onclick = () => espelhar('x');
+    g('efigy').onclick = () => espelhar('y');
+    g('efigok').onclick = async () => {
+      let f;
+      try { f = JSON.parse(g('efigjson').value); if (!f.vb || !Array.isArray(f.camadas)) throw new Error('falta "vb" ou "camadas"'); }
+      catch (err) { return alert('O texto não está no formato certo: ' + err.message); }
+      item.figura = f; cacheTemposFig.clear(); await salvar(item); mostrarFig(); previa([k]);
     };
     const mostrarCadeia = () => {
       g('ecadeia').innerHTML = e.escala.cadeia.map((x, n) => `<button data-cn="${n}">${x.tipo === 'emoji' ? esc(x.valor) : '🖼️'} ${esc(x.rotulo || x.valor)} ✕</button>`).join('') ||
@@ -2157,5 +2598,5 @@ ${textoBlocos}`;
     fechar();
   }
 
-  return {abrir, buscarClipes};
+  return {abrir, buscarClipes, pedirFigura, previaFigura, espelharFigura};
 })();

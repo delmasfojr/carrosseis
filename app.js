@@ -2,6 +2,10 @@
    Tudo roda no próprio celular: a chave do Gemini fica só aqui (localStorage),
    os carrosséis ficam guardados no aparelho (IndexedDB). */
 const BASE = new URL('./', location.href).href;
+// para resolver questão (raciocínio com figura) tenta antes os modelos Pro: na conta gratuita eles respondem 429 e o app cai no Flash
+const MODELOS_PRO = ['gemini-pro-latest', 'gemini-3.1-pro-preview'];
+// a conferência usa os modelos gratuitos em outra ordem, para a segunda resolução sair de outro modelo
+const MODELOS_CONFERE = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
 const MODELOS = ['gemini-3.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3-flash-preview'];
 const BLOCO = 30 * 60;
 const $ = s => document.querySelector(s);
@@ -81,10 +85,10 @@ function limparProvas(resp, chave) {
 
 /* Manda o pedido ao Gemini, trocando de modelo quando um está ocupado. Devolve o JSON da resposta.
    Usado pelos carrosséis e pelos roteiros (roteiro.js). */
-async function chamarGemini(corpo, aviso, trecho = false) {
+async function chamarGemini(corpo, aviso, trecho = false, modelos = MODELOS) {
   let ultimo = '';
   for (let rodada = 0; rodada < 2; rodada++) {
-    for (const modelo of MODELOS) {
+    for (const modelo of modelos) {
       aviso(`Pedindo ao Gemini (${modelo})… pode levar alguns minutos. Deixe o app aberto.`);
       const ctl = new AbortController(), relogio = setTimeout(() => ctl.abort(), 15 * 60 * 1000);
       let r, texto;
@@ -299,14 +303,16 @@ async function iniciar() {
   const modo = () => (document.querySelector('input[name=modo]:checked') || {}).value || 'carrossel';
   // de onde vem a ideia: link do YouTube ou um assunto escrito (este gera Reels só com visual)
   let fonte = 'youtube';
-  try { if (localStorage.getItem('fonte') === 'assunto') fonte = 'assunto'; } catch {}
+  try { const f = localStorage.getItem('fonte'); if (f === 'assunto' || f === 'pdf') fonte = f; } catch {}
   const textoBotao = () => {
-    $('#gerar').textContent = fonte === 'assunto' ? '🎨 Gerar Reels só com visual' :
+    $('#gerar').textContent = fonte === 'pdf' ? '📄 Resolver a questão' : fonte === 'assunto' ? '🎨 Gerar Reels só com visual' :
       {carrossel: 'Gerar carrosséis', roteiro: 'Gerar roteiros', dois: 'Gerar carrosséis e roteiros'}[modo()];
     if ($('#visualw')) $('#visualw').hidden = modo() === 'carrossel';
     if ($('#fonte')) {
       document.querySelectorAll('[data-fonte]').forEach(b => b.classList.toggle('on', b.dataset.fonte === fonte));
       $('#fonteyt').hidden = fonte !== 'youtube'; $('#modosw').hidden = fonte !== 'youtube'; $('#fonteas').hidden = fonte !== 'assunto';
+      if ($('#fontepdf')) $('#fontepdf').hidden = fonte !== 'pdf';
+      if ($('#duracaow')) $('#duracaow').hidden = fonte === 'youtube' && modo() === 'carrossel';  // duração vale para os roteiros de Reels
       if ($('#dicayt')) $('#dicayt').hidden = fonte !== 'youtube';
     }
   };
@@ -314,7 +320,17 @@ async function iniciar() {
     fonte = b.dataset.fonte; try { localStorage.setItem('fonte', fonte); } catch {} textoBotao();
   });
   document.querySelectorAll('input[name=modo]').forEach(r => r.onchange = textoBotao); textoBotao();
+  // duração do Reels: fica guardada (vale para roteiro do YouTube, de assunto e de questão de PDF)
+  const marcarDur = () => { const d = String(localStorage.getItem('duracao') || 45); document.querySelectorAll('[data-dur]').forEach(b => b.classList.toggle('on', b.dataset.dur === d)); };
+  document.querySelectorAll('[data-dur]').forEach(b => b.onclick = () => { try { localStorage.setItem('duracao', b.dataset.dur); } catch {} marcarDur(); });
+  marcarDur();
   $('#gerar').onclick = async () => {
+    if (fonte === 'pdf') {
+      const arq = $('#pdfarq').files[0], num = $('#pdfnum').value.trim(), pag = parseInt($('#pdfpag').value, 10) || 0;
+      if (!arq) return alert('Escolha o PDF (ou a foto da questão).');
+      if (!num) return alert('Diga o número da questão.');
+      return Roteiro.gerarPdf(arq, num, pag, $('#pdfobs').value.trim(), $('#pdfres').value.trim());
+    }
     if (fonte === 'assunto') {
       const assunto = $('#assunto').value.trim();
       if (assunto.length < 3) return alert('Escreva o assunto do vídeo.');

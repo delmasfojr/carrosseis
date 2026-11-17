@@ -127,7 +127,7 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
   <section class="tela" id="novo" hidden>
     <h2>Criar <span>conteúdo</span></h2>
     <label>1. De onde vem a ideia?</label>
-    <div class="seg" id="fonte"><button class="on" data-fonte="youtube">▶️ Vídeo do YouTube</button><button data-fonte="assunto">✏️ Um assunto meu</button></div>
+    <div class="seg" id="fonte"><button class="on" data-fonte="youtube">▶️ Vídeo do YouTube</button><button data-fonte="assunto">✏️ Um assunto meu</button><button data-fonte="pdf">📄 Questão de um PDF</button></div>
     <div id="fonteyt">
       <label for="link">Cole o link do vídeo do YouTube</label>
       <input id="link" type="url" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
@@ -136,6 +136,25 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
       <label for="assunto">Sobre o que é o vídeo?</label>
       <textarea id="assunto" style="min-height:90px" placeholder="ex.: desconto de 25% de cabeça&#10;ou: por que 0,999… = 1&#10;ou: regra de três em 10 segundos"></textarea>
       <p class="dica">Sai <b>Reels só com visual</b>: o mascote, as contas, os desenhos e os emojis montam o vídeo e você grava só a voz. Pode escrever só o tema ou já dar a ideia/exemplo que quer.</p>
+    </div>
+    <div id="fontepdf" hidden>
+      <label for="pdfarq">PDF da prova ou lista (ou a foto da questão)</label>
+      <input id="pdfarq" type="file" accept="application/pdf,image/*">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label for="pdfnum">Número da questão</label><input id="pdfnum" type="text" inputmode="numeric" placeholder="ex.: 17"></div>
+        <div style="flex:1"><label for="pdfpag">Página <small>(se souber)</small></label><input id="pdfpag" type="number" min="1" inputmode="numeric" placeholder="opcional"></div>
+      </div>
+      <label for="pdfres">Resolução <small>(recomendado: a sua, já conferida)</small></label>
+      <textarea id="pdfres" style="min-height:110px" placeholder="Cole aqui a resolução certa (sua, do ChatGPT, do Gemini ou do gabarito comentado), com a resposta.&#10;Ex.: branca em (103, 143)... desce 85... d = 143 − 85 = 58. Letra C."></textarea>
+      <label for="pdfobs">Observação <small>(opcional)</small></label>
+      <input id="pdfobs" type="text" placeholder="ex.: a de geometria, com a figura da mesa">
+      <p class="dica"><b>Com a resolução:</b> a IA NÃO resolve; só monta o vídeo (roteiro, figura animada e contas) seguindo os seus números.
+        <b>Sem ela:</b> a IA resolve 3 vezes, com modelos diferentes, e avisa se as respostas não baterem.
+        Ela lê texto e <b>imagens</b> do arquivo. PDF grande demais? Diga a página.</p>
+    </div>
+    <div id="duracaow" hidden>
+      <label>Duração do Reels</label>
+      <div class="seg" id="duracao" style="flex-wrap:wrap"><button data-dur="30">30 s</button><button data-dur="45">45 s</button><button data-dur="60">1 min</button><button data-dur="90">1min30</button><button data-dur="120">2 min</button><button data-dur="180">3 min</button></div>
     </div>
     <div id="modosw">
     <label>2. O que gerar</label>
@@ -204,6 +223,9 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
     <div class="seg"><button data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button class="on" data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
     <p id="rvazio" class="dica" hidden>Nenhum roteiro ainda. Em <b>＋ Criar</b>, escolha “Roteiro de Reels”, ou toque em <b>Roteiro</b> num vídeo da aba <b>🔥 Ideias</b>.</p>
     <div id="ritens"></div>
+    <label class="sec" style="display:block;text-align:center;margin:10px 0;padding:12px;border:2px dashed var(--cinza);border-radius:14px;cursor:pointer">
+      📥 Importar roteiro pronto (.json) <small style="display:block;font-weight:400">feito pelo Claude no computador, com resolução e figura caprichadas</small>
+      <input id="rimportar" type="file" accept=".json,application/json" hidden></label>
     <div id="rlimpar" class="rodape" hidden>
       <button id="rapagargravados" class="perigo">Apagar os já gravados</button>
       <button id="rapagartodos" class="perigo">Apagar todos</button>
