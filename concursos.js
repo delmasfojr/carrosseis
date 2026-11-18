@@ -259,7 +259,7 @@ tema: "Concurso {SIGLA}: {FASE}".`;
         generationConfig: {responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.5}}), aviso);
       const conteudo = (resp.carrosseis || [])[0];
       if (!conteudo) throw new Error('o Gemini não devolveu o carrossel');
-      conteudo.legenda = (conteudo.legenda || '').replace(/**/g, '');  // no Instagram os ** apareceriam
+      conteudo.legenda = (conteudo.legenda || '').split('**').join('');  // no Instagram os ** apareceriam
       const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '', concurso: i.id, conteudo, imagens: []};
       await salvar(item);
       await desenharCarrossel(item, aviso);
