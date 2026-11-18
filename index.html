@@ -117,6 +117,27 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
 #tpbarra #tpplay{background:var(--lar);min-width:64px;font-size:20px}
 #rvideofinal video{width:100%;max-height:70vh;background:#000;border-radius:12px;margin-top:12px;display:block}
 #tpinfo{color:#aaa;font-size:12px;width:100%;text-align:center}
+nav button i{position:relative}
+.badge{position:absolute;top:-6px;right:-14px;min-width:20px;height:20px;border-radius:10px;background:var(--lar);color:#fff;font:700 12px/20px 'Open Sans',sans-serif;font-style:normal;padding:0 5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#fff;color:#556;border:2px solid var(--cinza);border-radius:20px;padding:6px 11px;font-size:14px}
+.chip.on{border-color:var(--lar);background:var(--lar);color:#fff}
+.concurso{background:#fff;border-radius:12px;padding:12px 14px;margin-top:10px;border-left:6px solid var(--lar)}
+.concurso.visto{border-left-color:var(--cinza)}
+.ctopo{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ctopo b{font:22px 'Anton',Impact,sans-serif;letter-spacing:.5px;font-weight:400}
+.fase{font-size:12px;font-weight:700;text-transform:uppercase;padding:3px 9px;border-radius:10px;background:var(--azul);white-space:nowrap}
+.fase.f2,.fase.f3{background:#FFE9A8}.fase.f4,.fase.f5{background:var(--lar);color:#fff}.fase.f6,.fase.f7{background:var(--navy);color:#fff}
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;margin:6px 0 0;color:#fff}
+.tag.novo{background:#1a8f3c}.tag.mudou{background:#c0392b}
+.cnome{font-size:14px;color:#556;margin-top:4px}
+.concurso p{margin:6px 0;font-size:15px}
+.cdados{font-size:14px;display:grid;gap:2px}
+.cdados small{color:#889;font-weight:700}
+.cfonte{display:block;color:#667;font-size:12px;margin-top:8px;word-break:break-word}
+.cfonte a{color:var(--navy)}
+.concurso .vacoes button{white-space:nowrap}.concurso .vacoes .principal{flex:1.4}
+.cman{font-size:13px;color:#445;margin-top:6px}.cman summary{cursor:pointer;font-weight:700;color:#667}.cman div{margin:3px 0 0 8px}
 </style>
 </head>
 <body>
@@ -218,6 +239,25 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
     <div id="vlista"></div>
   </section>
 
+  <section class="tela" id="concursos" hidden>
+    <h2>Radar de <span>concursos</span></h2>
+    <p style="margin:-4px 0 0;color:#556">O app lê as manchetes do Google Notícias e avisa o que é novo ou mudou de fase.</p>
+    <details class="mais" id="rfiltros">
+      <summary>O que acompanhar: <span id="rresumo" style="font-weight:400"></span></summary>
+      <label>Áreas</label><div class="chips" id="rareas"></div>
+      <label>Estados</label><div class="chips" id="rufs"></div>
+    </details>
+    <button id="rbuscar" class="principal">🔎 Buscar agora</button>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:14px">
+      <select id="rmostrar" style="flex:1"><option value="todos">Todos os concursos</option><option value="novos">Só as novidades</option><option value="dispensados">Tirados da lista</option></select>
+      <button id="rtodosvistos" class="sec" style="padding:12px 10px">✓ Tudo visto</button>
+    </div>
+    <p class="dica" id="rquando" style="margin-top:10px"></p>
+    <p class="dica" id="rvaziocon" hidden></p>
+    <div id="rcon"></div>
+    <p class="dica">⚠️ A IA pode errar número de vagas e datas: <b>confira na fonte</b> antes de postar. Cada busca gasta 1 pedido da cota grátis do Gemini.</p>
+  </section>
+
   <section class="tela" id="roteiros" hidden>
     <h2>Meus <span>posts</span></h2>
     <div class="seg"><button data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button class="on" data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
@@ -291,10 +331,12 @@ h3 small{font:13px 'Open Sans',sans-serif;color:#667}
   <button data-tela="novo"><i>＋</i>Criar</button>
   <button data-tela="meus"><i>📁</i>Meus posts</button>
   <button data-tela="virais"><i>🔥</i>Ideias</button>
+  <button data-tela="concursos"><i>📡<em id="nconcursos" class="badge" hidden></em></i>Concursos</button>
 </nav>
 <script src="cards.js"></script>
 <script src="app.js"></script>
 <script src="roteiro.js"></script>
+<script src="concursos.js"></script>
 <script src="gravador.js"></script>
 </body>
 </html>

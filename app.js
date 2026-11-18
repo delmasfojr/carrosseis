@@ -193,7 +193,7 @@ async function desenharCarrossel(item, aviso) {
 
 /* ---------------------------------------------------------------- telas */
 // "Meus posts" junta Carrosséis e Roteiros (seletor no topo); abre no último que ele usou
-const ABA_MENU = {novo: 'novo', virais: 'virais', lista: 'meus', ver: 'meus', roteiros: 'meus', verroteiro: 'meus'};
+const ABA_MENU = {novo: 'novo', virais: 'virais', lista: 'meus', ver: 'meus', roteiros: 'meus', verroteiro: 'meus', concursos: 'concursos'};
 function tela(id) {
   if (id === 'meus') { try { id = localStorage.getItem('meus') || 'lista'; } catch { id = 'lista'; } }
   if (id === 'lista' || id === 'roteiros') try { localStorage.setItem('meus', id); } catch {}
@@ -209,6 +209,7 @@ function tela(id) {
     todos().then(l => document.querySelectorAll('.nlista').forEach(e => e.textContent = l.length ? `(${l.length})` : ''));
   }
   if (id === 'virais' && typeof Roteiro !== 'undefined') Roteiro.abrirVirais();
+  if (id === 'concursos' && typeof Radar !== 'undefined') Radar.mostrar();
   window.scrollTo(0, 0);
 }
 const aviso = txt => { $('#status').textContent = txt; $('#status').hidden = !txt; };
@@ -395,6 +396,7 @@ async function iniciar() {
   };
   mostrarFila();
   await Roteiro.iniciar();
+  if (typeof Radar !== 'undefined') Radar.iniciar();  // radar de concursos: busca sozinho ao abrir (no máximo a cada 6 h)
   tela(chave() ? 'lista' : 'config');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }

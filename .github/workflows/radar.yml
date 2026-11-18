@@ -1,0 +1,25 @@
+# Radar de concursos: a cada 6 h junta as manchetes do Google Notícias em radar/noticias.json (grátis, sem chave).
+name: Radar de concursos
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: radar
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node radar/buscar.mjs
+      - name: Gravar se mudou
+        run: |
+          git config user.name "radar-concursos"
+          git config user.email "radar-concursos@users.noreply.github.com"
+          git add radar/noticias.json
+          git diff --cached --quiet || (git commit -m "Radar: manchetes de concursos" && git pull --rebase && git push)
