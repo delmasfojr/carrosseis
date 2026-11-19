@@ -154,6 +154,8 @@ nav button i{position:relative}
 .eaula span{flex:1}.eaula small{display:block;color:#667}.eaula.ok span{opacity:.55}
 .eaula button{padding:6px 8px;font-size:13px;background:#fff;border:2px solid var(--cinza)}.eaula .eref{filter:grayscale(1);opacity:.5}.eaula .eref.on{filter:none;opacity:1;border-color:var(--lar)}
 .edias{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.edias label{margin:0;font-size:13px}.edias input{padding:8px;margin-top:2px}
+.etrilhatit{font:17px 'Anton',Impact,sans-serif;margin:14px 0 2px;display:flex;justify-content:space-between}.etrilhatit span{font:400 14px system-ui,sans-serif;color:#667}
+#eresumo .ebarra{margin-top:4px}
 .edias3{grid-template-columns:repeat(3,1fr);margin-top:14px}
 </style>
 </head>
@@ -290,10 +292,12 @@ nav button i{position:relative}
       <p><b>Elon (Vol. 1, 2 e 3)</b> onde ele cobre o tema: números reais, conjuntos, indução, funções afim, quadrática, exponencial, log e trigonométricas, sequências, financeira, geometria espacial, analítica, complexos, polinômios, combinatória e probabilidade. Ele explica o <i>porquê</i>, que é o que o aluno pergunta.</p>
       <p><b>FME (Iezzi)</b> onde o Elon não chega: conceito de função, composta e inversa, modular e inequações (vol. 1), geometria plana (9), identidades e equações trigonométricas (3), matrizes e sistemas (4), estatística (11). Bom também como banco de exercícios extras.</p>
       <p><b>Lacerda</b> para aritmética e Matemática Básica; <b>Manual de RLM</b> para lógica. Cada aula com ⭐ já mostra qual livro abrir.</p>
-      <p><b>📗 Livros inteiros:</b> além disso, cada capítulo do <b>FME</b> (vol. 1 a 7, 9, 10 e 11) e do <b>Lacerda</b> entra na trilha em <b>duas fases</b>. <b>Fase 1:</b> slides e listas de todas as aulas; o livro só vem junto nas aulas com ⭐. <b>Fase 2:</b> terminadas as aulas, os capítulos dos livros na ordem do curso (leitura, exercícios propostos e, no fim de cada volume, as questões de vestibular). Marcar ⭐ numa aula traz o capítulo dela para a fase 1. O vol. 8 (limites e derivadas) fica de fora porque cálculo não é assunto do curso. O padrão é fazer só os exercícios ímpares; em “⚙️ Ajustar o plano” dá para trocar.</p></details>
+      <p><b>📗 Livros inteiros:</b> além disso, cada capítulo do <b>FME</b> (vol. 1 a 7, 9, 10 e 11) e do <b>Lacerda</b> tem a <b>sua própria trilha</b>, com horário próprio (1 h por dia), andando junto com a das aulas: os capítulos na ordem do curso, com leitura, exercícios propostos e, no fim de cada volume, as questões de vestibular. Nas aulas com ⭐ o capítulo do livro vai para a trilha das aulas, junto da aula. O vol. 8 (limites e derivadas) fica de fora porque cálculo não é assunto do curso. O padrão é fazer só os exercícios ímpares; em “⚙️ Ajustar o plano” dá para trocar.</p></details>
     <details class="mais"><summary>⚙️ Ajustar o plano</summary>
-      <label>Minutos de estudo em cada dia</label>
+      <label>🖥️ Aulas: minutos em cada dia</label>
       <div id="edias" class="edias"></div>
+      <label>📗 Livros: minutos em cada dia</label>
+      <div id="ediaslivros" class="edias"></div>
       <label>O que entra na trilha</label>
       <div id="etrilhas"></div>
       <div class="edias edias3">

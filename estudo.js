@@ -8,6 +8,7 @@ const Estudo = (() => {
   const PADRAO = {
     min: [180, 60, 60, 60, 60, 60, 180],  // domingo..sábado, em minutos
     porSlide: 1, porQuestao: 3, voz: 10,
+    minLivros: [60, 60, 60, 60, 60, 60, 60],  // trilha dos livros: 1 h a mais por dia, em paralelo à das aulas
     livros: 2, porPagina: 1.5,  // livros inteiros (FME + Lacerda): 1 = todos os exercícios, 2 = ímpares, 3 = 1 a cada 3, 0 = fora
     trilhas: {principal: true, enem: true, concursos: true, mb: true},
     reforco: ['principal:61 - Análise Combinatória', 'principal:63 - Probabilidade'],
@@ -79,14 +80,14 @@ const Estudo = (() => {
   }
 
   // encaixa as tarefas que faltam nos dias, a partir de hoje (o que já foi feito hoje continua na lista de hoje)
-  function agenda(fila, dias = 4000) {
+  function agenda(fila, minutos = st.min, comRev = true, dias = 4000) {
     const pend = fila.filter(t => !st.feito[t.id]), out = [];
     const errosAbertos = Object.keys(st.erros).filter(k => st.erros[k] && !st.revisado[k]);
     let i = 0;
     for (let n = 0; n < dias && (i < pend.length || n === 0); n++) {
-      const d = mais(new Date(), n), chave = iso(d), cap = st.min[d.getDay()] || 0, lista = [];
+      const d = mais(new Date(), n), chave = iso(d), cap = minutos[d.getDay()] || 0, lista = [];
       if (n === 0) lista.push(...fila.filter(t => st.feito[t.id] === chave));
-      const sab = d.getDay() === 6 && cap > 0;
+      const sab = comRev && d.getDay() === 6 && cap > 0;
       if (sab && (n > 0 || errosAbertos.length || st.feito['rev:' + chave]))
         lista.push({id: 'rev:' + chave, tipo: 'rev', min: 30, nome: 'Revisão da semana', txt: 'Refazer as questões que você errou',
           det: n === 0 ? (errosAbertos.length ? errosAbertos.map(k => `${(fila.find(t => t.id === k) || {nome: k}).nome.split(' · ')[0]}: ${st.erros[k]}`).join(' · ') : 'Nenhum erro anotado nesta semana. 👏') : 'As questões anotadas como erradas durante a semana.'});
@@ -108,25 +109,41 @@ const Estudo = (() => {
     </div>`;
   }
 
+  // duas trilhas em paralelo, cada uma com o seu horário: aulas (slides + listas) e livros (FME + Lacerda).
+  // Os capítulos das aulas com ⭐ ficam na trilha das aulas, junto da aula.
+  function duas(fila) {
+    const A = fila.filter(t => !t.fase2), L = fila.filter(t => t.fase2);
+    return {A, L, agA: agenda(A, st.min, true), agL: L.length ? agenda(L, st.minLivros, false) : []};
+  }
+  const data = d => d.toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'});
+  function resumo(nome, f, ag, minutos) {
+    const total = f.reduce((s, t) => s + t.min, 0), feito = f.filter(t => st.feito[t.id]).reduce((s, t) => s + t.min, 0);
+    const pct = total ? Math.round(100 * feito / total) : 0, semana = minutos.reduce((a, b) => a + b, 0);
+    return `<p><b>${nome} · ${pct}% feito</b></p><div class="ebarra"><i style="width:${pct}%"></i></div>
+      <p>Faltam ${hm(total - feito)} (${hm(semana)} por semana). Termina por volta de <b>${data(ag[ag.length - 1].d)}</b>.</p>`;
+  }
+  function blocoDia(titulo, x, podeMarcar) {
+    if (!x) return '';
+    return `<h4 class="etrilhatit">${titulo} <span>${hm(x.usado)}</span></h4>` + (x.lista.length ? x.lista.map(t => cartao(t, podeMarcar)).join('')
+      : `<p class="dica">${x.cap ? 'Tudo feito! 🎉' : 'Sem horário hoje para esta trilha.'}</p>`);
+  }
+
   function mostrar() {
     if (!dados) { carregar(); return; }
-    const fila = tarefas(), total = fila.reduce((s, t) => s + t.min, 0);
-    const feito = fila.filter(t => st.feito[t.id]).reduce((s, t) => s + t.min, 0);
-    const ag = agenda(fila), fim = ag[ag.length - 1], semana = st.min.reduce((a, b) => a + b, 0);
-    const pct = total ? Math.round(100 * feito / total) : 0;
-    const data = d => d.toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'});
-    const f1 = [...ag].reverse().find(x => x.lista.some(t => !t.fase2 && t.tipo !== 'rev'));
-    q('#eresumo').innerHTML = `<div class="ebarra"><i style="width:${pct}%"></i></div>
-      <p><b>${pct}% feito</b> · faltam ${hm(total - feito)} de estudo (${hm(semana)} por semana)<br>
-      ${f1 && fila.some(t => t.fase2) ? `Fase 1 (aulas): termina por volta de <b>${data(f1.d)}</b>.<br>Fase 2 (livros): ` : 'Nesse ritmo você termina tudo '}por volta de <b>${data(fim.d)}</b>.</p>`;
-    const h = ag[0];
-    q('#ehojetit').textContent = `Hoje · ${DIAS[h.d.getDay()]}, ${br(h.d)} · ${hm(h.usado)}`;
-    q('#ehoje').innerHTML = h.lista.length ? h.lista.map(t => cartao(t, true)).join('')
-      : `<p class="dica">${h.cap ? 'Tudo feito! 🎉' : 'Hoje está sem horário de estudo. Ajuste em “⚙️ Ajustar o plano” se quiser estudar.'}</p>`;
-    const prox = h.lista.length && h.lista.every(t => st.feito[t.id]) && ag[1] ? ag[1].lista.find(t => !t.id.startsWith('rev:')) : null;
-    q('#eadiantar').innerHTML = prox ? `<button class="sec" data-adiantar="${esc(prox.id)}">⏩ Terminei cedo: adiantar “${esc(prox.nome)} · ${esc(prox.txt)}”</button>` : '';
-    q('#esemana').innerHTML = ag.slice(1, 8).map(x => `<div class="edia"><b>${DIAS[x.d.getDay()]}, ${br(x.d)}</b> <span>${hm(x.usado)}</span>
-      <ul>${x.lista.map(t => `<li>${ICONE[t.tipo]} ${esc(t.nome)} — ${esc(t.txt)}</li>`).join('') || '<li>sem estudo</li>'}</ul></div>`).join('');
+    const fila = tarefas(), {A, L, agA, agL} = duas(fila);
+    q('#eresumo').innerHTML = resumo('🖥️ Aulas: slides e listas', A, agA, st.min) + (L.length ? resumo('📗 Livros: FME e Lacerda', L, agL, st.minLivros) : '');
+    const hA = agA[0], hL = agL[0];
+    q('#ehojetit').textContent = `Hoje · ${DIAS[hA.d.getDay()]}, ${br(hA.d)} · ${hm(hA.usado + (hL ? hL.usado : 0))}`;
+    q('#ehoje').innerHTML = blocoDia('🖥️ Aulas', hA, true) + blocoDia('📗 Livros', hL, true);
+    const adiantar = (h, ag, rot) => {
+      const prox = h && h.lista.length && h.lista.every(t => st.feito[t.id]) && ag[1] ? ag[1].lista.find(t => !t.id.startsWith('rev:')) : null;
+      return prox ? `<button class="sec" data-adiantar="${esc(prox.id)}">⏩ ${rot}: adiantar “${esc(prox.nome)} · ${esc(prox.txt)}”</button>` : '';
+    };
+    q('#eadiantar').innerHTML = adiantar(hA, agA, 'Aulas') + adiantar(hL, agL, 'Livros');
+    const li = x => x ? x.lista.map(t => `<li>${ICONE[t.tipo]} ${esc(t.nome)} — ${esc(t.txt)}</li>`).join('') : '';
+    q('#esemana').innerHTML = [1, 2, 3, 4, 5, 6, 7].map(n => { const a = agA[n], l = agL[n], d = mais(new Date(), n);
+      return `<div class="edia"><b>${DIAS[d.getDay()]}, ${br(d)}</b> <span>${hm((a ? a.usado : 0) + (l ? l.usado : 0))}</span>
+      <ul>${li(a) + li(l) || '<li>sem estudo</li>'}</ul></div>`; }).join('');
     trilhaCompleta(fila);
     ajustes();
   }
@@ -155,6 +172,7 @@ const Estudo = (() => {
 
   function ajustes() {
     q('#edias').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dia="${d}" value="${st.min[d]}"></label>`).join('');
+    q('#ediaslivros').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dial="${d}" value="${st.minLivros[d]}"></label>`).join('');
     q('#etrilhas').innerHTML = dados.trilhas.map(t => `<label class="check"><input type="checkbox" data-trilha="${t.id}" ${st.trilhas[t.id] ? 'checked' : ''}> ${esc(t.nome)}</label>`).join('');
     q('#elivros').value = st.livros; q('#epagina').value = st.porPagina;
     q('#eslide').value = st.porSlide; q('#equestao').value = st.porQuestao; q('#evoz').value = st.voz;
@@ -174,6 +192,7 @@ const Estudo = (() => {
       if (card && el.type === 'checkbox') return marcar(card.dataset.id, el.checked);
       if (el.classList.contains('eerros')) { st.erros[card.dataset.id] = el.value.trim(); delete st.revisado[card.dataset.id]; gravar(); return; }
       if (el.dataset.dia) st.min[+el.dataset.dia] = Math.max(0, +el.value || 0);
+      else if (el.dataset.dial) st.minLivros[+el.dataset.dial] = Math.max(0, +el.value || 0);
       else if (el.dataset.trilha) st.trilhas[el.dataset.trilha] = el.checked;
       else if (el.id === 'eslide') st.porSlide = Math.max(0.2, +el.value || 1);
       else if (el.id === 'equestao') st.porQuestao = Math.max(0.5, +el.value || 3);
@@ -217,5 +236,5 @@ const Estudo = (() => {
 
   document.addEventListener('DOMContentLoaded', ligar);
   if (document.readyState !== 'loading') ligar();
-  return {mostrar, _agenda: () => agenda(tarefas()), _tarefas: () => tarefas()};
+  return {mostrar, _agenda: () => agenda(tarefas()), _duas: () => duas(tarefas()), _tarefas: () => tarefas()};
 })();
