@@ -26,7 +26,7 @@
 "titulo": "Conjuntos Numéricos",
 "slides": 69,
 "questoes": 30,
-"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+"livro": "Elon, Vol. 1, cap. 4 (números reais)"
 },
 {
 "id": "principal:02 - Divisibilidade, Primos, MMC e MDC",
@@ -136,7 +136,7 @@
 "titulo": "Conjuntos e Intervalos",
 "slides": 82,
 "questoes": 30,
-"livro": "Iezzi, FME vol. 1 (capítulo do tema)"
+"livro": "Elon, Vol. 1, cap. 1 (conjuntos)"
 },
 {
 "id": "principal:13 - Funções - Conceito, Domínio, Imagem",
@@ -166,7 +166,7 @@
 "titulo": "Função Afim",
 "slides": 96,
 "questoes": 30,
-"livro": "Iezzi, FME vol. 1 (capítulo do tema)"
+"livro": "Elon, Vol. 1, cap. 5 (funções afins)"
 },
 {
 "id": "principal:16 - Função Quadrática (Parte 1)",
@@ -176,7 +176,7 @@
 "titulo": "Função Quadrática (Parte 1)",
 "slides": 68,
 "questoes": 30,
-"livro": "Iezzi, FME vol. 1 (capítulo do tema)"
+"livro": "Elon, Vol. 1, cap. 6 (funções quadráticas)"
 },
 {
 "id": "principal:17 - Função Quadrática (Parte 2)",
@@ -186,7 +186,7 @@
 "titulo": "Função Quadrática (Parte 2)",
 "slides": 89,
 "questoes": 37,
-"livro": "Iezzi, FME vol. 1 (capítulo do tema)"
+"livro": "Elon, Vol. 1, cap. 6 (funções quadráticas)"
 },
 {
 "id": "principal:18 - Função Modular",
@@ -206,7 +206,7 @@
 "titulo": "Função Exponencial",
 "slides": 74,
 "questoes": 30,
-"livro": "Iezzi, FME vol. 2 (função exponencial)"
+"livro": "Elon, Vol. 1, cap. 8 (funções exponenciais)"
 },
 {
 "id": "principal:20 - Logaritmos e Função Logarítmica",
@@ -216,7 +216,7 @@
 "titulo": "Logaritmos e Função Logarítmica",
 "slides": 101,
 "questoes": 37,
-"livro": "Iezzi, FME vol. 2 (logaritmos)"
+"livro": "Elon, Vol. 1, cap. 8 (funções logarítmicas); exercícios extras no FME vol. 2"
 },
 {
 "id": "principal:21 - Inequações",
@@ -236,7 +236,7 @@
 "titulo": "Indução Matemática",
 "slides": 84,
 "questoes": 30,
-"livro": "Iezzi, FME vol. 1 (indução finita)"
+"livro": "Elon, Vol. 1, cap. 2 (axioma da indução)"
 },
 {
 "id": "principal:23 - Progressão Aritmética",
@@ -316,7 +316,7 @@
 "titulo": "Números Cardinais",
 "slides": 49,
 "questoes": 30,
-"livro": "Iezzi, FME vol. 1 (conjuntos e cardinais)"
+"livro": "Elon, Vol. 1, cap. 3 (números cardinais)"
 },
 {
 "id": "principal:31 - Ângulos, Triângulos e Congruência",
@@ -406,7 +406,7 @@
 "titulo": "Funções Trigonométricas",
 "slides": 103,
 "questoes": 31,
-"livro": "Iezzi, FME vol. 3 (capítulo do tema)"
+"livro": "Elon, Vol. 1, cap. 9 (funções trigonométricas)"
 },
 {
 "id": "principal:40 - Identidades, Equações e Leis dos Se",
