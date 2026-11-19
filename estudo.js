@@ -8,7 +8,7 @@ const Estudo = (() => {
   const PADRAO = {
     min: [180, 60, 60, 60, 60, 60, 180],  // domingo..sábado, em minutos
     porSlide: 1, porQuestao: 3, voz: 10,
-    livros: 1, porPagina: 1.5,  // livros inteiros (FME + Lacerda): 1 = todos os exercícios, 2 = ímpares, 3 = 1 a cada 3, 0 = fora
+    livros: 2, porPagina: 1.5,  // livros inteiros (FME + Lacerda): 1 = todos os exercícios, 2 = ímpares, 3 = 1 a cada 3, 0 = fora
     trilhas: {principal: true, enem: true, concursos: true, mb: true},
     reforco: ['principal:61 - Análise Combinatória', 'principal:63 - Probabilidade'],
     feito: {}, erros: {}, revisado: {},
@@ -38,8 +38,8 @@ const Estudo = (() => {
   const conta = (i, f, fr) => Math.ceil((f - i + 1) / fr);  // quantos exercícios de i..f entram com a fração fr
   // um capítulo de livro vira: leitura em pedaços de ~30 páginas + exercícios em blocos fixos de 20 números
   // (blocos fixos: mudar "todos/ímpares" não bagunça o que já foi marcado)
-  function tarefasCap(c, base) {
-    const out = [], fr = st.livros, b = {...base, nome: c.nome, doLivro: true};
+  function tarefasCap(c, base, fase2) {
+    const out = [], fr = st.livros, b = {...base, nome: c.nome, doLivro: true, fase2};
     if (c.pag) partes(c.pag[1] - c.pag[0] + 1, 30).forEach(([i, f], k) => out.push({...b, id: `${c.id}#p${k + 1}`, tipo: 'livro',
       min: (f - i + 1) * st.porPagina, txt: `Ler as páginas ${c.pag[0] + i - 1}–${c.pag[0] + f - 1}`,
       det: 'Teoria, demonstrações e exercícios resolvidos. Os propostos vêm na tarefa seguinte.'}));
@@ -56,7 +56,7 @@ const Estudo = (() => {
   }
 
   function tarefas() {
-    const fila = [], caps = {};
+    const fila = [], depois = [], caps = {};  // depois = fase 2: livros das aulas sem ⭐, depois de todas as aulas
     if (st.livros) (dados.capitulos || []).forEach(c => (caps[c.aula] = caps[c.aula] || []).push(c));
     for (const a of dados.aulas) {
       if (!st.trilhas[a.trilha]) continue;
@@ -73,9 +73,9 @@ const Estudo = (() => {
       if (a.slides && st.voz) fila.push({...base, id: a.id + '#voz', tipo: 'voz', min: reforco ? 30 : st.voz,
         txt: reforco ? 'Dar a aula em voz alta (grave no celular)' : 'Explicar em voz alta, sem o slide',
         det: reforco ? 'Apresente a aula inteira como se a turma estivesse na sua frente.' : 'Escolha 2 exemplos e explique o porquê de cada passo. Onde travar, volte ao slide.'});
-      (caps[a.id] || []).forEach(c => fila.push(...tarefasCap(c, base)));
+      (caps[a.id] || []).forEach(c => (reforco ? fila : depois).push(...tarefasCap(c, base, !reforco)));
     }
-    return fila;
+    return fila.concat(depois);
   }
 
   // encaixa as tarefas que faltam nos dias, a partir de hoje (o que já foi feito hoje continua na lista de hoje)
@@ -114,9 +114,11 @@ const Estudo = (() => {
     const feito = fila.filter(t => st.feito[t.id]).reduce((s, t) => s + t.min, 0);
     const ag = agenda(fila), fim = ag[ag.length - 1], semana = st.min.reduce((a, b) => a + b, 0);
     const pct = total ? Math.round(100 * feito / total) : 0;
+    const data = d => d.toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'});
+    const f1 = [...ag].reverse().find(x => x.lista.some(t => !t.fase2 && t.tipo !== 'rev'));
     q('#eresumo').innerHTML = `<div class="ebarra"><i style="width:${pct}%"></i></div>
       <p><b>${pct}% feito</b> · faltam ${hm(total - feito)} de estudo (${hm(semana)} por semana)<br>
-      Nesse ritmo você termina tudo por volta de <b>${fim.d.toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'})}</b>.</p>`;
+      ${f1 && fila.some(t => t.fase2) ? `Fase 1 (aulas): termina por volta de <b>${data(f1.d)}</b>.<br>Fase 2 (livros): ` : 'Nesse ritmo você termina tudo '}por volta de <b>${data(fim.d)}</b>.</p>`;
     const h = ag[0];
     q('#ehojetit').textContent = `Hoje · ${DIAS[h.d.getDay()]}, ${br(h.d)} · ${hm(h.usado)}`;
     q('#ehoje').innerHTML = h.lista.length ? h.lista.map(t => cartao(t, true)).join('')
