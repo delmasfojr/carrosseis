@@ -1,6 +1,10 @@
 {
 "trilhas": [
 {
+"id": "mbr",
+"nome": "Curso MB + RLM (MBR 01–54): primeiro"
+},
+{
 "id": "principal",
 "nome": "Curso principal (aulas 01–77)"
 },
@@ -11,22 +15,545 @@
 {
 "id": "concursos",
 "nome": "Estratégia Concursos"
-},
-{
-"id": "mb",
-"nome": "Matemática Básica (Lacerda)"
 }
 ],
 "aulas": [
 {
+"id": "mb:MB01 - Numeração",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 01",
+"titulo": "Numeração (aula MB01)",
+"slides": 61,
+"questoes": 31,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB02a - Operações Fundamentais em N (Par",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 02",
+"titulo": "Operações em N (Parte 1) (aula MB02a)",
+"slides": 61,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB02b - Operações Fundamentais em N (Par",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 03",
+"titulo": "Operações em N (Parte 2) (aula MB02b)",
+"slides": 49,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
 "id": "principal:01 - Conjuntos Numéricos",
-"trilha": "principal",
-"grupo": "Fundamentos de aritmética e álgebra",
-"num": "01",
-"titulo": "Conjuntos Numéricos",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 04",
+"titulo": "Inteiros, Racionais e Reais (aula 01)",
 "slides": 69,
 "questoes": 30,
 "livro": "Elon, Vol. 1, cap. 4 (números reais)"
+},
+{
+"id": "mb:MB03 - Numeração Não Decimal",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 05",
+"titulo": "Numeração Não Decimal (aula MB03)",
+"slides": 44,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB04a - Teoria dos Números Primos (Parte",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 06",
+"titulo": "Números Primos (Parte 1) (aula MB04a)",
+"slides": 44,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB04b - Teoria dos Números Primos (Parte",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 07",
+"titulo": "Números Primos (Parte 2) (aula MB04b)",
+"slides": 42,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB05 - Divisibilidade",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 08",
+"titulo": "Divisibilidade (aula MB05)",
+"slides": 43,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB06 - MDC e MMC",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 09",
+"titulo": "MDC e MMC (aula MB06)",
+"slides": 32,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB07 - Números Fracionários",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 10",
+"titulo": "Frações (aula MB07)",
+"slides": 45,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB08 - Números Decimais e Números em Out",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 11",
+"titulo": "Decimais (aula MB08)",
+"slides": 62,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB09 - Radiciação",
+"trilha": "mbr",
+"grupo": "Fase 1: Números do zero",
+"num": "MBR 12",
+"titulo": "Radiciação (aula MB09)",
+"slides": 39,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB10 - Sistema de Unidades de Medida",
+"trilha": "mbr",
+"grupo": "Fase 2: Medidas",
+"num": "MBR 13",
+"titulo": "Unidades de Medida (aula MB10)",
+"slides": 40,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB11 - Arredondamento, Notação Científic",
+"trilha": "mbr",
+"grupo": "Fase 2: Medidas",
+"num": "MBR 14",
+"titulo": "Arredondamento e Notação Científica (aula MB11)",
+"slides": 27,
+"questoes": 28,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB15 - Medidas Complexas e Incomplexas",
+"trilha": "mbr",
+"grupo": "Fase 2: Medidas",
+"num": "MBR 15",
+"titulo": "Medidas Complexas (horas, ângulos) (aula MB15)",
+"slides": 62,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB12 - Razões e Proporções",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 16",
+"titulo": "Razões e Proporções (aula MB12)",
+"slides": 34,
+"questoes": 28,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB13 - Divisão Proporcional e Regra de S",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 17",
+"titulo": "Divisão Proporcional (aula MB13)",
+"slides": 25,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB16 - Regra de Três",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 18",
+"titulo": "Regra de Três (aula MB16)",
+"slides": 53,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB17 - Porcentagem e Misturas",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 19",
+"titulo": "Porcentagem e Misturas (aula MB17)",
+"slides": 47,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB18 - Operações sobre Mercadorias",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 20",
+"titulo": "Operações sobre Mercadorias (aula MB18)",
+"slides": 36,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB19 - Juros Simples",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 21",
+"titulo": "Juros Simples (aula MB19)",
+"slides": 35,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "principal:26 - Juros Simples e Compostos",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 22",
+"titulo": "Juros Compostos (aula 26)",
+"slides": 46,
+"questoes": 30,
+"livro": "Elon, Vol. 2 (capítulo do tema)"
+},
+{
+"id": "mb:MB14 - Médias",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 23",
+"titulo": "Médias (aula MB14)",
+"slides": 30,
+"questoes": 28,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "mb:MB20 - Miscelânea",
+"trilha": "mbr",
+"grupo": "Fase 3: Proporção e dinheiro",
+"num": "MBR 24",
+"titulo": "Miscelânea da Aritmética (aula MB20)",
+"slides": 44,
+"questoes": 41,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "principal:08 - Linguagem Algébrica",
+"trilha": "mbr",
+"grupo": "Fase 4: Álgebra básica",
+"num": "MBR 25",
+"titulo": "Linguagem Algébrica (aula 08)",
+"slides": 69,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "principal:10 - Equações e Sistemas do 1º Grau",
+"trilha": "mbr",
+"grupo": "Fase 4: Álgebra básica",
+"num": "MBR 26",
+"titulo": "Equações e Sistemas do 1º Grau (aula 10)",
+"slides": 86,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "principal:11 - Equação do 2º Grau",
+"trilha": "mbr",
+"grupo": "Fase 4: Álgebra básica",
+"num": "MBR 27",
+"titulo": "Equação do 2º Grau (aula 11)",
+"slides": 82,
+"questoes": 30,
+"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
+},
+{
+"id": "principal:13 - Funções - Conceito, Domínio, Imagem",
+"trilha": "mbr",
+"grupo": "Fase 5: Funções e sequências",
+"num": "MBR 28",
+"titulo": "Funções - Conceito e Gráfico (aula 13)",
+"slides": 132,
+"questoes": 37,
+"livro": "Iezzi, FME vol. 1 (capítulo do tema)"
+},
+{
+"id": "principal:15 - Função Afim",
+"trilha": "mbr",
+"grupo": "Fase 5: Funções e sequências",
+"num": "MBR 29",
+"titulo": "Função Afim (aula 15)",
+"slides": 96,
+"questoes": 30,
+"livro": "Elon, Vol. 1, cap. 5 (funções afins)"
+},
+{
+"id": "principal:23 - Progressão Aritmética",
+"trilha": "mbr",
+"grupo": "Fase 5: Funções e sequências",
+"num": "MBR 30",
+"titulo": "Progressão Aritmética (aula 23)",
+"slides": 77,
+"questoes": 35,
+"livro": "Elon, Vol. 2 (capítulo do tema)"
+},
+{
+"id": "principal:24 - Progressão Geométrica",
+"trilha": "mbr",
+"grupo": "Fase 5: Funções e sequências",
+"num": "MBR 31",
+"titulo": "Progressão Geométrica (aula 24)",
+"slides": 69,
+"questoes": 34,
+"livro": "Elon, Vol. 2 (capítulo do tema)"
+},
+{
+"id": "principal:31 - Ângulos, Triângulos e Congruência",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 32",
+"titulo": "Ângulos e Triângulos (aula 31)",
+"slides": 106,
+"questoes": 37,
+"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
+},
+{
+"id": "principal:32 - Semelhança e Teorema de Tales",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 33",
+"titulo": "Semelhança e Tales (aula 32)",
+"slides": 64,
+"questoes": 30,
+"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
+},
+{
+"id": "principal:33 - Relações Métricas e Pontos Notáveis",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 34",
+"titulo": "Pitágoras e Relações Métricas (aula 33)",
+"slides": 85,
+"questoes": 40,
+"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
+},
+{
+"id": "principal:34 - Polígonos e Quadriláteros (Parte 1)",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 35",
+"titulo": "Polígonos e Quadriláteros (aula 34)",
+"slides": 58,
+"questoes": 38,
+"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
+},
+{
+"id": "principal:35 - Circunferência (Parte 2)",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 36",
+"titulo": "Circunferência (aula 35)",
+"slides": 86,
+"questoes": 43,
+"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
+},
+{
+"id": "principal:36 - Áreas de Figuras Planas",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 37",
+"titulo": "Áreas (aula 36)",
+"slides": 66,
+"questoes": 36,
+"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
+},
+{
+"id": "principal:49 - Prismas e Cilindros",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 38",
+"titulo": "Prismas e Cilindros (aula 49)",
+"slides": 41,
+"questoes": 30,
+"livro": "Elon, Vol. 2 (geometria espacial)"
+},
+{
+"id": "principal:50 - Pirâmides, Cones e Esferas",
+"trilha": "mbr",
+"grupo": "Fase 6: Geometria",
+"num": "MBR 39",
+"titulo": "Pirâmides, Cones e Esferas (aula 50)",
+"slides": 66,
+"questoes": 30,
+"livro": "Elon, Vol. 2 (geometria espacial)"
+},
+{
+"id": "enem:ENEM 14 - Leitura de Gráficos e Tabelas",
+"trilha": "mbr",
+"grupo": "Fase 7: Gráficos e estatística",
+"num": "MBR 40",
+"titulo": "Leitura de Gráficos e Tabelas (aula ENEM 14)",
+"slides": 55,
+"questoes": 32
+},
+{
+"id": "enem:ENEM 15 - Estatística (Parte 1)",
+"trilha": "mbr",
+"grupo": "Fase 7: Gráficos e estatística",
+"num": "MBR 41",
+"titulo": "Estatística (Parte 1) (aula ENEM 15)",
+"slides": 49,
+"questoes": 31
+},
+{
+"id": "enem:ENEM 16 - Estatística (Parte 2)",
+"trilha": "mbr",
+"grupo": "Fase 7: Gráficos e estatística",
+"num": "MBR 42",
+"titulo": "Estatística (Parte 2) (aula ENEM 16)",
+"slides": 38,
+"questoes": 28
+},
+{
+"id": "principal:61 - Análise Combinatória",
+"trilha": "mbr",
+"grupo": "Fase 8: Contagem e probabilidade",
+"num": "MBR 43",
+"titulo": "Análise Combinatória (aula 61)",
+"slides": 63,
+"questoes": 32,
+"livro": "Elon, Vol. 2 (capítulo do tema); exercícios extras no FME vol. 5"
+},
+{
+"id": "principal:63 - Probabilidade",
+"trilha": "mbr",
+"grupo": "Fase 8: Contagem e probabilidade",
+"num": "MBR 44",
+"titulo": "Probabilidade (aula 63)",
+"slides": 52,
+"questoes": 32,
+"livro": "Elon, Vol. 2 (capítulo do tema); exercícios extras no FME vol. 5"
+},
+{
+"id": "principal:68 - RLM - Proposições e Conectivos",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 45",
+"titulo": "Proposições e Conectivos (aula 68)",
+"slides": 65,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:69 - RLM - Tabelas-Verdade",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 46",
+"titulo": "Tabelas-Verdade (aula 69)",
+"slides": 43,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:70 - RLM - Equivalências e Negações",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 47",
+"titulo": "Equivalências e Negações (aula 70)",
+"slides": 51,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:71 - RLM - Quantificadores e Diagramas",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 48",
+"titulo": "Quantificadores e Diagramas (aula 71)",
+"slides": 41,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:72 - RLM - Lógica de Argumentação",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 49",
+"titulo": "Lógica de Argumentação (aula 72)",
+"slides": 57,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:73 - RLM - Verdades, Mentiras e Associaç",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 50",
+"titulo": "Verdades, Mentiras e Associação (aula 73)",
+"slides": 40,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:74 - RLM - Sequências e Raciocínio Seque",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 51",
+"titulo": "Sequências e Raciocínio Sequencial (aula 74)",
+"slides": 39,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:76 - RLM - Conjuntos",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 52",
+"titulo": "Conjuntos e Diagramas de Venn (aula 76)",
+"slides": 34,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:77 - RLM - Orientação Espacial",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 53",
+"titulo": "Orientação Espacial (aula 77)",
+"slides": 53,
+"questoes": 30,
+"livro": "Manual Completo de RLM (capítulo do tema)"
+},
+{
+"id": "principal:75 - RLM - Problemas Clássicos",
+"trilha": "mbr",
+"grupo": "Fase 9: RLM",
+"num": "MBR 54",
+"titulo": "Problemas Clássicos (calendários e relógios) (aula 75)",
+"slides": 52,
+"questoes": 32,
+"livro": "Manual Completo de RLM (capítulo do tema)"
 },
 {
 "id": "principal:02 - Divisibilidade, Primos, MMC e MDC",
@@ -89,16 +616,6 @@
 "livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
 },
 {
-"id": "principal:08 - Linguagem Algébrica",
-"trilha": "principal",
-"grupo": "Fundamentos de aritmética e álgebra",
-"num": "08",
-"titulo": "Linguagem Algébrica",
-"slides": 69,
-"questoes": 30,
-"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
-},
-{
 "id": "principal:09 - Produtos Notáveis e Fatoração",
 "trilha": "principal",
 "grupo": "Fundamentos de aritmética e álgebra",
@@ -106,26 +623,6 @@
 "titulo": "Produtos Notáveis e Fatoração",
 "slides": 128,
 "questoes": 33,
-"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
-},
-{
-"id": "principal:10 - Equações e Sistemas do 1º Grau",
-"trilha": "principal",
-"grupo": "Fundamentos de aritmética e álgebra",
-"num": "10",
-"titulo": "Equações e Sistemas do 1º Grau",
-"slides": 86,
-"questoes": 30,
-"livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
-},
-{
-"id": "principal:11 - Equação do 2º Grau",
-"trilha": "principal",
-"grupo": "Fundamentos de aritmética e álgebra",
-"num": "11",
-"titulo": "Equação do 2º Grau",
-"slides": 82,
-"questoes": 30,
 "livro": "Lacerda, Praticando a Aritmética (capítulo do tema)"
 },
 {
@@ -139,16 +636,6 @@
 "livro": "Elon, Vol. 1, cap. 1 (conjuntos)"
 },
 {
-"id": "principal:13 - Funções - Conceito, Domínio, Imagem",
-"trilha": "principal",
-"grupo": "Conjuntos e funções",
-"num": "13",
-"titulo": "Funções - Conceito, Domínio, Imagem e Gráfico",
-"slides": 132,
-"questoes": 37,
-"livro": "Iezzi, FME vol. 1 (capítulo do tema)"
-},
-{
 "id": "principal:14 - Função Composta e Função Inversa",
 "trilha": "principal",
 "grupo": "Conjuntos e funções",
@@ -157,16 +644,6 @@
 "slides": 86,
 "questoes": 30,
 "livro": "Iezzi, FME vol. 1 (capítulo do tema)"
-},
-{
-"id": "principal:15 - Função Afim",
-"trilha": "principal",
-"grupo": "Conjuntos e funções",
-"num": "15",
-"titulo": "Função Afim",
-"slides": 96,
-"questoes": 30,
-"livro": "Elon, Vol. 1, cap. 5 (funções afins)"
 },
 {
 "id": "principal:16 - Função Quadrática (Parte 1)",
@@ -239,42 +716,12 @@
 "livro": "Elon, Vol. 1, cap. 2 (axioma da indução)"
 },
 {
-"id": "principal:23 - Progressão Aritmética",
-"trilha": "principal",
-"grupo": "Sequências e matemática financeira",
-"num": "23",
-"titulo": "Progressão Aritmética",
-"slides": 77,
-"questoes": 35,
-"livro": "Elon, Vol. 2 (capítulo do tema)"
-},
-{
-"id": "principal:24 - Progressão Geométrica",
-"trilha": "principal",
-"grupo": "Sequências e matemática financeira",
-"num": "24",
-"titulo": "Progressão Geométrica",
-"slides": 69,
-"questoes": 34,
-"livro": "Elon, Vol. 2 (capítulo do tema)"
-},
-{
 "id": "principal:25 - Recorrências",
 "trilha": "principal",
 "grupo": "Sequências e matemática financeira",
 "num": "25",
 "titulo": "Recorrências",
 "slides": 50,
-"questoes": 30,
-"livro": "Elon, Vol. 2 (capítulo do tema)"
-},
-{
-"id": "principal:26 - Juros Simples e Compostos",
-"trilha": "principal",
-"grupo": "Sequências e matemática financeira",
-"num": "26",
-"titulo": "Juros Simples e Compostos",
-"slides": 46,
 "questoes": 30,
 "livro": "Elon, Vol. 2 (capítulo do tema)"
 },
@@ -317,66 +764,6 @@
 "slides": 49,
 "questoes": 30,
 "livro": "Elon, Vol. 1, cap. 3 (números cardinais)"
-},
-{
-"id": "principal:31 - Ângulos, Triângulos e Congruência",
-"trilha": "principal",
-"grupo": "Geometria plana",
-"num": "31",
-"titulo": "Ângulos, Triângulos e Congruência",
-"slides": 106,
-"questoes": 37,
-"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
-},
-{
-"id": "principal:32 - Semelhança e Teorema de Tales",
-"trilha": "principal",
-"grupo": "Geometria plana",
-"num": "32",
-"titulo": "Semelhança e Teorema de Tales",
-"slides": 64,
-"questoes": 30,
-"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
-},
-{
-"id": "principal:33 - Relações Métricas e Pontos Notáveis",
-"trilha": "principal",
-"grupo": "Geometria plana",
-"num": "33",
-"titulo": "Relações Métricas e Pontos Notáveis",
-"slides": 85,
-"questoes": 40,
-"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
-},
-{
-"id": "principal:34 - Polígonos e Quadriláteros (Parte 1)",
-"trilha": "principal",
-"grupo": "Geometria plana",
-"num": "34",
-"titulo": "Polígonos e Quadriláteros (Parte 1)",
-"slides": 58,
-"questoes": 38,
-"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
-},
-{
-"id": "principal:35 - Circunferência (Parte 2)",
-"trilha": "principal",
-"grupo": "Geometria plana",
-"num": "35",
-"titulo": "Circunferência (Parte 2)",
-"slides": 86,
-"questoes": 43,
-"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
-},
-{
-"id": "principal:36 - Áreas de Figuras Planas",
-"trilha": "principal",
-"grupo": "Geometria plana",
-"num": "36",
-"titulo": "Áreas de Figuras Planas",
-"slides": 66,
-"questoes": 36,
-"livro": "Iezzi, FME vol. 9 (capítulo do tema)"
 },
 {
 "id": "principal:37 - Trigonometria no Triângulo Retângul",
@@ -499,26 +886,6 @@
 "livro": "Elon, Vol. 2 (geometria espacial)"
 },
 {
-"id": "principal:49 - Prismas e Cilindros",
-"trilha": "principal",
-"grupo": "Geometria espacial",
-"num": "49",
-"titulo": "Prismas e Cilindros",
-"slides": 41,
-"questoes": 30,
-"livro": "Elon, Vol. 2 (geometria espacial)"
-},
-{
-"id": "principal:50 - Pirâmides, Cones e Esferas",
-"trilha": "principal",
-"grupo": "Geometria espacial",
-"num": "50",
-"titulo": "Pirâmides, Cones e Esferas",
-"slides": 66,
-"questoes": 30,
-"livro": "Elon, Vol. 2 (geometria espacial)"
-},
-{
 "id": "principal:51 - Sólidos de Revolução e Pappus",
 "trilha": "principal",
 "grupo": "Geometria espacial",
@@ -619,16 +986,6 @@
 "livro": "Elon, Vol. 3 (capítulo do tema)"
 },
 {
-"id": "principal:61 - Análise Combinatória",
-"trilha": "principal",
-"grupo": "Contagem, probabilidade e estatística",
-"num": "61",
-"titulo": "Análise Combinatória",
-"slides": 63,
-"questoes": 32,
-"livro": "Elon, Vol. 2 (capítulo do tema); exercícios extras no FME vol. 5"
-},
-{
 "id": "principal:62 - Binômio de Newton",
 "trilha": "principal",
 "grupo": "Contagem, probabilidade e estatística",
@@ -636,16 +993,6 @@
 "titulo": "Binômio de Newton",
 "slides": 88,
 "questoes": 38,
-"livro": "Elon, Vol. 2 (capítulo do tema); exercícios extras no FME vol. 5"
-},
-{
-"id": "principal:63 - Probabilidade",
-"trilha": "principal",
-"grupo": "Contagem, probabilidade e estatística",
-"num": "63",
-"titulo": "Probabilidade",
-"slides": 52,
-"questoes": 32,
 "livro": "Elon, Vol. 2 (capítulo do tema); exercícios extras no FME vol. 5"
 },
 {
@@ -687,133 +1034,6 @@
 "slides": 38,
 "questoes": 30,
 "livro": "Iezzi, FME vol. 11 (estatística)"
-},
-{
-"id": "principal:68 - RLM - Proposições e Conectivos",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "68",
-"titulo": "RLM - Proposições e Conectivos",
-"slides": 65,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:69 - RLM - Tabelas-Verdade",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "69",
-"titulo": "RLM - Tabelas-Verdade",
-"slides": 43,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:70 - RLM - Equivalências e Negações",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "70",
-"titulo": "RLM - Equivalências e Negações",
-"slides": 51,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:71 - RLM - Quantificadores e Diagramas",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "71",
-"titulo": "RLM - Quantificadores e Diagramas",
-"slides": 41,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:72 - RLM - Lógica de Argumentação",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "72",
-"titulo": "RLM - Lógica de Argumentação",
-"slides": 57,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:73 - RLM - Verdades, Mentiras e Associaç",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "73",
-"titulo": "RLM - Verdades, Mentiras e Associação",
-"slides": 40,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:74 - RLM - Sequências e Raciocínio Seque",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "74",
-"titulo": "RLM - Sequências e Raciocínio Sequencial",
-"slides": 39,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:75 - RLM - Problemas Clássicos",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "75",
-"titulo": "RLM - Problemas Clássicos",
-"slides": 52,
-"questoes": 32,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:76 - RLM - Conjuntos",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "76",
-"titulo": "RLM - Conjuntos",
-"slides": 34,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "principal:77 - RLM - Orientação Espacial",
-"trilha": "principal",
-"grupo": "Raciocínio lógico (RLM)",
-"num": "77",
-"titulo": "RLM - Orientação Espacial",
-"slides": 53,
-"questoes": 30,
-"livro": "Manual Completo de RLM (capítulo do tema)"
-},
-{
-"id": "enem:ENEM 14 - Leitura de Gráficos e Tabelas",
-"trilha": "enem",
-"grupo": "Curso ENEM",
-"num": "ENEM 14",
-"titulo": "Leitura de Gráficos e Tabelas",
-"slides": 55,
-"questoes": 32
-},
-{
-"id": "enem:ENEM 15 - Estatística (Parte 1)",
-"trilha": "enem",
-"grupo": "Curso ENEM",
-"num": "ENEM 15",
-"titulo": "Estatística (Parte 1)",
-"slides": 49,
-"questoes": 31
-},
-{
-"id": "enem:ENEM 16 - Estatística (Parte 2)",
-"trilha": "enem",
-"grupo": "Curso ENEM",
-"num": "ENEM 16",
-"titulo": "Estatística (Parte 2)",
-"slides": 38,
-"questoes": 28
 },
 {
 "id": "enem:E01 - Como Ler e Resolver uma Questão do",
@@ -1102,204 +1322,6 @@
 "titulo": "Perfil Cesgranrio",
 "slides": 18,
 "questoes": 8
-},
-{
-"id": "mb:MB01 - Numeração",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB01",
-"titulo": "Numeração",
-"slides": 61,
-"questoes": 31
-},
-{
-"id": "mb:MB02a - Operações Fundamentais em N (Par",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB02a",
-"titulo": "Operações Fundamentais em N (Parte 1)",
-"slides": 61,
-"questoes": 30
-},
-{
-"id": "mb:MB02b - Operações Fundamentais em N (Par",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB02b",
-"titulo": "Operações Fundamentais em N (Parte 2)",
-"slides": 49,
-"questoes": 30
-},
-{
-"id": "mb:MB03 - Numeração Não Decimal",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB03",
-"titulo": "Numeração Não Decimal",
-"slides": 44,
-"questoes": 30
-},
-{
-"id": "mb:MB04a - Teoria dos Números Primos (Parte",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB04a",
-"titulo": "Teoria dos Números Primos (Parte 1)",
-"slides": 44,
-"questoes": 30
-},
-{
-"id": "mb:MB04b - Teoria dos Números Primos (Parte",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB04b",
-"titulo": "Teoria dos Números Primos (Parte 2)",
-"slides": 42,
-"questoes": 30
-},
-{
-"id": "mb:MB05 - Divisibilidade",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB05",
-"titulo": "Divisibilidade",
-"slides": 43,
-"questoes": 30
-},
-{
-"id": "mb:MB06 - MDC e MMC",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB06",
-"titulo": "MDC e MMC",
-"slides": 32,
-"questoes": 30
-},
-{
-"id": "mb:MB07 - Números Fracionários",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB07",
-"titulo": "Números Fracionários",
-"slides": 45,
-"questoes": 30
-},
-{
-"id": "mb:MB08 - Números Decimais e Números em Out",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB08",
-"titulo": "Números Decimais e Números em Outras Bases",
-"slides": 62,
-"questoes": 30
-},
-{
-"id": "mb:MB09 - Radiciação",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB09",
-"titulo": "Radiciação",
-"slides": 39,
-"questoes": 30
-},
-{
-"id": "mb:MB10 - Sistema de Unidades de Medida",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB10",
-"titulo": "Sistema de Unidades de Medida",
-"slides": 40,
-"questoes": 30
-},
-{
-"id": "mb:MB11 - Arredondamento, Notação Científic",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB11",
-"titulo": "Arredondamento, Notação Científica e Ordem de Grandeza",
-"slides": 27,
-"questoes": 28
-},
-{
-"id": "mb:MB12 - Razões e Proporções",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB12",
-"titulo": "Razões e Proporções",
-"slides": 34,
-"questoes": 28
-},
-{
-"id": "mb:MB13 - Divisão Proporcional e Regra de S",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB13",
-"titulo": "Divisão Proporcional e Regra de Sociedade",
-"slides": 25,
-"questoes": 30
-},
-{
-"id": "mb:MB14 - Médias",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB14",
-"titulo": "Médias",
-"slides": 30,
-"questoes": 28
-},
-{
-"id": "mb:MB15 - Medidas Complexas e Incomplexas",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB15",
-"titulo": "Medidas Complexas e Incomplexas",
-"slides": 62,
-"questoes": 30
-},
-{
-"id": "mb:MB16 - Regra de Três",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB16",
-"titulo": "Regra de Três",
-"slides": 53,
-"questoes": 30
-},
-{
-"id": "mb:MB17 - Porcentagem e Misturas",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB17",
-"titulo": "Porcentagem e Misturas",
-"slides": 47,
-"questoes": 30
-},
-{
-"id": "mb:MB18 - Operações sobre Mercadorias",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB18",
-"titulo": "Operações sobre Mercadorias",
-"slides": 36,
-"questoes": 30
-},
-{
-"id": "mb:MB19 - Juros Simples",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB19",
-"titulo": "Juros Simples",
-"slides": 35,
-"questoes": 30
-},
-{
-"id": "mb:MB20 - Miscelânea",
-"trilha": "mb",
-"grupo": "Matemática Básica (Lacerda)",
-"num": "MB20",
-"titulo": "Miscelânea",
-"slides": 44,
-"questoes": 41
 }
 ],
 "capitulos": [

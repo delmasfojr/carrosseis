@@ -66,7 +66,7 @@ const Estudo = (() => {
     const prio = st.livros ? st.prioridade.filter(l => VOLUMES[l]) : [];
     if (st.livros) (dados.capitulos || []).forEach(c => prio.includes(c.livro) || (caps[c.aula] = caps[c.aula] || []).push(c));
     for (const a of dados.aulas) {
-      if (!st.trilhas[a.trilha]) continue;
+      if (st.trilhas[a.trilha] === false) continue;
       const nome = `${a.num} · ${a.titulo}`, reforco = st.reforco.includes(a.id), base = {aula: a.id, nome};
       if (reforco) fila.push({...base, id: a.id + '#livro', tipo: 'livro', min: 50,
         txt: 'Ler a teoria no livro', det: a.livro || LIVRO_TRILHA[a.trilha] || 'livro do tema'});
@@ -162,11 +162,11 @@ const Estudo = (() => {
     let html = '';
     for (const tr of dados.trilhas) {
       const aulas = dados.aulas.filter(a => a.trilha === tr.id);
-      if (!st.trilhas[tr.id]) { html += `<h4>${esc(tr.nome)} <small>(fora do plano)</small></h4>`; continue; }
+      if (st.trilhas[tr.id] === false) { html += `<h4>${esc(tr.nome)} <small>(fora do plano)</small></h4>`; continue; }
       html += `<h4>${esc(tr.nome)}</h4>`;
       let grupo = '';
       for (const a of aulas) {
-        if (a.grupo !== grupo) { grupo = a.grupo; if (tr.id === 'principal') html += `<div class="egrupo">${esc(grupo)}</div>`; }
+        if (a.grupo !== grupo) { grupo = a.grupo; if (tr.id === 'principal' || tr.id === 'mbr') html += `<div class="egrupo">${esc(grupo)}</div>`; }
         const ts = por[a.id] || [], ok = ts.filter(t => st.feito[t.id]).length, ref = st.reforco.includes(a.id);
         const lv = [...new Set(ts.filter(t => t.doLivro).map(t => t.nome.split(' · ')[0]))];
         html += `<div class="eaula${ok === ts.length && ts.length ? ' ok' : ''}" data-aula="${esc(a.id)}">
@@ -181,7 +181,7 @@ const Estudo = (() => {
   function ajustes() {
     q('#edias').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dia="${d}" value="${st.min[d]}"></label>`).join('');
     q('#ediaslivros').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dial="${d}" value="${st.minLivros[d]}"></label>`).join('');
-    q('#etrilhas').innerHTML = dados.trilhas.map(t => `<label class="check"><input type="checkbox" data-trilha="${t.id}" ${st.trilhas[t.id] ? 'checked' : ''}> ${esc(t.nome)}</label>`).join('');
+    q('#etrilhas').innerHTML = dados.trilhas.map(t => `<label class="check"><input type="checkbox" data-trilha="${t.id}" ${st.trilhas[t.id] !== false ? 'checked' : ''}> ${esc(t.nome)}</label>`).join('');
     q('#eprio').innerHTML = Object.entries(VOLUMES).map(([l, nome]) => { const n = st.prioridade.indexOf(l);
       return `<button class="eprio${n >= 0 ? ' on' : ''}" data-prio="${esc(l)}">${n >= 0 ? `📌 ${n + 1}º` : '📌'} <b>${esc(l)}</b> ${esc(nome)}</button>`; }).join('');
     q('#elivros').value = st.livros; q('#epagina').value = st.porPagina;
