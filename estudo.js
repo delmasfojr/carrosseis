@@ -9,6 +9,7 @@ const Estudo = (() => {
     min: [180, 60, 60, 60, 60, 60, 180],  // domingo..sábado, em minutos
     porSlide: 1, porQuestao: 3, voz: 10,
     minLivros: [60, 60, 60, 60, 60, 60, 60],  // trilha dos livros: 1 h a mais por dia, em paralelo à das aulas
+    prioridade: ['FME 5'],  // volumes que abrem a trilha dos livros (inteiros, na ordem marcada): os assuntos difíceis
     livros: 2, porPagina: 1.5,  // livros inteiros (FME + Lacerda): 1 = todos os exercícios, 2 = ímpares, 3 = 1 a cada 3, 0 = fora
     trilhas: {principal: true, enem: true, concursos: true, mb: true},
     reforco: ['principal:61 - Análise Combinatória', 'principal:63 - Probabilidade'],
@@ -35,6 +36,10 @@ const Estudo = (() => {
   };
 
   /* ---------------------------------------------------------------- a fila de tarefas */
+  const VOLUMES = {'FME 1': 'Conjuntos e Funções', 'FME 2': 'Logaritmos', 'FME 3': 'Trigonometria',
+    'FME 4': 'Sequências, Matrizes e Sistemas', 'FME 5': 'Combinatória e Probabilidade', 'FME 6': 'Complexos e Polinômios',
+    'FME 7': 'Geometria Analítica', 'FME 9': 'Geometria Plana', 'FME 10': 'Geometria Espacial',
+    'FME 11': 'Financeira e Estatística', 'Lacerda': 'Aritmética (Matemática Básica)'};
   const FRAC = {1: '', 2: ' (só os ímpares)', 3: ' (1 a cada 3: o 1º, o 4º, o 7º…)'};
   const conta = (i, f, fr) => Math.ceil((f - i + 1) / fr);  // quantos exercícios de i..f entram com a fração fr
   // um capítulo de livro vira: leitura em pedaços de ~30 páginas + exercícios em blocos fixos de 20 números
@@ -58,7 +63,8 @@ const Estudo = (() => {
 
   function tarefas() {
     const fila = [], depois = [], caps = {};  // depois = fase 2: livros das aulas sem ⭐, depois de todas as aulas
-    if (st.livros) (dados.capitulos || []).forEach(c => (caps[c.aula] = caps[c.aula] || []).push(c));
+    const prio = st.livros ? st.prioridade.filter(l => VOLUMES[l]) : [];
+    if (st.livros) (dados.capitulos || []).forEach(c => prio.includes(c.livro) || (caps[c.aula] = caps[c.aula] || []).push(c));
     for (const a of dados.aulas) {
       if (!st.trilhas[a.trilha]) continue;
       const nome = `${a.num} · ${a.titulo}`, reforco = st.reforco.includes(a.id), base = {aula: a.id, nome};
@@ -76,7 +82,9 @@ const Estudo = (() => {
         det: reforco ? 'Apresente a aula inteira como se a turma estivesse na sua frente.' : 'Escolha 2 exemplos e explique o porquê de cada passo. Onde travar, volte ao slide.'});
       (caps[a.id] || []).forEach(c => (reforco ? fila : depois).push(...tarefasCap(c, base, !reforco)));
     }
-    return fila.concat(depois);
+    // volumes priorizados: inteiros, no começo da trilha dos livros (mesmo os capítulos de aulas com ⭐)
+    const primeiro = prio.flatMap(l => dados.capitulos.filter(c => c.livro === l).flatMap(c => tarefasCap(c, {aula: c.aula, nome: c.nome}, true)));
+    return fila.concat(primeiro, depois);
   }
 
   // encaixa as tarefas que faltam nos dias, a partir de hoje (o que já foi feito hoje continua na lista de hoje)
@@ -174,6 +182,8 @@ const Estudo = (() => {
     q('#edias').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dia="${d}" value="${st.min[d]}"></label>`).join('');
     q('#ediaslivros').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dial="${d}" value="${st.minLivros[d]}"></label>`).join('');
     q('#etrilhas').innerHTML = dados.trilhas.map(t => `<label class="check"><input type="checkbox" data-trilha="${t.id}" ${st.trilhas[t.id] ? 'checked' : ''}> ${esc(t.nome)}</label>`).join('');
+    q('#eprio').innerHTML = Object.entries(VOLUMES).map(([l, nome]) => { const n = st.prioridade.indexOf(l);
+      return `<button class="eprio${n >= 0 ? ' on' : ''}" data-prio="${esc(l)}">${n >= 0 ? `📌 ${n + 1}º` : '📌'} <b>${esc(l)}</b> ${esc(nome)}</button>`; }).join('');
     q('#elivros').value = st.livros; q('#epagina').value = st.porPagina;
     q('#eslide').value = st.porSlide; q('#equestao').value = st.porQuestao; q('#evoz').value = st.voz;
   }
@@ -206,6 +216,8 @@ const Estudo = (() => {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.adiantar) { st.feito[b.dataset.adiantar] = hoje(); gravar(); return mostrar(); }
+      if (b.dataset.prio) { const l = b.dataset.prio;
+        st.prioridade = st.prioridade.includes(l) ? st.prioridade.filter(x => x !== l) : [...st.prioridade, l]; gravar(); return mostrar(); }
       const linha = b.closest('.eaula');
       if (!linha) return;
       const id = linha.dataset.aula;
