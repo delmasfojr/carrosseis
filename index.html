@@ -138,6 +138,23 @@ nav button i{position:relative}
 .cfonte a{color:var(--navy)}
 .concurso .vacoes button{white-space:nowrap}.concurso .vacoes .principal{flex:1.4}
 .cman{font-size:13px;color:#445;margin-top:6px}.cman summary{cursor:pointer;font-weight:700;color:#667}.cman div{margin:3px 0 0 8px}
+/* 📚 trilha de estudos */
+.ebarra{height:14px;background:var(--cinza);border-radius:7px;overflow:hidden}.ebarra i{display:block;height:100%;background:var(--lar)}
+#eresumo p{margin:8px 0 0;font-size:15px}
+.etarefa{background:#fff;border:2px solid var(--cinza);border-radius:12px;padding:10px 12px;margin:8px 0}
+.etarefa.ok{opacity:.6}.etarefa.ok b{text-decoration:line-through}
+.echeck{display:flex;gap:12px;align-items:flex-start;margin:0;font-weight:400}
+.echeck input{width:26px;height:26px;flex:none;margin-top:2px;accent-color:var(--lar)}
+.echeck span{display:flex;flex-direction:column;gap:2px}.echeck small{color:#667;font-size:13px}.echeck em{font-style:normal;font-size:13px;color:#556}
+.eerros{margin-top:8px}
+#eadiantar button{width:100%;margin-top:4px}
+.edia{border-top:1px solid var(--cinza);padding:8px 0}.edia span{float:right;color:#667}.edia ul{margin:4px 0 0;padding-left:20px;font-size:14px}
+#etrilha h4{font:18px 'Anton',Impact,sans-serif;margin:16px 0 4px}.egrupo{font-weight:700;color:var(--lar);margin:10px 0 2px;font-size:14px}
+.eaula{display:flex;align-items:center;gap:6px;border-top:1px solid var(--cinza);padding:6px 0;font-size:14px}
+.eaula span{flex:1}.eaula small{display:block;color:#667}.eaula.ok span{opacity:.55}
+.eaula button{padding:6px 8px;font-size:13px;background:#fff;border:2px solid var(--cinza)}.eaula .eref{filter:grayscale(1);opacity:.5}.eaula .eref.on{filter:none;opacity:1;border-color:var(--lar)}
+.edias{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.edias label{margin:0;font-size:13px}.edias input{padding:8px;margin-top:2px}
+.edias3{grid-template-columns:repeat(3,1fr);margin-top:14px}
 </style>
 </head>
 <body>
@@ -258,6 +275,36 @@ nav button i{position:relative}
     <p class="dica">⚠️ A IA pode errar número de vagas e datas: <b>confira na fonte</b> antes de postar. Cada busca gasta 1 pedido da cota grátis do Gemini.</p>
   </section>
 
+  <section class="tela" id="estudo" hidden>
+    <h2>Trilha de <span>estudos</span></h2>
+    <div id="eresumo"></div>
+    <h3 id="ehojetit">Hoje</h3>
+    <div id="ehoje"></div>
+    <div id="eadiantar"></div>
+    <details class="mais"><summary>📅 Próximos 7 dias</summary><div id="esemana"></div></details>
+    <details class="mais"><summary>🗺️ Trilha completa (⭐ = reforço)</summary>
+      <p class="dica">⭐ marca a aula em que você sente dificuldade: entram <b>50 min de leitura no livro</b> antes dos slides e <b>30 min dando a aula em voz alta</b> no fim. “✓ Já sei” tira a aula da fila.</p>
+      <div id="etrilha"></div></details>
+    <details class="mais"><summary>📚 Que livro usar no reforço</summary>
+      <p><b>Um livro só por assunto</b>, para não dispersar:</p>
+      <p><b>Elon (Vol. 2 e 3)</b> onde ele cobre o tema: sequências, financeira, geometria espacial, analítica, complexos, polinômios, combinatória e probabilidade. Ele explica o <i>porquê</i>, que é o que o aluno pergunta.</p>
+      <p><b>FME (Iezzi)</b> onde o Elon que você tem não chega: funções (vol. 1 e 2), geometria plana (9), trigonometria (3), matrizes e sistemas (4), estatística (11). Bom também como banco de exercícios extras.</p>
+      <p><b>Lacerda</b> para aritmética e Matemática Básica; <b>Manual de RLM</b> para lógica. Cada aula com ⭐ já mostra qual livro abrir.</p></details>
+    <details class="mais"><summary>⚙️ Ajustar o plano</summary>
+      <label>Minutos de estudo em cada dia</label>
+      <div id="edias" class="edias"></div>
+      <label>O que entra na trilha</label>
+      <div id="etrilhas"></div>
+      <div class="edias edias3">
+        <label>Min por slide<input id="eslide" type="number" min="0.2" step="0.1"></label>
+        <label>Min por questão<input id="equestao" type="number" min="0.5" step="0.5"></label>
+        <label>Voz alta (min)<input id="evoz" type="number" min="0" step="5"></label>
+      </div>
+      <p class="dica">O plano se refaz sozinho: se um dia não der, ele só empurra o que falta. O progresso fica guardado neste aparelho.</p>
+      <button id="ezerar" class="perigo">Apagar o progresso e começar do zero</button>
+    </details>
+  </section>
+
   <section class="tela" id="roteiros" hidden>
     <h2>Meus <span>posts</span></h2>
     <div class="seg"><button data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button class="on" data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
@@ -332,11 +379,13 @@ nav button i{position:relative}
   <button data-tela="meus"><i>📁</i>Meus posts</button>
   <button data-tela="virais"><i>🔥</i>Ideias</button>
   <button data-tela="concursos"><i>📡<em id="nconcursos" class="badge" hidden></em></i>Concursos</button>
+  <button data-tela="estudo"><i>📚</i>Estudo</button>
 </nav>
 <script src="cards.js"></script>
 <script src="app.js"></script>
 <script src="roteiro.js"></script>
 <script src="concursos.js"></script>
+<script src="estudo.js"></script>
 <script src="gravador.js"></script>
 </body>
 </html>
