@@ -8,6 +8,7 @@ const Estudo = (() => {
   const PADRAO = {
     min: [180, 60, 60, 60, 60, 60, 180],  // domingo..sábado, em minutos
     porSlide: 1, porQuestao: 3, voz: 10,
+    livros: 1, porPagina: 1.5,  // livros inteiros (FME + Lacerda): 1 = todos os exercícios, 2 = ímpares, 3 = 1 a cada 3, 0 = fora
     trilhas: {principal: true, enem: true, concursos: true, mb: true},
     reforco: ['principal:61 - Análise Combinatória', 'principal:63 - Probabilidade'],
     feito: {}, erros: {}, revisado: {},
@@ -33,8 +34,30 @@ const Estudo = (() => {
   };
 
   /* ---------------------------------------------------------------- a fila de tarefas */
+  const FRAC = {1: '', 2: ' (só os ímpares)', 3: ' (1 a cada 3: o 1º, o 4º, o 7º…)'};
+  const conta = (i, f, fr) => Math.ceil((f - i + 1) / fr);  // quantos exercícios de i..f entram com a fração fr
+  // um capítulo de livro vira: leitura em pedaços de ~30 páginas + exercícios em blocos fixos de 20 números
+  // (blocos fixos: mudar "todos/ímpares" não bagunça o que já foi marcado)
+  function tarefasCap(c, base) {
+    const out = [], fr = st.livros, b = {...base, nome: c.nome, doLivro: true};
+    if (c.pag) partes(c.pag[1] - c.pag[0] + 1, 30).forEach(([i, f], k) => out.push({...b, id: `${c.id}#p${k + 1}`, tipo: 'livro',
+      min: (f - i + 1) * st.porPagina, txt: `Ler as páginas ${c.pag[0] + i - 1}–${c.pag[0] + f - 1}`,
+      det: 'Teoria, demonstrações e exercícios resolvidos. Os propostos vêm na tarefa seguinte.'}));
+    const blocos = (ini, fim, rotulo, det) => { for (let i = ini, k = 1; i <= fim; i += 20, k++) {
+      const f = Math.min(fim, i + 19), n = conta(i, f, fr);
+      out.push({...b, id: `${c.id}#e${k}`, tipo: 'lista', min: n * st.porQuestao, txt: `${rotulo} ${i}–${f}${FRAC[fr]}`, det}); } };
+    if (c.ex) blocos(c.ex[0], c.ex[1], 'Exercícios', 'Respostas no fim do livro. Anote os que errou.');
+    if (c.vest) blocos(1, c.vest, 'Questões de vestibular', 'Revisão do volume. Respostas no fim do livro.');
+    if (c.nex) { const n = Math.max(1, Math.round(c.nex / 20));
+      for (let k = 1; k <= n; k++) { const q = Math.ceil(Math.round(c.nex / n) / fr);
+        out.push({...b, id: `${c.id}#e${k}`, tipo: 'lista', min: q * st.porQuestao,
+          txt: `Exercícios propostos: parte ${k} de ${n}${FRAC[fr]}`, det: `Cerca de ${q} exercícios. Respostas no próprio livro. Anote os que errou.`}); } }
+    return out;
+  }
+
   function tarefas() {
-    const fila = [];
+    const fila = [], caps = {};
+    if (st.livros) (dados.capitulos || []).forEach(c => (caps[c.aula] = caps[c.aula] || []).push(c));
     for (const a of dados.aulas) {
       if (!st.trilhas[a.trilha]) continue;
       const nome = `${a.num} · ${a.titulo}`, reforco = st.reforco.includes(a.id), base = {aula: a.id, nome};
@@ -50,6 +73,7 @@ const Estudo = (() => {
       if (a.slides && st.voz) fila.push({...base, id: a.id + '#voz', tipo: 'voz', min: reforco ? 30 : st.voz,
         txt: reforco ? 'Dar a aula em voz alta (grave no celular)' : 'Explicar em voz alta, sem o slide',
         det: reforco ? 'Apresente a aula inteira como se a turma estivesse na sua frente.' : 'Escolha 2 exemplos e explique o porquê de cada passo. Onde travar, volte ao slide.'});
+      (caps[a.id] || []).forEach(c => fila.push(...tarefasCap(c, base)));
     }
     return fila;
   }
@@ -117,8 +141,9 @@ const Estudo = (() => {
       for (const a of aulas) {
         if (a.grupo !== grupo) { grupo = a.grupo; if (tr.id === 'principal') html += `<div class="egrupo">${esc(grupo)}</div>`; }
         const ts = por[a.id] || [], ok = ts.filter(t => st.feito[t.id]).length, ref = st.reforco.includes(a.id);
+        const lv = [...new Set(ts.filter(t => t.doLivro).map(t => t.nome.split(' · ')[0]))];
         html += `<div class="eaula${ok === ts.length && ts.length ? ' ok' : ''}" data-aula="${esc(a.id)}">
-          <span><b>${esc(a.num)}</b> ${esc(a.titulo)}<small>${a.slides} slides · ${a.questoes} questões · ${ok}/${ts.length} etapas</small></span>
+          <span><b>${esc(a.num)}</b> ${esc(a.titulo)}<small>${a.slides} slides · ${a.questoes} questões · ${ok}/${ts.length} etapas</small>${lv.length ? `<small>📗 + ${esc(lv.join(', '))}</small>` : ''}</span>
           <button class="eref${ref ? ' on' : ''}" title="Reforço: entra a leitura no livro e a aula em voz alta">⭐</button>
           <button class="ejasei">${ok === ts.length && ts.length ? '↺' : '✓ Já sei'}</button></div>`;
       }
@@ -129,6 +154,7 @@ const Estudo = (() => {
   function ajustes() {
     q('#edias').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<label>${DIAS[d].slice(0, 3)}<input type="number" min="0" max="600" step="10" data-dia="${d}" value="${st.min[d]}"></label>`).join('');
     q('#etrilhas').innerHTML = dados.trilhas.map(t => `<label class="check"><input type="checkbox" data-trilha="${t.id}" ${st.trilhas[t.id] ? 'checked' : ''}> ${esc(t.nome)}</label>`).join('');
+    q('#elivros').value = st.livros; q('#epagina').value = st.porPagina;
     q('#eslide').value = st.porSlide; q('#equestao').value = st.porQuestao; q('#evoz').value = st.voz;
   }
 
@@ -150,6 +176,8 @@ const Estudo = (() => {
       else if (el.id === 'eslide') st.porSlide = Math.max(0.2, +el.value || 1);
       else if (el.id === 'equestao') st.porQuestao = Math.max(0.5, +el.value || 3);
       else if (el.id === 'evoz') st.voz = Math.max(0, +el.value || 0);
+      else if (el.id === 'elivros') st.livros = +el.value;
+      else if (el.id === 'epagina') st.porPagina = Math.max(0.2, +el.value || 1.5);
       else return;
       gravar(); mostrar();
     });
@@ -163,7 +191,7 @@ const Estudo = (() => {
       if (b.classList.contains('eref')) {
         st.reforco = st.reforco.includes(id) ? st.reforco.filter(x => x !== id) : [...st.reforco, id];
       } else if (b.classList.contains('ejasei')) {
-        const ts = tarefas().filter(t => t.aula === id), todas = ts.every(t => st.feito[t.id]);
+        const ts = tarefas().filter(t => t.aula === id && !t.doLivro), todas = ts.every(t => st.feito[t.id]);
         if (todas) { if (!confirm('Voltar esta aula para a trilha (desmarcar tudo)?')) return; ts.forEach(t => delete st.feito[t.id]); }
         else ts.forEach(t => st.feito[t.id] = st.feito[t.id] || 'pulado');
       }

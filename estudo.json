@@ -1301,5 +1301,1551 @@
 "slides": 44,
 "questoes": 41
 }
+],
+"capitulos": [
+{
+"id": "fme1:I",
+"aula": "principal:12 - Conjuntos e Intervalos",
+"livro": "FME 1",
+"nome": "FME 1, cap. I · Noções de lógica",
+"pag": [
+1,
+17
+],
+"ex": [
+1,
+18
+]
+},
+{
+"id": "fme1:II",
+"aula": "principal:12 - Conjuntos e Intervalos",
+"livro": "FME 1",
+"nome": "FME 1, cap. II · Conjuntos",
+"pag": [
+18,
+39
+],
+"ex": [
+19,
+61
+]
+},
+{
+"id": "fme1:III",
+"aula": "principal:01 - Conjuntos Numéricos",
+"livro": "FME 1",
+"nome": "FME 1, cap. III · Conjuntos numéricos",
+"pag": [
+40,
+63
+],
+"ex": [
+62,
+116
+]
+},
+{
+"id": "fme1:IV",
+"aula": "principal:13 - Funções - Conceito, Domínio, Imagem",
+"livro": "FME 1",
+"nome": "FME 1, cap. IV · Relações",
+"pag": [
+64,
+78
+],
+"ex": [
+117,
+141
+]
+},
+{
+"id": "fme1:V",
+"aula": "principal:13 - Funções - Conceito, Domínio, Imagem",
+"livro": "FME 1",
+"nome": "FME 1, cap. V · Introdução às funções",
+"pag": [
+79,
+96
+],
+"ex": [
+142,
+168
+]
+},
+{
+"id": "fme1:VI",
+"aula": "principal:15 - Função Afim",
+"livro": "FME 1",
+"nome": "FME 1, cap. VI · Função constante — Função afim",
+"pag": [
+97,
+136
+],
+"ex": [
+169,
+224
+]
+},
+{
+"id": "fme1:VII",
+"aula": "principal:17 - Função Quadrática (Parte 2)",
+"livro": "FME 1",
+"nome": "FME 1, cap. VII · Funções quadráticas",
+"pag": [
+137,
+183
+],
+"ex": [
+225,
+353
+]
+},
+{
+"id": "fme1:VIII",
+"aula": "principal:18 - Função Modular",
+"livro": "FME 1",
+"nome": "FME 1, cap. VIII · Função modular",
+"pag": [
+184,
+204
+],
+"ex": [
+354,
+406
+]
+},
+{
+"id": "fme1:IX",
+"aula": "principal:18 - Função Modular",
+"livro": "FME 1",
+"nome": "FME 1, cap. IX · Outras funções elementares",
+"pag": [
+205,
+211
+],
+"ex": [
+407,
+420
+]
+},
+{
+"id": "fme1:X",
+"aula": "principal:14 - Função Composta e Função Inversa",
+"livro": "FME 1",
+"nome": "FME 1, cap. X · Função composta — Função inversa",
+"pag": [
+212,
+269
+],
+"ex": [
+421,
+568
+]
+},
+{
+"id": "fme1:vest",
+"aula": "principal:18 - Função Modular",
+"livro": "FME 1",
+"nome": "FME 1 · Questões de vestibulares",
+"vest": 361
+},
+{
+"id": "fme2:I",
+"aula": "principal:04 - Potenciação, Radiciação e Racionali",
+"livro": "FME 2",
+"nome": "FME 2, cap. I · Potências e raízes",
+"pag": [
+1,
+26
+],
+"ex": [
+1,
+58
+]
+},
+{
+"id": "fme2:II",
+"aula": "principal:19 - Função Exponencial",
+"livro": "FME 2",
+"nome": "FME 2, cap. II · Função exponencial",
+"pag": [
+27,
+56
+],
+"ex": [
+59,
+133
+]
+},
+{
+"id": "fme2:III",
+"aula": "principal:20 - Logaritmos e Função Logarítmica",
+"livro": "FME 2",
+"nome": "FME 2, cap. III · Logaritmos",
+"pag": [
+57,
+79
+],
+"ex": [
+134,
+204
+]
+},
+{
+"id": "fme2:IV",
+"aula": "principal:20 - Logaritmos e Função Logarítmica",
+"livro": "FME 2",
+"nome": "FME 2, cap. IV · Função logarítmica",
+"pag": [
+80,
+87
+],
+"ex": [
+205,
+222
+]
+},
+{
+"id": "fme2:V",
+"aula": "principal:20 - Logaritmos e Função Logarítmica",
+"livro": "FME 2",
+"nome": "FME 2, cap. V · Equações exponenciais e logarítmicas",
+"pag": [
+88,
+111
+],
+"ex": [
+223,
+320
+]
+},
+{
+"id": "fme2:VI",
+"aula": "principal:21 - Inequações",
+"livro": "FME 2",
+"nome": "FME 2, cap. VI · Inequações exponenciais e logarítmicas",
+"pag": [
+112,
+129
+],
+"ex": [
+321,
+382
+]
+},
+{
+"id": "fme2:VII",
+"aula": "principal:20 - Logaritmos e Função Logarítmica",
+"livro": "FME 2",
+"nome": "FME 2, cap. VII · Logaritmos decimais",
+"pag": [
+130,
+141
+],
+"ex": [
+383,
+407
+]
+},
+{
+"id": "fme2:vest",
+"aula": "principal:21 - Inequações",
+"livro": "FME 2",
+"nome": "FME 2 · Questões de vestibulares",
+"vest": 323
+},
+{
+"id": "fme3:I",
+"aula": "principal:37 - Trigonometria no Triângulo Retângul",
+"livro": "FME 3",
+"nome": "FME 3, cap. I · Revisão inicial de geometria",
+"pag": [
+2,
+9
+],
+"ex": null
+},
+{
+"id": "fme3:II",
+"aula": "principal:37 - Trigonometria no Triângulo Retângul",
+"livro": "FME 3",
+"nome": "FME 3, cap. II · Razões trigonométricas no triângulo retângulo",
+"pag": [
+10,
+23
+],
+"ex": [
+1,
+29
+]
+},
+{
+"id": "fme3:III",
+"aula": "principal:38 - Ciclo Trigonométrico",
+"livro": "FME 3",
+"nome": "FME 3, cap. III · Arcos e ângulos",
+"pag": [
+24,
+38
+],
+"ex": [
+30,
+47
+]
+},
+{
+"id": "fme3:IV",
+"aula": "principal:38 - Ciclo Trigonométrico",
+"livro": "FME 3",
+"nome": "FME 3, cap. IV · Razões trigonométricas na circunferência",
+"pag": [
+39,
+60
+],
+"ex": [
+48,
+90
+]
+},
+{
+"id": "fme3:V",
+"aula": "principal:38 - Ciclo Trigonométrico",
+"livro": "FME 3",
+"nome": "FME 3, cap. V · Relações fundamentais",
+"pag": [
+61,
+71
+],
+"ex": [
+91,
+110
+]
+},
+{
+"id": "fme3:VI",
+"aula": "principal:38 - Ciclo Trigonométrico",
+"livro": "FME 3",
+"nome": "FME 3, cap. VI · Arcos notáveis",
+"pag": [
+72,
+78
+],
+"ex": [
+111,
+115
+]
+},
+{
+"id": "fme3:VII",
+"aula": "principal:38 - Ciclo Trigonométrico",
+"livro": "FME 3",
+"nome": "FME 3, cap. VII · Redução ao 1o quadrante",
+"pag": [
+79,
+85
+],
+"ex": [
+116,
+122
+]
+},
+{
+"id": "fme3:VIII",
+"aula": "principal:39 - Funções Trigonométricas",
+"livro": "FME 3",
+"nome": "FME 3, cap. VIII · Funções circulares",
+"pag": [
+86,
+118
+],
+"ex": [
+123,
+186
+]
+},
+{
+"id": "fme3:IX",
+"aula": "principal:40 - Identidades, Equações e Leis dos Se",
+"livro": "FME 3",
+"nome": "FME 3, cap. IX · Transformações",
+"pag": [
+119,
+146
+],
+"ex": [
+187,
+248
+]
+},
+{
+"id": "fme3:X",
+"aula": "principal:40 - Identidades, Equações e Leis dos Se",
+"livro": "FME 3",
+"nome": "FME 3, cap. X · Identidades",
+"pag": [
+147,
+158
+],
+"ex": [
+249,
+289
+]
+},
+{
+"id": "fme3:XI",
+"aula": "principal:41 - Identidades, Equações e Leis dos Se",
+"livro": "FME 3",
+"nome": "FME 3, cap. XI · Equações",
+"pag": [
+159,
+181
+],
+"ex": [
+290,
+333
+]
+},
+{
+"id": "fme3:XII",
+"aula": "principal:41 - Identidades, Equações e Leis dos Se",
+"livro": "FME 3",
+"nome": "FME 3, cap. XII · Inequações",
+"pag": [
+182,
+196
+],
+"ex": [
+334,
+361
+]
+},
+{
+"id": "fme3:XIII",
+"aula": "principal:41 - Identidades, Equações e Leis dos Se",
+"livro": "FME 3",
+"nome": "FME 3, cap. XIII · Funções circulares inversas",
+"pag": [
+197,
+246
+],
+"ex": [
+362,
+506
+]
+},
+{
+"id": "fme3:vest",
+"aula": "principal:41 - Identidades, Equações e Leis dos Se",
+"livro": "FME 3",
+"nome": "FME 3 · Questões de vestibulares",
+"vest": 167
+},
+{
+"id": "fme4:I",
+"aula": "principal:23 - Progressão Aritmética",
+"livro": "FME 4",
+"nome": "FME 4, cap. I · Sequências",
+"pag": [
+1,
+5
+],
+"ex": [
+1,
+7
+]
+},
+{
+"id": "fme4:II",
+"aula": "principal:23 - Progressão Aritmética",
+"livro": "FME 4",
+"nome": "FME 4, cap. II · Progressão aritmética",
+"pag": [
+6,
+23
+],
+"ex": [
+8,
+91
+]
+},
+{
+"id": "fme4:III",
+"aula": "principal:24 - Progressão Geométrica",
+"livro": "FME 4",
+"nome": "FME 4, cap. III · Progressão geométrica",
+"pag": [
+24,
+44
+],
+"ex": [
+92,
+185
+]
+},
+{
+"id": "fme4:IV",
+"aula": "principal:42 - Matrizes e Determinantes (Parte 1)",
+"livro": "FME 4",
+"nome": "FME 4, cap. IV · Matrizes",
+"pag": [
+45,
+81
+],
+"ex": [
+186,
+251
+]
+},
+{
+"id": "fme4:V",
+"aula": "principal:43 - Matrizes e Determinantes (Parte 2)",
+"livro": "FME 4",
+"nome": "FME 4, cap. V · Determinantes",
+"pag": [
+82,
+134
+],
+"ex": [
+252,
+343
+]
+},
+{
+"id": "fme4:VI",
+"aula": "principal:44 - Sistemas Lineares",
+"livro": "FME 4",
+"nome": "FME 4, cap. VI · Sistemas lineares",
+"pag": [
+135,
+192
+],
+"ex": [
+344,
+450
+]
+},
+{
+"id": "fme4:vest",
+"aula": "principal:44 - Sistemas Lineares",
+"livro": "FME 4",
+"nome": "FME 4 · Questões de vestibulares",
+"vest": 305
+},
+{
+"id": "fme5:I",
+"aula": "principal:61 - Análise Combinatória",
+"livro": "FME 5",
+"nome": "FME 5, cap. I · Análise Combinatória",
+"pag": [
+1,
+57
+],
+"ex": [
+1,
+229
+]
+},
+{
+"id": "fme5:II",
+"aula": "principal:62 - Binômio de Newton",
+"livro": "FME 5",
+"nome": "FME 5, cap. II · Binômio de Newton",
+"pag": [
+58,
+88
+],
+"ex": [
+230,
+338
+]
+},
+{
+"id": "fme5:III",
+"aula": "principal:63 - Probabilidade",
+"livro": "FME 5",
+"nome": "FME 5, cap. III · Probabilidade",
+"pag": [
+89,
+147
+],
+"ex": [
+339,
+481
+]
+},
+{
+"id": "fme5:vest",
+"aula": "principal:63 - Probabilidade",
+"livro": "FME 5",
+"nome": "FME 5 · Questões de vestibulares",
+"vest": 181
+},
+{
+"id": "fme6:I",
+"aula": "principal:58 - Números Complexos (Parte 2)",
+"livro": "FME 6",
+"nome": "FME 6, cap. I · Números complexos",
+"pag": [
+1,
+52
+],
+"ex": [
+1,
+103
+]
+},
+{
+"id": "fme6:II",
+"aula": "principal:59 - Polinômios e Equações Algébricas (P",
+"livro": "FME 6",
+"nome": "FME 6, cap. II · Polinômios",
+"pag": [
+53,
+99
+],
+"ex": [
+104,
+258
+]
+},
+{
+"id": "fme6:III",
+"aula": "principal:60 - Equações Algébricas (Parte 2)",
+"livro": "FME 6",
+"nome": "FME 6, cap. III · Equações polinomiais",
+"pag": [
+100,
+147
+],
+"ex": [
+259,
+413
+]
+},
+{
+"id": "fme6:IV",
+"aula": "principal:60 - Equações Algébricas (Parte 2)",
+"livro": "FME 6",
+"nome": "FME 6, cap. IV · Transformações",
+"pag": [
+148,
+170
+],
+"ex": [
+414,
+446
+]
+},
+{
+"id": "fme6:V",
+"aula": "principal:60 - Equações Algébricas (Parte 2)",
+"livro": "FME 6",
+"nome": "FME 6, cap. V · Raízes múltiplas e raízes comuns",
+"pag": [
+171,
+198
+],
+"ex": [
+447,
+511
+]
+},
+{
+"id": "fme6:vest",
+"aula": "principal:60 - Equações Algébricas (Parte 2)",
+"livro": "FME 6",
+"nome": "FME 6 · Questões de vestibulares",
+"vest": 227
+},
+{
+"id": "fme7:I",
+"aula": "principal:52 - Geometria Analítica - Ponto e Reta",
+"livro": "FME 7",
+"nome": "FME 7, cap. I · Coordenadas cartesianas no plano",
+"pag": [
+1,
+27
+],
+"ex": [
+1,
+50
+]
+},
+{
+"id": "fme7:II",
+"aula": "principal:52 - Geometria Analítica - Ponto e Reta",
+"livro": "FME 7",
+"nome": "FME 7, cap. II · Equação da reta",
+"pag": [
+28,
+59
+],
+"ex": [
+51,
+114
+]
+},
+{
+"id": "fme7:III",
+"aula": "principal:52 - Geometria Analítica - Ponto e Reta",
+"livro": "FME 7",
+"nome": "FME 7, cap. III · Teoria angular",
+"pag": [
+60,
+89
+],
+"ex": [
+115,
+186
+]
+},
+{
+"id": "fme7:IV",
+"aula": "principal:52 - Geometria Analítica - Ponto e Reta",
+"livro": "FME 7",
+"nome": "FME 7, cap. IV · Distância de ponto a reta",
+"pag": [
+90,
+117
+],
+"ex": [
+187,
+247
+]
+},
+{
+"id": "fme7:V",
+"aula": "principal:53 - Geometria Analítica - Circunferênci",
+"livro": "FME 7",
+"nome": "FME 7, cap. V · Circunferências",
+"pag": [
+118,
+145
+],
+"ex": [
+248,
+307
+]
+},
+{
+"id": "fme7:VI",
+"aula": "principal:53 - Geometria Analítica - Circunferênci",
+"livro": "FME 7",
+"nome": "FME 7, cap. VI · Problemas sobre circunferências",
+"pag": [
+146,
+167
+],
+"ex": [
+308,
+351
+]
+},
+{
+"id": "fme7:VII",
+"aula": "principal:54 - Cônicas - Elipse, Hipérbole e Paráb",
+"livro": "FME 7",
+"nome": "FME 7, cap. VII · Cônicas",
+"pag": [
+168,
+197
+],
+"ex": [
+352,
+422
+]
+},
+{
+"id": "fme7:VIII",
+"aula": "principal:54 - Cônicas - Elipse, Hipérbole e Paráb",
+"livro": "FME 7",
+"nome": "FME 7, cap. VIII · Lugares geométricos",
+"pag": [
+198,
+215
+],
+"ex": [
+423,
+478
+]
+},
+{
+"id": "fme7:vest",
+"aula": "principal:54 - Cônicas - Elipse, Hipérbole e Paráb",
+"livro": "FME 7",
+"nome": "FME 7 · Questões de vestibulares",
+"vest": 296
+},
+{
+"id": "fme9:I",
+"aula": "principal:31 - Ângulos, Triângulos e Congruência",
+"livro": "FME 9",
+"nome": "FME 9, cap. I · Noções e proposições primitivas",
+"pag": [
+1,
+6
+],
+"ex": [
+1,
+10
+]
+},
+{
+"id": "fme9:II",
+"aula": "principal:31 - Ângulos, Triângulos e Congruência",
+"livro": "FME 9",
+"nome": "FME 9, cap. II · Segmento de reta",
+"pag": [
+7,
+17
+],
+"ex": [
+11,
+28
+]
+},
+{
+"id": "fme9:III",
+"aula": "principal:31 - Ângulos, Triângulos e Congruência",
+"livro": "FME 9",
+"nome": "FME 9, cap. III · Ângulos",
+"pag": [
+18,
+34
+],
+"ex": [
+29,
+79
+]
+},
+{
+"id": "fme9:IV",
+"aula": "principal:31 - Ângulos, Triângulos e Congruência",
+"livro": "FME 9",
+"nome": "FME 9, cap. IV · Triângulos",
+"pag": [
+35,
+59
+],
+"ex": [
+80,
+129
+]
+},
+{
+"id": "fme9:V",
+"aula": "principal:31 - Ângulos, Triângulos e Congruência",
+"livro": "FME 9",
+"nome": "FME 9, cap. V · Paralelismo",
+"pag": [
+60,
+77
+],
+"ex": [
+130,
+188
+]
+},
+{
+"id": "fme9:VI",
+"aula": "principal:31 - Ângulos, Triângulos e Congruência",
+"livro": "FME 9",
+"nome": "FME 9, cap. VI · Perpendicularidade",
+"pag": [
+78,
+95
+],
+"ex": [
+189,
+223
+]
+},
+{
+"id": "fme9:VII",
+"aula": "principal:34 - Polígonos e Quadriláteros (Parte 1)",
+"livro": "FME 9",
+"nome": "FME 9, cap. VII · Quadriláteros notáveis",
+"pag": [
+96,
+118
+],
+"ex": [
+224,
+273
+]
+},
+{
+"id": "fme9:VIII",
+"aula": "principal:33 - Relações Métricas e Pontos Notáveis",
+"livro": "FME 9",
+"nome": "FME 9, cap. VIII · Pontos notáveis do triângulo",
+"pag": [
+119,
+128
+],
+"ex": [
+274,
+291
+]
+},
+{
+"id": "fme9:IX",
+"aula": "principal:34 - Polígonos e Quadriláteros (Parte 1)",
+"livro": "FME 9",
+"nome": "FME 9, cap. IX · Polígonos",
+"pag": [
+129,
+142
+],
+"ex": [
+292,
+335
+]
+},
+{
+"id": "fme9:X",
+"aula": "principal:35 - Circunferência (Parte 2)",
+"livro": "FME 9",
+"nome": "FME 9, cap. X · Circunferência e círculo",
+"pag": [
+143,
+160
+],
+"ex": [
+336,
+376
+]
+},
+{
+"id": "fme9:XI",
+"aula": "principal:35 - Circunferência (Parte 2)",
+"livro": "FME 9",
+"nome": "FME 9, cap. XI · Ângulos na circunferência",
+"pag": [
+161,
+176
+],
+"ex": [
+377,
+412
+]
+},
+{
+"id": "fme9:XII",
+"aula": "principal:32 - Semelhança e Teorema de Tales",
+"livro": "FME 9",
+"nome": "FME 9, cap. XII · Teorema de Tales",
+"pag": [
+177,
+191
+],
+"ex": [
+413,
+444
+]
+},
+{
+"id": "fme9:XIII",
+"aula": "principal:32 - Semelhança e Teorema de Tales",
+"livro": "FME 9",
+"nome": "FME 9, cap. XIII · Semelhança de triângulos e potência de ponto",
+"pag": [
+192,
+213
+],
+"ex": [
+445,
+505
+]
+},
+{
+"id": "fme9:XIV",
+"aula": "principal:33 - Relações Métricas e Pontos Notáveis",
+"livro": "FME 9",
+"nome": "FME 9, cap. XIV · Triângulos retângulos",
+"pag": [
+214,
+238
+],
+"ex": [
+506,
+623
+]
+},
+{
+"id": "fme9:XV",
+"aula": "principal:33 - Relações Métricas e Pontos Notáveis",
+"livro": "FME 9",
+"nome": "FME 9, cap. XV · Triângulos quaisquer",
+"pag": [
+239,
+257
+],
+"ex": [
+624,
+684
+]
+},
+{
+"id": "fme9:XVI",
+"aula": "principal:35 - Circunferência (Parte 2)",
+"livro": "FME 9",
+"nome": "FME 9, cap. XVI · Polígonos regulares",
+"pag": [
+258,
+277
+],
+"ex": [
+685,
+732
+]
+},
+{
+"id": "fme9:XVII",
+"aula": "principal:35 - Circunferência (Parte 2)",
+"livro": "FME 9",
+"nome": "FME 9, cap. XVII · Comprimento da circunferência",
+"pag": [
+278,
+289
+],
+"ex": [
+733,
+775
+]
+},
+{
+"id": "fme9:XVIII",
+"aula": "principal:36 - Áreas de Figuras Planas",
+"livro": "FME 9",
+"nome": "FME 9, cap. XVIII · Equivalência plana",
+"pag": [
+290,
+301
+],
+"ex": [
+776,
+792
+]
+},
+{
+"id": "fme9:XIX",
+"aula": "principal:36 - Áreas de Figuras Planas",
+"livro": "FME 9",
+"nome": "FME 9, cap. XIX · Áreas de superfícies planas",
+"pag": [
+302,
+350
+],
+"ex": [
+793,
+1012
+]
+},
+{
+"id": "fme9:vest",
+"aula": "principal:36 - Áreas de Figuras Planas",
+"livro": "FME 9",
+"nome": "FME 9 · Questões de vestibulares",
+"vest": 385
+},
+{
+"id": "fme10:I",
+"aula": "principal:46 - Geometria de Posição (Parte 2)",
+"livro": "FME 10",
+"nome": "FME 10, cap. I · Introdução",
+"pag": [
+1,
+16
+],
+"ex": [
+1,
+31
+]
+},
+{
+"id": "fme10:II",
+"aula": "principal:46 - Geometria de Posição (Parte 2)",
+"livro": "FME 10",
+"nome": "FME 10, cap. II · Paralelismo",
+"pag": [
+17,
+34
+],
+"ex": [
+32,
+66
+]
+},
+{
+"id": "fme10:III",
+"aula": "principal:46 - Geometria de Posição (Parte 2)",
+"livro": "FME 10",
+"nome": "FME 10, cap. III · Perpendicularidade",
+"pag": [
+35,
+50
+],
+"ex": [
+67,
+91
+]
+},
+{
+"id": "fme10:IV",
+"aula": "principal:46 - Geometria de Posição (Parte 2)",
+"livro": "FME 10",
+"nome": "FME 10, cap. IV · Aplicações",
+"pag": [
+51,
+76
+],
+"ex": [
+92,
+119
+]
+},
+{
+"id": "fme10:V",
+"aula": "principal:47 - Distâncias e Ângulos no Espaço",
+"livro": "FME 10",
+"nome": "FME 10, cap. V · Diedros",
+"pag": [
+77,
+97
+],
+"ex": [
+120,
+147
+]
+},
+{
+"id": "fme10:VI",
+"aula": "principal:47 - Distâncias e Ângulos no Espaço",
+"livro": "FME 10",
+"nome": "FME 10, cap. VI · Triedros",
+"pag": [
+98,
+119
+],
+"ex": [
+148,
+179
+]
+},
+{
+"id": "fme10:VII",
+"aula": "principal:48 - Poliedros e Relação de Euler",
+"livro": "FME 10",
+"nome": "FME 10, cap. VII · Poliedros convexos",
+"pag": [
+120,
+133
+],
+"ex": [
+180,
+212
+]
+},
+{
+"id": "fme10:VIII",
+"aula": "principal:49 - Prismas e Cilindros",
+"livro": "FME 10",
+"nome": "FME 10, cap. VIII · Prisma",
+"pag": [
+134,
+176
+],
+"ex": [
+213,
+376
+]
+},
+{
+"id": "fme10:IX",
+"aula": "principal:50 - Pirâmides, Cones e Esferas",
+"livro": "FME 10",
+"nome": "FME 10, cap. IX · Pirâmide",
+"pag": [
+177,
+206
+],
+"ex": [
+377,
+493
+]
+},
+{
+"id": "fme10:X",
+"aula": "principal:49 - Prismas e Cilindros",
+"livro": "FME 10",
+"nome": "FME 10, cap. X · Cilindro",
+"pag": [
+207,
+223
+],
+"ex": [
+494,
+590
+]
+},
+{
+"id": "fme10:XI",
+"aula": "principal:50 - Pirâmides, Cones e Esferas",
+"livro": "FME 10",
+"nome": "FME 10, cap. XI · Cone",
+"pag": [
+224,
+240
+],
+"ex": [
+591,
+668
+]
+},
+{
+"id": "fme10:XII",
+"aula": "principal:50 - Pirâmides, Cones e Esferas",
+"livro": "FME 10",
+"nome": "FME 10, cap. XII · Esfera",
+"pag": [
+241,
+257
+],
+"ex": [
+669,
+744
+]
+},
+{
+"id": "fme10:XIII",
+"aula": "principal:50 - Pirâmides, Cones e Esferas",
+"livro": "FME 10",
+"nome": "FME 10, cap. XIII · Sólidos semelhantes — Troncos",
+"pag": [
+258,
+289
+],
+"ex": [
+745,
+879
+]
+},
+{
+"id": "fme10:XIV",
+"aula": "principal:51 - Sólidos de Revolução e Pappus",
+"livro": "FME 10",
+"nome": "FME 10, cap. XIV · Inscrição e circunscrição de sólidos",
+"pag": [
+290,
+321
+],
+"ex": [
+880,
+1036
+]
+},
+{
+"id": "fme10:XV",
+"aula": "principal:51 - Sólidos de Revolução e Pappus",
+"livro": "FME 10",
+"nome": "FME 10, cap. XV · Superfícies e sólidos de revolução",
+"pag": [
+322,
+336
+],
+"ex": [
+1037,
+1093
+]
+},
+{
+"id": "fme10:XVI",
+"aula": "principal:51 - Sólidos de Revolução e Pappus",
+"livro": "FME 10",
+"nome": "FME 10, cap. XVI · Superfícies e sólidos esféricos",
+"pag": [
+337,
+360
+],
+"ex": [
+1094,
+1150
+]
+},
+{
+"id": "fme10:vest",
+"aula": "principal:51 - Sólidos de Revolução e Pappus",
+"livro": "FME 10",
+"nome": "FME 10 · Questões de vestibulares",
+"vest": 264
+},
+{
+"id": "fme11:I",
+"aula": "principal:07 - Porcentagem",
+"livro": "FME 11",
+"nome": "FME 11, cap. I · Matemática comercial",
+"pag": [
+1,
+36
+],
+"ex": [
+1,
+127
+]
+},
+{
+"id": "fme11:II",
+"aula": "principal:28 - Matemática Financeira II (Parte 2)",
+"livro": "FME 11",
+"nome": "FME 11, cap. II · Matemática financeira",
+"pag": [
+37,
+72
+],
+"ex": [
+128,
+254
+]
+},
+{
+"id": "fme11:III",
+"aula": "principal:65 - Estatística II",
+"livro": "FME 11",
+"nome": "FME 11, cap. III · Estatística descritiva",
+"pag": [
+73,
+167
+],
+"ex": [
+255,
+418
+]
+},
+{
+"id": "fme11:vest",
+"aula": "principal:65 - Estatística II",
+"livro": "FME 11",
+"nome": "FME 11 · Questões de vestibulares",
+"vest": 221
+},
+{
+"id": "lac:1",
+"aula": "mb:MB01 - Numeração",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 1",
+"pag": [
+2,
+24
+],
+"nex": 108
+},
+{
+"id": "lac:2",
+"aula": "mb:MB02a - Operações Fundamentais em N (Par",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 2",
+"pag": [
+26,
+100
+],
+"nex": 255
+},
+{
+"id": "lac:3",
+"aula": "mb:MB03 - Numeração Não Decimal",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 3",
+"pag": [
+102,
+132
+],
+"nex": 117
+},
+{
+"id": "lac:4",
+"aula": "mb:MB04a - Teoria dos Números Primos (Parte",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 4",
+"pag": [
+134,
+184
+],
+"nex": 94
+},
+{
+"id": "lac:5",
+"aula": "mb:MB05 - Divisibilidade",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 5",
+"pag": [
+186,
+228
+],
+"nex": 128
+},
+{
+"id": "lac:6",
+"aula": "mb:MB06 - MDC e MMC",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 6",
+"pag": [
+230,
+260
+],
+"nex": 144
+},
+{
+"id": "lac:7",
+"aula": "mb:MB07 - Números Fracionários",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 7",
+"pag": [
+262,
+296
+],
+"nex": 60
+},
+{
+"id": "lac:8",
+"aula": "mb:MB08 - Números Decimais e Números em Out",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 8",
+"pag": [
+298,
+342
+],
+"nex": 50
+},
+{
+"id": "lac:9",
+"aula": "mb:MB09 - Radiciação",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 9",
+"pag": [
+344,
+360
+],
+"nex": 32
+},
+{
+"id": "lac:10",
+"aula": "mb:MB10 - Sistema de Unidades de Medida",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 10",
+"pag": [
+362,
+386
+],
+"nex": 86
+},
+{
+"id": "lac:11",
+"aula": "mb:MB11 - Arredondamento, Notação Científic",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 11",
+"pag": [
+388,
+402
+],
+"nex": 41
+},
+{
+"id": "lac:12",
+"aula": "mb:MB12 - Razões e Proporções",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 12",
+"pag": [
+404,
+426
+],
+"nex": 124
+},
+{
+"id": "lac:13",
+"aula": "mb:MB13 - Divisão Proporcional e Regra de S",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 13",
+"pag": [
+428,
+442
+],
+"nex": 66
+},
+{
+"id": "lac:14",
+"aula": "mb:MB14 - Médias",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 14",
+"pag": [
+444,
+452
+],
+"nex": 36
+},
+{
+"id": "lac:15",
+"aula": "mb:MB15 - Medidas Complexas e Incomplexas",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 15",
+"pag": [
+454,
+464
+],
+"nex": 24
+},
+{
+"id": "lac:16",
+"aula": "mb:MB16 - Regra de Três",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 16",
+"pag": [
+466,
+486
+],
+"nex": 144
+},
+{
+"id": "lac:17",
+"aula": "mb:MB17 - Porcentagem e Misturas",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 17",
+"pag": [
+488,
+512
+],
+"nex": 205
+},
+{
+"id": "lac:18",
+"aula": "mb:MB18 - Operações sobre Mercadorias",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 18",
+"pag": [
+514,
+520
+],
+"nex": 48
+},
+{
+"id": "lac:19",
+"aula": "mb:MB19 - Juros Simples",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 19",
+"pag": [
+522,
+532
+],
+"nex": 112
+},
+{
+"id": "lac:20",
+"aula": "mb:MB20 - Miscelânea",
+"livro": "Lacerda",
+"nome": "Lacerda, cap. 20 · Miscelânea",
+"pag": null,
+"nex": 655
+}
 ]
 }
