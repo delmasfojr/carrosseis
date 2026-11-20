@@ -14,6 +14,7 @@ const Estudo = (() => {
     trilhas: {principal: true, enem: true, concursos: true, mb: true},
     reforco: ['principal:61 - Análise Combinatória', 'principal:63 - Probabilidade'],
     feito: {}, erros: {}, revisado: {},
+    tempo: {}, rel: null,  // ⏱️ tempo estudado por dia {data: {A: seg, L: seg}} e o relógio ligado {t: 'A'|'L', ini: ms}
   };
   const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
   const LIVRO_TRILHA = {mb: 'Lacerda, Praticando a Aritmética (capítulo do tema)', concursos: 'Manual Completo de RLM ou o FME do tema',
@@ -136,8 +137,42 @@ const Estudo = (() => {
       : `<p class="dica">${x.cap ? 'Tudo feito! 🎉' : 'Sem horário hoje para esta trilha.'}</p>`);
   }
 
+  /* ---------------------------------------------------------------- ⏱️ relógio de estudo
+     Conta o tempo de cada trilha. Guarda a hora em que começou, então continua contando com o app fechado. */
+  const TR = {A: '🖥️ Aulas', L: '📗 Livros'};
+  const relo = s => `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(Math.floor(s) % 60).padStart(2, '0')}`;
+  const somaDia = (dia, t) => ((st.tempo[dia] || {})[t] || 0) + (st.rel && st.rel.t === t && iso(st.rel.ini) === dia ? (Date.now() - st.rel.ini) / 1000 : 0);
+  const metaDia = (t, d = new Date()) => ((t === 'A' ? st.min : st.minLivros)[dia(d).getDay()] || 0) * 60;
+  function somar(dia, t, seg) { const x = st.tempo[dia] = st.tempo[dia] || {}; x[t] = Math.max(0, (x[t] || 0) + seg); }
+  function pararRelogio() {
+    if (!st.rel) return;
+    let seg = (Date.now() - st.rel.ini) / 1000;
+    if (seg > 4 * 3600 && !confirm(`O relógio ficou ligado ${hm(seg / 60)}. Contar esse tempo todo?\n(Cancelar = não conta esta sessão; dá para corrigir com o +5 min.)`)) seg = 0;
+    somar(iso(st.rel.ini), st.rel.t, seg); st.rel = null;
+  }
+  function relogio() {
+    const d = hoje(), sem = [...Array(7)].map((_, n) => mais(new Date(), -n));
+    const feitoSem = sem.reduce((s, x) => s + somaDia(iso(x), 'A') + somaDia(iso(x), 'L'), 0);
+    const metaSem = sem.reduce((s, x) => s + metaDia('A', x) + metaDia('L', x), 0);
+    q('#erelogio').innerHTML = Object.entries(TR).map(([t, nome]) => {
+      const seg = somaDia(d, t), meta = metaDia(t), on = st.rel && st.rel.t === t, pct = meta ? Math.min(100, 100 * seg / meta) : 0;
+      return `<div class="erel${on ? ' on' : ''}" data-t="${t}">
+        <button class="erelbt" data-rel="${t}">${on ? '⏸️' : '▶️'}</button>
+        <span><b>${nome}</b> <i class="erelt">${relo(seg)}</i><small>${meta ? `meta de hoje: ${hm(meta / 60)}${seg >= meta ? ' ✅' : ''}` : 'sem meta hoje'}</small>
+        <em class="ebarra"><i style="width:${pct}%"></i></em></span>
+        <span class="erelaj"><button data-aj="${t}:-5">−5</button><button data-aj="${t}:5">+5</button></span></div>`;
+    }).join('') + `<p class="dica">Últimos 7 dias: <b>${hm(feitoSem / 60)}</b> estudados de ${hm(metaSem / 60)} planejados.</p>`;
+  }
+  setInterval(() => {  // atualiza só o número do relógio ligado, e avisa quando bater a meta do dia
+    if (!st || !st.rel || !q('#erelogio') || q('#estudo').hidden) return;
+    const box = q(`.erel[data-t="${st.rel.t}"] .erelt`), seg = somaDia(hoje(), st.rel.t), meta = metaDia(st.rel.t);
+    if (box) box.textContent = relo(seg);
+    if (meta && seg >= meta && !st.rel.avisou) { st.rel.avisou = true; gravar(); try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch {} relogio(); }
+  }, 1000);
+
   function mostrar() {
     if (!dados) { carregar(); return; }
+    relogio();
     const fila = tarefas(), {A, L, agA, agL} = duas(fila);
     q('#eresumo').innerHTML = resumo('🖥️ Aulas: slides e listas', A, agA, st.min) + (L.length ? resumo('📗 Livros: FME e Lacerda', L, agL, st.minLivros) : '');
     const hA = agA[0], hL = agL[0];
@@ -215,6 +250,9 @@ const Estudo = (() => {
     tela.addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
+      if (b.dataset.rel) { const t = b.dataset.rel, era = st.rel && st.rel.t; pararRelogio();
+        if (era !== t) st.rel = {t, ini: Date.now()}; gravar(); return relogio(); }
+      if (b.dataset.aj) { const [t, m] = b.dataset.aj.split(':'); somar(hoje(), t, +m * 60); gravar(); return relogio(); }
       if (b.dataset.adiantar) { st.feito[b.dataset.adiantar] = hoje(); gravar(); return mostrar(); }
       if (b.dataset.prio) { const l = b.dataset.prio;
         st.prioridade = st.prioridade.includes(l) ? st.prioridade.filter(x => x !== l) : [...st.prioridade, l]; gravar(); return mostrar(); }

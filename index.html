@@ -156,6 +156,11 @@ nav button i{position:relative}
 .edias{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.edias label{margin:0;font-size:13px}.edias input{padding:8px;margin-top:2px}
 .etrilhatit{font:17px 'Anton',Impact,sans-serif;margin:14px 0 2px;display:flex;justify-content:space-between}.etrilhatit span{font:400 14px system-ui,sans-serif;color:#667}
 #eresumo .ebarra{margin-top:4px}
+.erel{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--cinza);border-radius:14px;padding:8px 10px;margin:8px 0}.erel.on{border-color:var(--lar)}
+.erel>span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}.erel small{color:#667;font-size:12px}
+.erelt{font:22px 'Anton',Impact,sans-serif;font-style:normal;float:right}.erel .ebarra{height:8px;display:block}
+.erelbt{font-size:24px;width:52px;height:52px;border-radius:50%;padding:0;flex:none}.erel.on .erelbt{background:var(--lar)}
+.erelaj{display:flex;flex-direction:column;gap:4px}.erelaj button{padding:4px 8px;font-size:12px;background:#fff;border:2px solid var(--cinza);color:inherit}
 .eprios{display:flex;flex-direction:column;gap:6px}.eprio{text-align:left;padding:8px 10px;font-size:14px;font-weight:400;background:#fff;border:2px solid var(--cinza);color:var(--navy,#0F1B2D)}.eprio.on{border-color:var(--lar);background:#FFF6E6}
 .edias3{grid-template-columns:repeat(3,1fr);margin-top:14px}
 </style>
@@ -280,6 +285,7 @@ nav button i{position:relative}
 
   <section class="tela" id="estudo" hidden>
     <h2>Trilha de <span>estudos</span></h2>
+    <div id="erelogio"></div>
     <div id="eresumo"></div>
     <h3 id="ehojetit">Hoje</h3>
     <div id="ehoje"></div>
