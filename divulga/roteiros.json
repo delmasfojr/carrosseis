@@ -1,0 +1,158 @@
+{
+ "atualizado": "2026-11-22T14:11:36.054Z",
+ "roteiros": [
+  {
+   "id": "2026-11-22-1",
+   "criado": "2026-11-22T14:11:36.050Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "CIÊNCIA DO ESTUDO",
+   "recurso": "Flashcards com revisão espaçada e Revisão do dia",
+   "conteudo": {
+    "tema": "App · Flashcards e Revisão Espaçada",
+    "nota_viral": 9,
+    "por_que": "Mostra a ciência da memória de forma simples e traz a solução prática com os flashcards do app.",
+    "ganchos": [
+     "Você estuda horas hoje e esquece quase tudo em três dias?",
+     "O maior erro na matemática é revisar a matéria só na véspera.",
+     "Sua memória apaga o que você aprende se você não fizer isso."
+    ],
+    "texto_capa": "NÃO ESQUEÇA A MATÉRIA",
+    "blocos": [
+     {
+      "tempo": "3–12 s",
+      "cena": "camera",
+      "fala": "Em poucos dias a gente esquece boa parte do que estudou se não revisar no tempo certo. Isso é super normal!",
+      "quadro": "",
+      "texto_tela": "CURVA DO ESQUECIMENTO"
+     },
+     {
+      "tempo": "12–21 s",
+      "cena": "quadro",
+      "fala": "Se você estuda vinte por cento de cem hoje, dá vinte. Mas em sete dias, a memória apaga o conteúdo sem revisão.",
+      "quadro": "20% × 100 = 20",
+      "texto_tela": "REVISÃO ESPAÇADA"
+     },
+     {
+      "tempo": "21–32 s",
+      "cena": "tela",
+      "fala": "No meu app eu coloquei flashcards inteligentes. Ele calcula sozinho o dia de revisar: um, três, sete e quinze dias!",
+      "quadro": "REVISÃO DO DIA",
+      "texto_tela": "SISTEMA AUTOMÁTICO"
+     },
+     {
+      "tempo": "32–45 s",
+      "cena": "camera",
+      "fala": "Qual assunto você sempre esquece na hora H? Comenta aqui! O link do app está na bio. Segue o Delmão Simplifica pra mais dicas e descubra por que...",
+      "quadro": "",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Qual matéria de matemática você mais esquece depois de alguns dias?",
+    "duracao": "45 s",
+    "legenda": "Você estuda horas e depois esquece tudo?\n\nIsso acontece porque o cérebro descarta o que não é revisado no tempo certo. A revisão espaçada resolve esse problema de forma automática! 🧠\n\nNo app do Delmão Simplifica, a Revisão do dia seleciona exatamente os flashcards que você precisa rever hoje.\n\nComente qual assunto você mais esquece e baixe o app!\n\nLink do app na bio.\n\n#matematica #estudos #dicasdeestudo #revisao #app #flashcards"
+   }
+  },
+  {
+   "id": "2026-11-22-2",
+   "criado": "2026-11-22T14:11:36.053Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "TOUR RÁPIDO",
+   "recurso": "Banco de questões com resolução comentada",
+   "conteudo": {
+    "tema": "App · Banco de Questões",
+    "nota_viral": 8,
+    "por_que": "Simula a experiência do aluno resolvendo uma questão prática no app com explicação passo a passo.",
+    "ganchos": [
+     "Travar numa questão sem saber o erro mata o seu estudo.",
+     "Quer resolver exercícios de matemática sem passar raiva?",
+     "Olha o que acontece quando você erra uma conta no meu app."
+    ],
+    "texto_capa": "RESOLVA SEM TRAVAR",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Imagina você tentando resolver metade de um terço. Você faz a conta, marca a opção e quer saber se acertou.",
+      "quadro": "½ × ⅓ = ?",
+      "texto_tela": "BANCO DE QUESTÕES"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "tela",
+      "fala": "Na multiplicação de frações, multiplica em cima e em baixo: um vezes um dá um, dois vezes três dá seis. Dá um sexto!",
+      "quadro": "½ × ⅓ = ⅙",
+      "texto_tela": "PASSO A PASSO"
+     },
+     {
+      "tempo": "20–31 s",
+      "cena": "tela",
+      "fala": "No meu banco de questões do app, toda questão tem resolução comentada para você entender o passo a passo na hora.",
+      "quadro": "RESOLUÇÃO COMENTADA",
+      "texto_tela": "SEM DÚVIDAS"
+     },
+     {
+      "tempo": "31–45 s",
+      "cena": "camera",
+      "fala": "Você prefere treinar questão fácil ou difícil? Comenta aí! O link do app está na bio. Me segue no Delmão Simplifica para nunca mais sentir que...",
+      "quadro": "",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você costuma travar mais em frações ou em equações?",
+    "duracao": "45 s",
+    "legenda": "Travar em uma questão sem entender o erro desanima qualquer estudante!\n\nNo aplicativo do Delmão, você resolve questões de matemática e confere a resolução detalhada de cada uma na hora. 💡\n\nAprenda com os erros e avance no seu ritmo com praticidade!\n\nLink do app na bio.\n\n#matematica #exercicios #estudos #aprendizado #app #duvidas"
+   }
+  },
+  {
+   "id": "2026-11-22-3",
+   "criado": "2026-11-22T14:11:36.054Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "MITO x VERDADE",
+   "recurso": "Meu progresso, sequência de dias e conquistas",
+   "conteudo": {
+    "tema": "App · Progresso e Conquistas",
+    "nota_viral": 8,
+    "por_que": "Derruba o mito de que precisa estudar 5 horas por dia e mostra que a constância diária gera medalhas e evolução.",
+    "ganchos": [
+     "Estudar dez horas no domingo não faz você aprender matemática.",
+     "Achar que horas de estudo superam constância é um mito gigante.",
+     "Quer evoluir na matemática sem surtar com rotinas pesadas?"
+    ],
+    "texto_capa": "MITO DO ESTUDO",
+    "blocos": [
+     {
+      "tempo": "3–12 s",
+      "cena": "camera",
+      "fala": "Mito: passar cinco horas seguidas estudando resolve. Verdade: quinze minutos todo dia constrói memória forte!",
+      "quadro": "",
+      "texto_tela": "MITO X VERDADE"
+     },
+     {
+      "tempo": "12–22 s",
+      "cena": "quadro",
+      "fala": "Veja só: quinze minutos por dia durante sete dias dá cento e cinco minutos de estudo constante e muito eficiente!",
+      "quadro": "15 min × 7 = 105 min",
+      "texto_tela": "CONSTÂNCIA DIÁRIA"
+     },
+     {
+      "tempo": "22–32 s",
+      "cena": "tela",
+      "fala": "No meu app, a aba Meu Progresso mostra sua sequência de dias, tempo de estudo e te dá medalhas e troféus a cada conquista!",
+      "quadro": "SEQUÊNCIA DE DIAS",
+      "texto_tela": "CONQUISTAS E MEDALHAS"
+     },
+     {
+      "tempo": "32–45 s",
+      "cena": "camera",
+      "fala": "Quantos dias seguidos você consegue estudar? Comenta aqui! O link do app está na bio. Segue o Delmão Simplifica pra evoluir e entenda por que...",
+      "quadro": "",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Qual é a sua maior sequência de dias estudando sem falhar?",
+    "duracao": "45 s",
+    "legenda": "Estudar cinco horas em um único dia não substitui a constância diária!\n\nPoucos minutos todos os dias criam um hábito forte e fixam o conhecimento de verdade. 🔥\n\nNo app do Delmão, você acompanha seu progresso, mantém sua sequência de dias e ganha medalhas a cada conquista.\n\nComente qual é sua meta de estudo diária!\n\nLink do app na bio.\n\n#matematica #constancia #rotinadeestudos #habitos #app #foco"
+   }
+  }
+ ]
+}

@@ -379,7 +379,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     document.querySelectorAll('.nroteiros').forEach(e => e.textContent = itens.length ? `(${itens.length})` : '');
     $('#ritens').innerHTML = itens.map(i => `<button class="rcartao ${i.gravado ? 'postado' : ''}" data-id="${i.id}">
       <span class="nota">${fogo(i.conteudo.nota_viral)} ${i.conteudo.nota_viral}/10</span>
-      <b>${i.visual ? '🎨 ' : ''}${esc(i.conteudo.tema)}</b>
+      <b>${i.robo ? '🤖 ' : ''}${i.visual ? '🎨 ' : ''}${esc(i.conteudo.tema)}</b>
       <small>${esc(i.conteudo.ganchos[i.gancho] || '')}</small>
       <small>${esc(i.conteudo.duracao)} · ${new Date(i.criado).toLocaleDateString('pt-BR')}${i.gravado ? ' · gravado ✓' : ''}</small></button>`).join('');
     $('#ritens').querySelectorAll('.rcartao').forEach(b => b.onclick = () => abrir(b.dataset.id));
@@ -703,6 +703,30 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       try { const r = await Gravador.buscarClipes('earth'); alert(r.length ? `Funciona! ✅ Achei ${r.length} vídeos de teste.` : 'A chave funciona, mas a busca veio vazia.'); }
       catch (e) { alert('Não funcionou: ' + e.message); }
     };
+    puxarRobo();  // não espera: o app abre normal mesmo sem internet
+  }
+
+  /* ---------------------------------------------------------------- 🤖 roteiros do robô (divulgação do App de Revisão)
+     O robô do GitHub (divulga/gerar.mjs) escreve 3 por dia em divulga/roteiros.json; aqui entram os que o celular
+     ainda não viu (dos últimos 3 dias). Apagar um roteiro não o traz de volta (ids vistos em localStorage 'roboVistos'). */
+  async function puxarRobo() {
+    try {
+      const r = await fetch(BASE + 'divulga/roteiros.json', {cache: 'no-store'});
+      if (!r.ok) return;
+      const d = await r.json(), vistos = ler('roboVistos', []), limite = Date.now() - 3 * 864e5;
+      let n = 0;
+      for (const [k, x] of (d.roteiros || []).entries()) {
+        if (vistos.includes(x.id)) continue;
+        vistos.push(x.id);
+        const quando = Date.parse(x.criado) || Date.now();
+        if (quando < limite || !x.conteudo || !Array.isArray(x.conteudo.ganchos) || !Array.isArray(x.conteudo.blocos)) continue;
+        await salvarR({id: `${quando}-robo${k}`, criado: x.criado, link: '', assunto: `App de Revisão · ${x.recurso || ''}`,
+          conteudo: x.conteudo, gancho: 0, visual: true, edicao: {soVoz: true}, robo: true});
+        n++;
+      }
+      gravar('roboVistos', vistos.slice(-300));
+      if (n) { await mostrarLista(); aviso(`🤖 ${n} roteiro(s) novo(s) do App de Revisão em Meus posts › Roteiros`); setTimeout(() => aviso(''), 8000); }
+    } catch (e) { console.warn('roteiros do robô:', e); }
   }
   return {iniciar, gerar, gerarAssunto, gerarPdf, DURACOES, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
 })();
