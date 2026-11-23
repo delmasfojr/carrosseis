@@ -1,6 +1,180 @@
 {
- "atualizado": "2026-11-22T14:11:36.054Z",
+ "atualizado": "2026-11-23T21:14:54.156Z",
  "roteiros": [
+  {
+   "id": "2026-11-23-1",
+   "criado": "2026-11-23T21:14:54.155Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "PEGADINHA",
+   "recurso": "Banco de questões com resolução comentada",
+   "conteudo": {
+    "tema": "App · Pegadinha nas frações",
+    "nota_viral": 9,
+    "por_que": "Pegadinha clássica com erro comum gera indignação, comentários e curiosidade sobre a solução no app.",
+    "ganchos": [
+     "99% das pessoas erra a soma de ½ mais ⅓ na pressa.",
+     "Você consegue acertar essa conta de fração em 3 segundos?",
+     "Para de somar fração desse jeito errado agora mesmo."
+    ],
+    "texto_capa": "ERRO CLÁSSICO EM FRAÇÃO",
+    "blocos": [
+     {
+      "tempo": "3–10 s",
+      "cena": "tela",
+      "fala": "Muita gente acha que ½ mais ⅓ é igual a ⅖, somando em cima e em baixo. Cuidado, isso tá totalmente errado!",
+      "quadro": "½ + ⅓ = ⅖ ?",
+      "texto_tela": "NÃO FAÇA ISSO!"
+     },
+     {
+      "tempo": "10–18 s",
+      "cena": "tela",
+      "fala": "O certo é achar o MMC: vira ⅗ mais ⅖, que dá ⅚. Um detalhe simples que muda completamente o resultado.",
+      "quadro": "½ + ⅓ = ⅗ + ⅖ = ⅚",
+      "texto_tela": "JEITO CERTO"
+     },
+     {
+      "tempo": "18–27 s",
+      "cena": "tela",
+      "fala": "Pra parar de cair em pegadinhas assim, no meu app tem o Banco de Questões com vários exercícios do tipo.",
+      "quadro": "BANCO DE QUESTÕES",
+      "texto_tela": "TREINO PRÁTICO"
+     },
+     {
+      "tempo": "27–36 s",
+      "cena": "tela",
+      "fala": "Se você errar, a resolução comentada mostra passo a passo onde foi o tropeço pra você nunca mais esquecer.",
+      "quadro": "RESOLUÇÃO COMENTADA",
+      "texto_tela": "PASSO A PASSO"
+     },
+     {
+      "tempo": "36–45 s",
+      "cena": "tela",
+      "fala": "Qual pegadinha de matemática mais te engana? Comenta aqui! O link do app está na bio. Segue o Delmão Simplifica pra mais dicas e lembra que...",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você já caiu nessa pegadinha de somar numerador com numerador? Comenta aí!",
+    "duracao": "45 s",
+    "legenda": "99% das pessoas erra a soma de ½ mais ⅓ na pressa! 😱\n\nNão cometa mais esse erro clássico de somar direto os números de cima e de baixo. O segredo é sempre usar o MMC!\n\nNo app do Delmão você encontra um Banco de Questões cheio de exercícios e resoluções detalhadas passo a passo pra nunca mais cair em pegadinha.\n\nSalve este post e compartilhe com aquele amigo que precisa dessa dica! 🧮\n\nLink do app na bio\n\n#matematica #estudos #fração #dicasdeestudo #app #revisao #matematicabasica"
+   }
+  },
+  {
+   "id": "2026-11-23-2",
+   "criado": "2026-11-23T21:14:54.156Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "ROTINA DE 10 MINUTOS",
+   "recurso": "Meu progresso, sequência de dias e conquistas",
+   "conteudo": {
+    "tema": "App · Rotina de 10 minutos",
+    "nota_viral": 8,
+    "por_que": "Promessa de estudo rápido diário engaja quem tem pouco tempo e quer manter consistência.",
+    "ganchos": [
+     "Dez minutos por dia mudam totalmente seu desempenho em matemática.",
+     "Seu professor nunca te contou o segredo da consistência diária.",
+     "Você consegue estudar só 10 minutos de matemática hoje?"
+    ],
+    "texto_capa": "ROTINA DE 10 MINUTOS",
+    "blocos": [
+     {
+      "tempo": "3–10 s",
+      "cena": "tela",
+      "fala": "Olha essa conta rápida: quanto é 20% de 80? É só cortar dois zeros e multiplicar 2 por 8, que dá 16!",
+      "quadro": "20% de 80 = 2 × 8 = 16",
+      "texto_tela": "MACETE RÁPIDO"
+     },
+     {
+      "tempo": "10–18 s",
+      "cena": "tela",
+      "fala": "Estudar um pouquinho todo dia fixa a matéria muito melhor do que acumular dez horas no fim de semana.",
+      "quadro": "10 MIN / DIA > 5 HORAS",
+      "texto_tela": "CONSISTÊNCIA"
+     },
+     {
+      "tempo": "18–27 s",
+      "cena": "tela",
+      "fala": "No meu app, a aba Meu Progresso mostra sua sequência de dias seguidos e seu tempo exato de estudo.",
+      "quadro": "MEU PROGRESSO",
+      "texto_tela": "ACOMPANHE TUDO"
+     },
+     {
+      "tempo": "27–36 s",
+      "cena": "tela",
+      "fala": "Você ganha conquistas, troféus e mantém a chama da sequência acesa a cada treino diário cumprido.",
+      "quadro": "CONQUISTAS E MEDALHAS",
+      "texto_tela": "MOTIVAÇÃO DIÁRIA"
+     },
+     {
+      "tempo": "36–45 s",
+      "cena": "tela",
+      "fala": "Quantos minutos você estuda por dia? Comenta aí! O link do app está na bio. Segue o Delmão Simplifica pra evoluir todo dia e ver que...",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Quantos dias seguidos de estudo você consegue manter? Quero ver sua sequência!",
+    "duracao": "45 s",
+    "legenda": "Dez minutos por dia mudam totalmente seu desempenho em matemática! 🔥\n\nA chave para aprender exatas não é virar a noite estudando, mas sim manter a frequência diária.\n\nCom a ferramenta Meu Progresso no app do Delmão, você acompanha sua sequência de dias, ganha medalhas e não perde o ritmo.\n\nMarque alguém que precisa criar uma rotina de estudos hoje mesmo! ⏱️\n\nLink do app na bio\n\n#matematica #rotinadeestudos #estudos #foco #app #revisao #dicasdeestudo"
+   }
+  },
+  {
+   "id": "2026-11-23-3",
+   "criado": "2026-11-23T21:14:54.156Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "DOR DO ALUNO",
+   "recurso": "Quiz relâmpago",
+   "conteudo": {
+    "tema": "App · Treino contra o relógio",
+    "nota_viral": 8,
+    "por_que": "Ataca a dor da lentidão em contas e apresenta o Quiz Relâmpago como solução divertida e prática.",
+    "ganchos": [
+     "Você demora mais de um minuto pra fazer 25 vezes 12?",
+     "Faz essa conta de cabeça em menos de 5 segundos.",
+     "Para de travar em conta básica na hora da prova."
+    ],
+    "texto_capa": "FAÇA CONTAS MAIS RÁPIDO",
+    "blocos": [
+     {
+      "tempo": "3–10 s",
+      "cena": "tela",
+      "fala": "Ficar travado em contas básicas faz você perder um tempo precioso na hora de resolver exercícios.",
+      "quadro": "25 × 12 = ?",
+      "texto_tela": "NÃO TRAVE MAIS"
+     },
+     {
+      "tempo": "10–18 s",
+      "cena": "tela",
+      "fala": "Faz assim: 12 é 4 vezes 3. Então 25 vezes 4 dá 100, e 100 vezes 3 dá 300! Tudo de cabeça!",
+      "quadro": "25 × 4 × 3 = 100 × 3 = 300",
+      "texto_tela": "MACETE MENTAL"
+     },
+     {
+      "tempo": "18–27 s",
+      "cena": "tela",
+      "fala": "Pra ficar rápido de verdade, no meu app você treina com o Quiz Relâmpago.",
+      "quadro": "QUIZ RELÂMPAGO",
+      "texto_tela": "TREINO DE AGILIDADE"
+     },
+     {
+      "tempo": "27–36 s",
+      "cena": "tela",
+      "fala": "São perguntas curtas contra o relógio pra você agilizar seu raciocínio e perder o medo do tempo.",
+      "quadro": "CONTRA O RELÓGIO ⏱️",
+      "texto_tela": "AGILIDADE MENTAL"
+     },
+     {
+      "tempo": "36–45 s",
+      "cena": "tela",
+      "fala": "Você consegue fazer essa conta de cabeça em 5 segundos? Comenta aqui! O link do app está na bio. Segue o Delmão Simplifica pra mais macetes e responde:",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Conseguiu fazer 25 × 12 de cabeça antes do final do vídeo? Responde aqui!",
+    "duracao": "45 s",
+    "legenda": "Você demora mais de um minuto pra fazer 25 vezes 12? ⚡\n\nAcelerar o raciocínio em contas básicas salva um tempo precioso durante os estudos.\n\nNo Quiz Relâmpago do app do Delmão, você treina contra o relógio e ganha agilidade mental de forma simples e divertida.\n\nEnvie este vídeo para um amigo que sempre demora pra fazer conta de cabeça! 🧠\n\nLink do app na bio\n\n#matematica #raciociniologico #calculomental #estudos #app #revisao #dicasdeestudo"
+   }
+  },
   {
    "id": "2026-11-22-1",
    "criado": "2026-11-22T14:11:36.050Z",
