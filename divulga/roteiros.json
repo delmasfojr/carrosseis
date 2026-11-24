@@ -1,6 +1,180 @@
 {
- "atualizado": "2026-11-23T21:14:54.156Z",
+ "atualizado": "2026-11-24T20:07:25.092Z",
  "roteiros": [
+  {
+   "id": "2026-11-24-1",
+   "criado": "2026-11-24T20:07:25.091Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "DESAFIO RELÂMPAGO",
+   "recurso": "Meu progresso, sequência de dias e conquistas",
+   "conteudo": {
+    "tema": "App · Desafio e Progresso",
+    "nota_viral": 9,
+    "por_que": "Abre com um desafio rápido que gera pausa e engajamento, conectando a solução ao acompanhamento de progresso no app.",
+    "ganchos": [
+     "Você acerta essa conta de matemática em 5 segundos?",
+     "A maioria das pessoas trava nessa conta simples.",
+     "Pausa o vídeo e tenta resolver isso de cabeça."
+    ],
+    "texto_capa": "ACERTA EM 5 SEG?",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Quanto é a metade de dois ao quadrado mais dois ao quadrado? Calma, não responde na pressa não.",
+      "quadro": "Metade de 2² + 2²?",
+      "texto_tela": "QUAL É A RESPOSTA?"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "tela",
+      "fala": "Dois ao quadrado é quatro. Somou com quatro, deu oito. A metade de oito é quatro! Nada de afobação, viu?",
+      "quadro": "2² + 2² = 8 → ½ = 4",
+      "texto_tela": "RESOLUÇÃO RÁPIDA"
+     },
+     {
+      "tempo": "20–29 s",
+      "cena": "tela",
+      "fala": "No meu app você faz desafios assim todo dia. E o massa é que ele mostra seu progresso com estatísticas e conquistas.",
+      "quadro": "MEU PROGRESSO",
+      "texto_tela": "ACOMPANHE SEU EVOLUIR"
+     },
+     {
+      "tempo": "29–37 s",
+      "cena": "tela",
+      "fala": "Você ganha medalhas, mantém a sequência de dias estudados e vê o que precisa melhorar sem perder tempo.",
+      "quadro": "MEDALHAS E SEQUÊNCIA",
+      "texto_tela": "CONQUISTAS E MEDALHAS"
+     },
+     {
+      "tempo": "37–45 s",
+      "cena": "tela",
+      "fala": "Acertou de primeira? Comenta aí quanto deu! O link do app tá na bio pra você baixar agora. E segue o Delmão Simplifica aí!",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você acertou antes de ver a resposta? Me conta aqui nos comentários!",
+    "duracao": "45 s",
+    "legenda": "Você acerta essa conta de matemática em 5 segundos?\n\nManter uma rotina de exercícios diários é o grande segredo para evoluir em matemática! 📊 no app do Delmão você resolve desafios rápidos e acompanha todo o seu progresso com medalhas e conquistas.\n\nComenta aí se acertou a conta!\nLink do app na bio\n\n#matematica #estudos #dicasdeestudo #app #revisao #desafiodematematica"
+   }
+  },
+  {
+   "id": "2026-11-24-2",
+   "criado": "2026-11-24T20:07:25.091Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "CIÊNCIA DO ESTUDO",
+   "recurso": "Quiz relâmpago",
+   "conteudo": {
+    "tema": "App · Ciência do Estudo",
+    "nota_viral": 8,
+    "por_que": "Explica a importância de treinar agilidade mental para retenção de memória e apresenta o Quiz Relâmpago como solução.",
+    "ganchos": [
+     "Sabe por que você estuda muito e esquece rápido?",
+     "O segredo pra fixar matemática tá na velocidade.",
+     "Treinar sob pressão faz seu cérebro gravar mais."
+    ],
+    "texto_capa": "POR QUE VOCÊ ESQUECE?",
+    "blocos": [
+     {
+      "tempo": "3–12 s",
+      "cena": "tela",
+      "fala": "Quando a gente estuda sem tempo contado, o cérebro acomoda. Responder rápido força a memória a puxar a matéria.",
+      "quadro": "ESTUDO E MEMÓRIA",
+      "texto_tela": "FORÇANDO A MEMÓRIA"
+     },
+     {
+      "tempo": "12–21 s",
+      "cena": "tela",
+      "fala": "Quanto é sete vezes oito? Se você demorou pra pensar em cinquenta e seis, macho véi, precisa acelerar esse raciocínio.",
+      "quadro": "7 × 8 = 56",
+      "texto_tela": "VELOCIDADE DE RACIOCÍNIO"
+     },
+     {
+      "tempo": "21–30 s",
+      "cena": "tela",
+      "fala": "Pensando nisso, eu criei o Quiz Relâmpago no meu app. São perguntas contra o relógio pra destravar a sua mente.",
+      "quadro": "QUIZ RELÂMPAGO",
+      "texto_tela": "QUIZ CONTRA O RELÓGIO"
+     },
+     {
+      "tempo": "30–38 s",
+      "cena": "tela",
+      "fala": "Você treina a agilidade das contas, ganha pontos e deixa o raciocínio afiado pra hora da necessidade.",
+      "quadro": "AGILIDADE MENTAL",
+      "texto_tela": "RACIONALIZAR RÁPIDO"
+     },
+     {
+      "tempo": "38–45 s",
+      "cena": "tela",
+      "fala": "Qual tabuada te faz demorar mais? Me diz nos comentários! O link do app tá na bio pra você entrar. E segue o Delmão Simplifica aí!",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Qual a conta simples que mais te faz perder tempo pensando?",
+    "duracao": "45 s",
+    "legenda": "Sabe por que você estuda muito e esquece rápido?\n\nTreinar seu raciocínio contra o relógio ajuda a fixar os conteúdos de forma muito mais eficiente! ⏱️ No Quiz Relâmpago do meu app, você treina agilidade mental e deixa a matemática na ponta da língua.\n\nQual tabuada é a mais difícil pra você?\nLink do app na bio\n\n#matematica #estudo #memorizacao #app #quiz #raciociniologico"
+   }
+  },
+  {
+   "id": "2026-11-24-3",
+   "criado": "2026-11-24T20:07:25.092Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "TOUR RÁPIDO",
+   "recurso": "Trilha de estudo com lições, vidas e CONFERIR",
+   "conteudo": {
+    "tema": "App · Trilha de Estudo",
+    "nota_viral": 8,
+    "por_que": "Mostra a interface simples e interativa do aplicativo por dentro, destacando a dinâmica de lições e vidas.",
+    "ganchos": [
+     "Vem ver como funciona o meu app por dentro!",
+     "Olha o jeito mais fácil de aprender matemática.",
+     "Estudar matemática pode ser leve igual a um jogo."
+    ],
+    "texto_capa": "MEU APP POR DENTRO",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Abre o app e olha essa trilha de estudo em bolinhas. Cada aula tem lições curtinhas de doze perguntas pra praticar.",
+      "quadro": "TRILHA DE ESTUDO",
+      "texto_tela": "APRENDA PASSO A PASSO"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "tela",
+      "fala": "Você escolhe o tema, responde a questão e clica no botão verde CONFERIR. Acertou? Aparece confete na tela!",
+      "quadro": "BOTÃO CONFERIR",
+      "texto_tela": "CONFERIR E CONFETE"
+     },
+     {
+      "tempo": "20–29 s",
+      "cena": "tela",
+      "fala": "Ó, major, você começa com cinco vidas! Se errar, perde uma. Aí o app já te explica o motivo pra você aprender.",
+      "quadro": "5 VIDAS E EXPLICAÇÃO",
+      "texto_tela": "APRENDA COM OS ERROS"
+     },
+     {
+      "tempo": "29–37 s",
+      "cena": "tela",
+      "fala": "É um treino leve, direto ao ponto e que faz a matéria entrar na cabeça sem enrolação.",
+      "quadro": "ESTUDO DIVERTIDO",
+      "texto_tela": "SEM COMPLICAÇÃO"
+     },
+     {
+      "tempo": "37–45 s",
+      "cena": "tela",
+      "fala": "Você gosta de estudar no celular ou prefere papel? Comenta aí! O link do app tá na bio. E segue o Delmão Simplifica pra mais!",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você aprende melhor praticando no celular ou lendo no papel?",
+    "duracao": "45 s",
+    "legenda": "Vem ver como funciona o meu app por dentro!\n\nEstudar matemática não precisa ser chato nem cansativo 🎯 Com a nossa trilha de estudos, você resolve lições curtas, ganha corações e aprende com explicações diretas ao ponto a cada erro.\n\nComenta aí como você gosta de estudar!\nLink do app na bio\n\n#matematica #estudantes #dicasdematematica #appdematematica #aprendizado"
+   }
+  },
   {
    "id": "2026-11-23-1",
    "criado": "2026-11-23T21:14:54.155Z",
