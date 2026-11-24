@@ -20,7 +20,7 @@ const Gravador = (() => {
   let trava = null, t0 = 0, relogio = null, vibrou = false, ui = null, actx = null, tocando = null, ocupado = false;
   const g = id => ui.querySelector('#' + id);
   const takes = () => item.takes || (item.takes = []);
-  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false, soVoz: false, ritmo: 'normal'};
+  const PADRAO = {seco: false, legenda: true, legendaVoz: true, mascote: true, voz: true, filtro: 'nenhum', zoomCorte: true, volMusica: 0.15, ruido: false, limpeza: 'normal', soVoz: false, ritmo: 'normal'};
   const opcoes = () => {  // completa o que faltar SEM trocar o objeto (quem já tem a referência continua valendo)
     const op = item.edicao || (item.edicao = {});
     for (const [k, v] of Object.entries(PADRAO)) if (!(k in op)) op[k] = v;
@@ -281,8 +281,8 @@ const Gravador = (() => {
     g('gver').textContent = revendo ? '📷' : '▶';
     g('geditar').disabled ||= !takes().some(Boolean);
     g('grec').disabled = revendo || abrindo;
-    g('gruido').textContent = opcoes().ruido ? '🎙 Reduzir ruído: LIGADO' : '🎙 Reduzir ruído: desligado';
-    g('gruido').title = opcoes().ruido ? 'Bom para lugar barulhento' : 'Voz mais natural (lugar silencioso)';
+    g('gruido').textContent = opcoes().ruido ? '🎙 Filtro do celular: LIGADO' : '🎙 Filtro do celular: desligado';
+    g('gruido').title = opcoes().ruido ? 'A limpeza do app (editor, aba Som) costuma ficar melhor com este filtro desligado' : 'Recomendado: grava cru e o app limpa a voz depois';
     g('gruido').disabled = gravando || abrindo;
     g('gritmo').textContent = (RITMOS[opcoes().ritmo] || RITMOS.normal).nome;
     g('gritmo').title = 'Velocidade em que as palavras do teleprompter vão ficando laranja';
@@ -438,6 +438,7 @@ const Gravador = (() => {
       g('ginfo').textContent = 'Guardando o take…';
       await analisar(c);
       takes()[i] = c;
+      prepararVoz(c);  // já vai limpando enquanto grava o próximo
       try { await salvar(item); } catch (e) { alert('Não consegui guardar o take: ' + e.message); }
       transcreverFundo(i);  // legenda pela voz real, sem travar a gravação
       const proximo = blocos.findIndex((_, k) => k > i && !takes()[k]);
@@ -1608,20 +1609,96 @@ Se não houver fala, devolva a lista vazia.`;
     await noMaximo(mascote.decode(), 2500);
     await noMaximo(document.fonts.load('96px Anton'), 2500);
   }
-  /* "Melhorar voz" (como no Edits): corta o ronco grave, tira o abafado, dá presença, comprime e sobe o volume */
+  /* ---------------------------------------------------------------- limpeza da voz (ruído e eco)
+     Cada take passa uma vez por voz-nucleo.mjs (num worker) e vira uma cópia com o som limpo. O take original não muda. */
+  let falhouVoz = false, operario = null, pedidoVoz = 0;
+  const esperandoVoz = new Map(), limpos = new WeakMap();  // blob do take -> {modo: promessa do blob limpo}
+  const modoVoz = () => opcoes().voz ? (opcoes().limpeza || 'normal') : '';
+  function limparSom(som, modo) {
+    if (!operario) {
+      operario = new Worker(BASE + 'voz-worker.mjs', {type: 'module'});
+      operario.onmessage = e => {
+        const p = esperandoVoz.get(e.data.id); if (!p) return;
+        esperandoVoz.delete(e.data.id);
+        if (e.data.erro) p.erro(new Error(e.data.erro)); else p.ok(e.data.som);
+      };
+      operario.onerror = () => {
+        for (const p of esperandoVoz.values()) p.erro(new Error('o limpador de voz não abriu'));
+        esperandoVoz.clear(); operario.terminate(); operario = null;
+      };
+    }
+    return new Promise((ok, erro) => {
+      const id = ++pedidoVoz;
+      esperandoVoz.set(id, {ok, erro});
+      operario.postMessage({id, som, modo}, [som.buffer]);
+    });
+  }
+  async function mono48(blob) {
+    const buf = await ac().decodeAudioData(await blob.arrayBuffer());
+    const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * 48000)), 48000);
+    const f = off.createBufferSource(); f.buffer = buf; f.connect(off.destination); f.start();
+    return (await off.startRendering()).getChannelData(0).slice();
+  }
+  function wav(d, taxa) {
+    const out = new DataView(new ArrayBuffer(44 + d.length * 2));
+    const txt = (o, t) => [...t].forEach((ch, n) => out.setUint8(o + n, ch.charCodeAt(0)));
+    txt(0, 'RIFF'); out.setUint32(4, 36 + d.length * 2, true); txt(8, 'WAVE'); txt(12, 'fmt ');
+    out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true); out.setUint32(24, taxa, true);
+    out.setUint32(28, taxa * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true); txt(36, 'data'); out.setUint32(40, d.length * 2, true);
+    for (let n = 0; n < d.length; n++) out.setInt16(44 + n * 2, Math.max(-1, Math.min(1, d[n])) * 32767, true);
+    return new Blob([out.buffer], {type: 'audio/wav'});
+  }
+  // copia a imagem sem refazer e troca só o som
+  async function trocarSom(blob, som) {
+    const mb = await import(new URL(BASE + 'vendor/mediabunny.min.mjs', location.href).href);
+    const entrada = new mb.Input({source: new mb.BlobSource(blob), formats: mb.ALL_FORMATS});
+    const vt = await entrada.getPrimaryVideoTrack(), at = await entrada.getPrimaryAudioTrack();
+    const mp4 = vt.codec === 'avc' || vt.codec === 'hevc';
+    let codec = null;
+    for (const c of ['opus', 'aac']) if (!codec && await mb.canEncodeAudio(c, {numberOfChannels: 1, sampleRate: 48000, bitrate: 160000})) codec = c;
+    if (!codec) throw new Error('este aparelho não regrava o som');
+    const saida = new mb.Output({format: mp4 ? new mb.Mp4OutputFormat({fastStart: 'in-memory'}) : new mb.WebMOutputFormat(), target: new mb.BufferTarget()});
+    const vs = new mb.EncodedVideoPacketSource(vt.codec), as = new mb.AudioBufferSource({codec, bitrate: 160000});
+    saida.addVideoTrack(vs, {rotation: vt.rotation || 0}); saida.addAudioTrack(as);
+    await saida.start();
+    const desloc = Math.max(0, Math.round((at ? await at.getFirstTimestamp() : 0) * 48000));  // o som às vezes começa depois da imagem
+    const buf = new AudioBuffer({length: som.length + desloc, numberOfChannels: 1, sampleRate: 48000});
+    buf.copyToChannel(som, 0, desloc);
+    const imagem = async () => {
+      const conf = await vt.getDecoderConfig();
+      let primeiro = true;
+      for await (const p of new mb.EncodedPacketSink(vt).packets()) { await vs.add(p, primeiro ? {decoderConfig: conf} : undefined); primeiro = false; }
+      vs.close();
+    };
+    const voz = async () => { await as.add(buf); as.close(); };
+    await Promise.all([imagem(), voz()]);
+    await saida.finalize();
+    return new Blob([saida.target.buffer], {type: mp4 ? 'video/mp4' : 'video/webm'});
+  }
+  // devolve o take com a voz limpa (faz uma vez só por take e modo)
+  function vozLimpa(c, modo) {
+    let m = limpos.get(c.blob);
+    if (!m) limpos.set(c.blob, m = {});
+    if (!m[modo]) {
+      m[modo] = (async () => {
+        const som = await limparSom(await mono48(c.blob), modo);
+        return c.soVoz ? wav(som, 48000) : trocarSom(c.blob, som);
+      })();
+      m[modo].catch(e => { console.warn('limpeza da voz:', e); delete m[modo]; });
+    }
+    return m[modo];
+  }
+  const prepararVoz = c => { const m = modoVoz(); if (m && c) vozLimpa(c, m).catch(() => {}); };
+  /* reserva, se o aparelho não conseguir limpar: só corta o ronco e dá presença. Sem compressor: o do navegador
+     aumenta tudo sozinho (subia o ruído e o eco junto com a voz). */
   function cadeiaVoz(a, saida) {
     const n = (tipo, f, q, ganho) => {
       const x = a.createBiquadFilter(); x.type = tipo; x.frequency.value = f;
       if (q) x.Q.value = q; if (ganho != null) x.gain.value = ganho; return x;
     };
-    const etapas = [n('highpass', 85, 0.7), n('peaking', 250, 1, -3), n('peaking', 3200, 0.9, 4), n('highshelf', 9000, null, 2.5)];
-    const comp = a.createDynamicsCompressor();
-    comp.threshold.value = -26; comp.knee.value = 8; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.18;
-    const volume = a.createGain(); volume.gain.value = 1.6;
-    const limite = a.createDynamicsCompressor();
-    limite.threshold.value = -4; limite.knee.value = 0; limite.ratio.value = 20; limite.attack.value = 0.001; limite.release.value = 0.08;
-    [...etapas, comp, volume, limite].reduce((x, y) => { x.connect(y); return y; }).connect(saida);
-    return {entrada: etapas[0], nos: [...etapas, comp, volume, limite]};
+    const etapas = [n('highpass', 85, 0.7), n('peaking', 250, 1, -3), n('peaking', 3200, 0.9, 3)];
+    etapas.reduce((x, y) => { x.connect(y); return y; }).connect(saida);
+    return {entrada: etapas[0], nos: etapas};
   }
   // próximo quadro: normalmente acompanha a tela; se o celular "congelar" o desenho, um relógio garante que continue
   function proximo(f) {
@@ -1632,7 +1709,7 @@ Se não houver fala, devolva a lista vazia.`;
   async function tocar(ks, saida, gravador, controle, aoTempo) {
     const ctx = g('ecanvas').getContext('2d'), total = totalDur(), op = opcoes();
     await carregarFigs();
-    const voz = op.voz ? cadeiaVoz(ac(), saida) : null, entradaVoz = voz ? voz.entrada : saida;
+    const voz = op.voz ? cadeiaVoz(ac(), saida) : null;  // só entra se a limpeza falhar
     // música de fundo: toca só enquanto o vídeo anda, em volume baixo, e recomeça se acabar
     let musica = null, fonteM = null;
     if (item.musica && !op.seco) {
@@ -1683,10 +1760,17 @@ Se não houver fala, devolva a lista vazia.`;
       if (controle.parar) break;
       const c = takes()[k]; if (!c) continue;
       let v;
-      try { v = await abrirVideo(c.blob); } catch (e) { throw new Error(`o take do bloco ${k + 1} está com defeito. Toque nesse bloco e em 🎥 Regravar.`); }
+      let limpo = null;
+      if (modoVoz()) {
+        if (!gravador) aviso('Limpando a sua voz…');  // na primeira vez demora alguns segundos
+        try { limpo = await abrirVideo(await vozLimpa(c, modoVoz())); } catch (e) { falhouVoz = true; }
+        if (!gravador) aviso('');
+        if (controle.parar) { if (limpo) soltar(limpo); break; }
+      }
+      try { v = limpo || await abrirVideo(c.blob); } catch (e) { throw new Error(`o take do bloco ${k + 1} está com defeito. Toque nesse bloco e em 🎥 Regravar.`); }
       const a = ac();
       const fonte = a.createMediaElementSource(v), ganho = a.createGain();
-      ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(entradaVoz);
+      ganho.gain.value = 0; fonte.connect(ganho); ganho.connect(voz && !limpo ? voz.entrada : saida);
       v.playbackRate = vel(c); v.preservesPitch = true;
       await irAoTempo(v, c.ini);  // se o celular não conseguir pular, toca do zero e espera chegar no corte
       const grupos = gruposDe(k);
@@ -2384,7 +2468,8 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       <label class="echeck" style="margin-top:16px"><input id="emasc" type="checkbox" ${op.mascote ? 'checked' : ''}> Mascote no final do vídeo</label>
       </div>
       <div class="eaba" data-aba="som">
-      <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (mais clara e mais alta)</label>
+      <label class="echeck"><input id="evoz" type="checkbox" ${op.voz ? 'checked' : ''}> 🎙 Melhorar voz (tira ruído e eco)</label>
+      <div class="ebot" id="elimpw"><button data-limp="normal">Natural</button><button data-limp="forte">Forte (muito eco)</button></div>
       <label>🎵 Música de fundo</label>
       <div class="ebot"><button id="emus">${item.musica ? '🎵 ' + esc(item.musicaNome || 'música') : 'Escolher música do celular'}</button>
         ${item.musica ? '<button id="emusx" style="flex:0 0 52px">✕</button>' : ''}</div>
@@ -2434,7 +2519,13 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     g('etexto').onchange = g('efala').onchange = guardar;
     g('eleg').onchange = () => { op.legenda = g('eleg').checked; guardar(); mostrarQuadro(k); };
     g('emasc').onchange = () => { op.mascote = g('emasc').checked; guardar(); mostrarQuadro(k); };
-    g('evoz').onchange = () => { op.voz = g('evoz').checked; guardar(); };
+    const marcarLimpeza = () => {
+      g('elimpw').hidden = !op.voz;
+      g('elimpw').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.limp === op.limpeza));
+    };
+    marcarLimpeza();
+    g('evoz').onchange = () => { op.voz = g('evoz').checked; marcarLimpeza(); guardar(); };
+    g('elimpw').querySelectorAll('button').forEach(b => b.onclick = () => { op.limpeza = b.dataset.limp; marcarLimpeza(); guardar(); });
     g('elvoz').onchange = () => { op.legendaVoz = g('elvoz').checked; guardar(); mostrarQuadro(k); };
     const e = est(k);
     const marcar = (attr, valor) => ui.querySelectorAll(`[data-${attr}]`).forEach(x => x.classList.toggle('on', x.dataset[attr] === valor));
@@ -2593,6 +2684,11 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
         else await transcreverFundo(k);
       }
     }
+    falhouVoz = false;
+    if (modoVoz()) for (const k of blocos.keys()) {  // tudo limpo antes de começar a montar
+      aviso(`Limpando a sua voz… (${k + 1} de ${blocos.length})`);
+      await vozLimpa(takes()[k], modoVoz()).catch(() => { falhouVoz = true; });
+    }
     aviso('Montando o vídeo…\nDeixe o app aberto nesta tela.');
     await carregarMascote();
     const a = ac(), dest = a.createMediaStreamDestination();
@@ -2611,7 +2707,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     item.videoDur = totalDur();
     await salvar(item);
     aviso(''); ocupado = false;
-    alert(`Vídeo pronto! ${Math.round(item.videoDur)} s. Ele aparece no roteiro, com o botão de compartilhar.`);
+    alert(`Vídeo pronto! ${Math.round(item.videoDur)} s. Ele aparece no roteiro, com o botão de compartilhar.${falhouVoz ? '\n⚠️ Não deu para limpar a voz neste aparelho: o som ficou como foi gravado.' : ''}`);
     fechar();
   }
 

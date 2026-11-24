@@ -38,10 +38,13 @@ desenhos e emojis que surgem quando a palavra é falada. O professor grava SÓ A
 - texto_tela: título curto em todos os blocos.`;
   // todo roteiro termina chamando para seguir a página (se o Gemini esquecer, o app acrescenta um bloco)
   const SEGUIR = /(^|[^\p{L}])(segue|siga|seguir|sigam)(?![\p{L}])/iu;  // não pega 'consegue'
-  const FALAS_SEGUIR = ['Segue o Delmão Simplifica pra mais macete assim!', 'Me segue que amanhã tem outro truque!',
-    'Segue o Delmão Simplifica e nunca mais erra essa!', 'Gostou? Segue o Delmão Simplifica pra não perder o próximo!'];
+  const FALAS_SEGUIR = ['Segue o Delmão Simplifica aí, que tem mais macete desse.', 'Me segue aí, que amanhã tem outro.',
+    'Gostou? Segue o Delmão Simplifica, que a gente vai junto.', 'Bora junto, segue o Delmão Simplifica.'];
+  // o professor fala "você" inteiro, nunca "cê"
+  const semCe = t => String(t || '').replace(/(?<!\p{L})cê(?!\p{L})/giu, x => x[0] === 'C' ? 'Você' : 'você');
   function garantirSeguir(roteiros) {
     for (const [n, r] of roteiros.entries()) {
+      r.ganchos = (r.ganchos || []).map(semCe); for (const b of r.blocos || []) b.fala = semCe(b.fala);
       const bl = r.blocos || (r.blocos = []), ult = bl[bl.length - 1];
       if (ult && SEGUIR.test(ult.fala || '')) { if (!ult.texto_tela) ult.texto_tela = 'SIGA @DELMAOSIMPLIFICA'; continue; }
       const nums = ult ? String(ult.tempo).match(/\d+(?:[.,]\d+)?/g) : null;

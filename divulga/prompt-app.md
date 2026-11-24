@@ -33,7 +33,7 @@ REGRAS DESTES ROTEIROS
 - Fala na voz do Delmão, em primeira pessoa ("eu fiz um app", "no meu app").
 - quadro: o que aparece grande na tela; pode ser a conta do desafio OU o nome do recurso (ex.: "CADERNO DE ERROS").
 - No último bloco, nesta ordem: chamada para comentar, chamada para ENTRAR NO APP ("o link do app está na bio")
-  e chamada para SEGUIR o Delmão Simplifica, depois a frase que fecha o loop.
+  e chamada para SEGUIR o Delmão Simplifica.
   O texto_tela desse bloco é "LINK NA BIO".
 - legenda: termina com a chamada "Link do app na bio" antes das hashtags; hashtags sobre estudo e matemática
   (ex.: #matematica #estudos #dicasdeestudo #app #revisao; #enem só se o roteiro falar do Plano ENEM).
