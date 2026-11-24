@@ -2706,7 +2706,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     if (r.state !== 'inactive') r.stop();
     await terminou;
     item.video = new Blob(partes, {type: (r.mimeType || mt || 'video/webm').split(';')[0]});
-    item.videoDur = totalDur();
+    item.videoDur = totalDur(); delete item.youtube;
     await salvar(item);
     aviso(''); ocupado = false;
     alert(`Vídeo pronto! ${Math.round(item.videoDur)} s. Ele aparece no roteiro, com o botão de compartilhar.${falhouVoz ? '\n⚠️ Não deu para limpar a voz neste aparelho: o som ficou como foi gravado.' : ''}`);

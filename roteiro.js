@@ -453,7 +453,10 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       urlVideo = URL.createObjectURL(atual.video);
       $('#rvideofinal').innerHTML = `<video controls playsinline src="${urlVideo}"></video>
         <div class="acoes"><button id="rcompvid" class="principal">Compartilhar vídeo no Instagram</button>
+        <button id="rytvid" class="sec" style="grid-column:1/-1">▶ Postar no YouTube</button>
+        ${atual.youtube ? `<a href="https://www.youtube.com/watch?v=${esc(atual.youtube.id)}" target="_blank" rel="noopener" style="grid-column:1/-1;text-align:center;color:var(--navy)">✓ Já está no YouTube: ver o vídeo</a>` : ''}
         <button id="rbaixvid" class="sec" style="grid-column:1/-1">Baixar vídeo</button></div>`;
+      $('#rytvid').onclick = () => YouTubePost.abrir(atual, $('#rlegenda').value, salvarR, () => abrir(atual.id));
       const arquivo = () => new File([atual.video], `${atual.conteudo.tema}.${atual.video.type.includes('mp4') ? 'mp4' : 'webm'}`, {type: atual.video.type});
       $('#rcompvid').onclick = () => {  // o share tem de sair já no toque
         const files = [arquivo()];

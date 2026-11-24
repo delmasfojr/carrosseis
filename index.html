@@ -376,6 +376,10 @@ nav button i{position:relative}
     <label for="chaveyt">Cole a chave aqui</label>
     <input id="chaveyt" type="password" autocomplete="off" spellcheck="false">
     <div class="acoes"><button id="testaryt" class="sec">Testar</button><button id="salvaryt" class="principal" style="grid-column:auto">Salvar</button></div>
+    <details class="mais" style="margin-top:24px"><summary>Postar no YouTube (ID de cliente)</summary>
+    <label for="ytcliente">ID de cliente do Google</label>
+    <input id="ytcliente" type="text" autocomplete="off" spellcheck="false" placeholder="….apps.googleusercontent.com">
+    <button id="salvarytc" class="sec" style="width:100%;margin-top:10px">Salvar</button></details>
     <p class="dica">É a chave que você criou em <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">console.cloud.google.com</a> (projeto “delmao-roteiros” → Credenciais).</p>
     <h3 style="margin-top:32px">Vídeos de apoio (Pexels ou Pixabay)</h3>
     <p>Para pôr clipes de verdade de fundo nos Reels (planeta girando, dinheiro, trânsito…). Os dois bancos são grátis e liberam uso no Instagram. Basta <b>uma</b> das chaves.</p>
@@ -412,6 +416,7 @@ nav button i{position:relative}
 <script src="roteiro.js"></script>
 <script src="concursos.js"></script>
 <script src="estudo.js"></script>
+<script src="youtube.js"></script>
 <script src="gravador.js"></script>
 </body>
 </html>
