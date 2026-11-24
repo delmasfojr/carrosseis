@@ -123,8 +123,8 @@ const Gravador = (() => {
 .ebot button.on{border-color:#FF7A00 !important;color:#FF7A00}
 .echeck{display:flex !important;gap:10px;align-items:center;font-weight:400 !important}
 .echeck input{width:20px;height:20px;accent-color:#FF7A00}
-.ebarra{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0F1B2D}
-.ebarra button{flex:1;padding:13px 6px;background:#33415a;color:#fff}
+.gbotoes{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#0F1B2D}
+.gbotoes button{flex:1;padding:13px 6px;background:#33415a;color:#fff}
 #eexportar{background:#FF7A00 !important;flex:1.4}
 .eseco{background:#FFF0DD;border:2px solid #FF7A00;border-radius:12px;padding:10px 12px;margin:0 0 10px !important;font-size:14px !important;align-items:flex-start !important}
 .eseco input{margin-top:2px;flex:none}
@@ -182,7 +182,7 @@ const Gravador = (() => {
         <div id="etl"></div>
         <div class="eabas" id="eabas">${ABAS_ED.map(([id, ic, nome]) => `<button data-aba="${id}"><i>${ic}</i>${nome}</button>`).join('')}</div>
         <div id="epainel"></div>
-        <div class="ebarra"><button id="esair">✕ Sair</button><button id="egravar">🎥 Gravar</button><button id="eexportar">⬇ Exportar vídeo</button></div>
+        <div class="gbotoes"><button id="esair">✕ Sair</button><button id="egravar">🎥 Gravar</button><button id="eexportar">⬇ Exportar vídeo</button></div>
         <div id="eaviso" hidden></div>
       </div>`;
     document.body.appendChild(ui);
@@ -2498,8 +2498,10 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     g('eregravar').onclick = () => irGravar(k);
     g('etexto').oninput = () => { setTexto(k, 'texto_tela', g('etexto').value); mostrarQuadro(k); };
     g('efala').oninput = () => {
-      if (c.transcricao && c.transcricao.length) c.transcricao = retemporizar(c, g('efala').value);
-      else setTexto(k, 'fala', g('efala').value);
+      const txt = g('efala').value;
+      const daVoz = c.transcricao && c.transcricao.length;
+      if (daVoz) c.transcricao = retemporizar(c, txt);
+      if (txt.trim() || !daVoz) setTexto(k, 'fala', txt.trim());  // o texto corrigido é também o que se lê ao regravar
       mostrarQuadro(k);
     };
     const estado = () => {
