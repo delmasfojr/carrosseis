@@ -30,6 +30,7 @@ h3{font:20px 'Anton',Impact,sans-serif;margin:24px 0 8px}
 label{display:block;font-weight:700;margin:14px 0 6px}
 input[type=text],input[type=url],input[type=password],input[type=number],textarea{width:100%;font:inherit;padding:12px 14px;border:2px solid var(--cinza);border-radius:12px;background:#fff;color:var(--navy)}
 input:focus,textarea:focus{outline:none;border-color:var(--lar)}
+.check[hidden]{display:none !important}
 .check{display:flex;gap:10px;align-items:flex-start;font-weight:400;margin-top:14px}
 .check input{width:22px;height:22px;margin-top:2px;accent-color:var(--lar)}
 button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:13px 16px;cursor:pointer}
@@ -252,14 +253,19 @@ nav button i{position:relative}
   </section>
 
   <section class="tela" id="virais" hidden>
-    <h2>Ideias <span>virais</span></h2>
-    <p style="margin:-4px 0 0;color:#556">Ache vídeos que estão bombando e transforme em roteiro.</p>
-    <label for="termos">O que buscar no YouTube (um termo por linha)</label>
-    <textarea id="termos" spellcheck="false"></textarea>
+    <h2>Ideias <span>de vídeo</span></h2>
+    <div class="seg" id="vmodo"><button data-vm="virais">🔥 Viralizando</button><button data-vm="curioso">🧠 Curiosidades</button></div>
+    <p id="vexpl" style="margin:-4px 0 0;color:#556"></p>
+    <div id="vsovirais"><label for="termos">O que buscar no YouTube (um termo por linha)</label>
+    <textarea id="termos" spellcheck="false"></textarea></div>
+    <div id="vsocurioso" hidden><label for="vtema">Um assunto seu (opcional)</label>
+    <input id="vtema" type="text" placeholder="ex.: hipótese de Riemann" autocomplete="off">
+    <label class="check"><input id="vingles" type="checkbox" checked> <span>Incluir vídeos em inglês (o roteiro sai em português)</span></label></div>
     <label for="periodo">Publicados nos últimos</label>
-    <select id="periodo"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="365">1 ano</option></select>
-    <label class="check"><input id="soshorts" type="checkbox" checked> <span>Só vídeos curtos (até 4 min, inclui Shorts)</span></label>
+    <select id="periodo"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="365">1 ano</option><option value="3650">Qualquer data</option></select>
+    <label class="check" id="vshorts"><input id="soshorts" type="checkbox" checked> <span>Só vídeos curtos (até 4 min, inclui Shorts)</span></label>
     <button id="buscar" class="principal">🔥 Buscar virais</button>
+    <label class="check"><input id="vnovos" type="checkbox" checked> <span>Esconder os vídeos que já apareceram para mim</span></label>
     <p class="dica">Cada termo gasta 1% da cota grátis do dia (dá ~90 termos por dia). Toque em <b>Roteiro</b> num vídeo para gerar o roteiro na hora.</p>
     <div id="vlista"></div>
   </section>

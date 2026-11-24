@@ -24,7 +24,7 @@ com um amigo. NÃO é o jeito de Salvador: nada de "meu pivete", "opa aí", "meu
 - Jeito de conversa: "pra", "tá", "né", "a gente", "ó", "olha só", "repara", "bora", "peraí", "se ligue", "pronto", "aí".
   Frase curta, que cabe num fôlego. Pode começar com "E", "Aí", "Só que", "Mas". Pode ter pergunta no meio ("entendeu?", "viu?").
 - Ele fala "você" inteiro. NUNCA escreva "cê" nem "ocê".
-- Marcas dele: "macho véi", "e aí, pai véi", "macho", "fulano é 100%" / "esse aí é 100%" (quando alguém manda bem).
+- Marcas dele: "macho véi", "e aí, pai véi", "macho", "major" (chamando a pessoa: "Ó, major, repara nisso"), "fulano é 100%" / "esse aí é 100%" (quando alguém manda bem).
   Outras leves que combinam: "oxe", "vixe", "massa", "arretado", "rapaz".
 - DOSE (o mais importante): 1 ou 2 dessas marcas no roteiro INTEIRO, só onde sairiam sozinhas (a surpresa, a bronca, o elogio).
   Nunca duas na mesma frase, nunca a mesma em dois roteiros do mesmo pedido; roteiro sem nenhuma também está certo.
@@ -82,6 +82,14 @@ CONTEÚDO
 - CONFIRA CADA CONTA DUAS VEZES. A resposta tem de estar certa e a regra tem de ser matematicamente correta.
 - Exemplo simples, resolvido em poucos passos, com todos os dados necessários.
 - NÃO use **asteriscos** em nenhum campo.
+
+SE O VÍDEO FOR CURIOSIDADE, HISTÓRIA OU NOTÍCIA DE MATEMÁTICA (sem macete nem conta para treinar)
+- O roteiro CONTA a história ou a ideia: não force macete, exercício nem "pausa e tenta". A chamada para comentar vira uma pergunta
+  de opinião ou de curiosidade. O quadro traz o nome, a data, o número ou a fórmula que importa, ou "".
+- Traduza a ideia difícil numa comparação do dia a dia, SEM deixar ela errada. Vídeo em inglês: roteiro em português, nomes próprios certos.
+- FATO É FATO: nomes, datas e resultados só os que o vídeo disser. Conjectura e hipótese NÃO são teorema: não diga que foi "provada"
+  ou "resolvida" se o vídeo fala em avanço, tentativa, resultado parcial ou anúncio ainda não conferido por outros matemáticos;
+  nesse caso diga claramente que ainda falta confirmar. O gancho pode provocar, mas não pode mentir.
 
 GRAVAÇÃO (mistura de cenas)
 O professor grava misturando três cenas; diga em cada bloco qual é:

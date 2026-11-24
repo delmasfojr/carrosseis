@@ -524,6 +524,10 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     return s >= 3600 ? `${Math.floor(s / 3600)}h${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
+  function segundos(iso) {
+    const m = String(iso).match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/) || [];
+    return (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0);
+  }
   async function yt(caminho, params) {
     const u = new URL('https://www.googleapis.com/youtube/v3/' + caminho);
     for (const [k, v] of Object.entries({...params, key: chaveYT()})) u.searchParams.set(k, v);
@@ -539,40 +543,112 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
   }
   const emPartes = (a, n) => Array.from({length: Math.ceil(a.length / n)}, (_, i) => a.slice(i * n, i * n + n));
 
+  /* dois modos: "virais" (termos do professor, ordena por views ÷ inscritos) e "curioso" (conteúdo de matemática:
+     sem exigir que tenha viralizado; sorteia temas diferentes a cada busca) */
+  const TEMAS = ['curiosidades da matemática', 'história da matemática documentário', 'problemas do milênio matemática', 'hipótese de Riemann explicada',
+    'último teorema de Fermat história', 'conjectura de Collatz', 'conjectura de Goldbach', 'números primos mistério', 'infinito Cantor tamanhos de infinito',
+    'paradoxos matemáticos', 'paradoxo de Monty Hall', 'proporção áurea verdade ou mito', 'sequência de Fibonacci na natureza', 'número pi curiosidades',
+    'teoria dos jogos explicada', 'teoria do caos efeito borboleta', 'fractais Mandelbrot', 'criptografia matemática números primos', 'topologia fita de Möbius',
+    'Gödel teorema da incompletude', 'Euler identidade mais bonita', 'Ramanujan história', 'Gauss história matemático', 'Évariste Galois história',
+    'Emmy Noether matemática', 'história do zero', 'matemática da música', 'probabilidade contraintuitiva', 'problema das quatro cores', 'geometria não euclidiana',
+    'medalha Fields', 'números imaginários origem', 'matemática na inteligência artificial como funciona', 'problema P versus NP'];
+  const TEMAS_EN = ['Numberphile', '3Blue1Brown math', 'Veritasium math', 'Quanta Magazine mathematics', 'unsolved math problem explained', 'math paradox explained',
+    'history of mathematics documentary', 'beautiful math proof', 'Riemann hypothesis explained', 'Stand-up Maths'];
+  const NOVIDADES = ['descoberta matemática', 'inteligência artificial matemática problema resolvido', 'matemáticos provam conjectura'];
+  const NOVIDADES_EN = ['new math breakthrough', 'AI solves math problem', 'Riemann hypothesis news', 'mathematicians prove conjecture'];
+  const sorteia = (a, n) => a.map(x => [Math.random(), x]).sort((x, y) => x[0] - y[0]).slice(0, n).map(x => x[1]);
+  // propaganda de faculdade/curso (as palavras têm de vir no contexto de venda: "universidade" sozinha pode ser aula boa)
+  const PROPAGANDA = new RegExp(['inscri[çc](ões|ão)', 'inscreva-se no (curso|vestibular)', 'matr[íi]cul(a|e-se|as) (aberta|abertas|j[áa])', 'matr[íi]culas', 'bolsas? de (estudo|at[ée])',
+    '(curso|gradua[çc][ãa]o|faculdade|licenciatura|p[óo]s)[^.]{0,20} (ead|a dist[âa]ncia)', 'vestibular (20\\d\\d|agendado|online|de ver[ãa]o|de inverno)',
+    'conhe[çc]a o curso', '(por que|porque|vale a pena) (fazer|cursar|estudar) (o curso|a faculdade|licenciatura|engenharia)', 'curso de (gradua[çc][ãa]o|licenciatura|bacharelado)',
+    'processo seletivo', 'aula inaugural', 'cupom', 'black friday', 'lan[çc]amento do curso', 'compre (j[áa]|agora)', 'colação de grau', 'tour pel[ao]', 'mentoria'].join('|'), 'i');
+  const PROVA = /enem|vestibular|concurso|quest[ãa]o|JEE|SAT|lista de exerc|resolvid[ao]s? passo/i;
+  const FORA = new Set(['10', '20', '17', '2', '15', '19', '23', '24']);  // categorias do YouTube que não são aula: música, jogos, esportes, carros, animais, viagem, humor, entretenimento
+  const MATEMATICA = /matem|math|n[úu]mero|number|teorema|theorem|conjectur|hip[óo]tese|hypothesis|equa[çc]|equation|geometr|[áa]lgebra|algebra|primo|prime|infinit|paradox|probabil|fractal|fibonacci|\bpi\b|riemann|euler|gauss|ramanujan|fermat|galois|g[öo]del|cantor|noether|topolog|cripto|crypto|l[óo]gica|logic|prova|proof|collatz|goldbach|\bzero\b|c[áa]lculo|calculus|teoria|theory|fields|p vs|p versus/i;
+  const modoV = () => localStorage.getItem('vmodo') === 'curioso' ? 'curioso' : 'virais';
+  const guardaV = () => modoV() === 'curioso' ? 'curiosos' : 'virais';
+  const vistos = () => new Set(ler('vistos', []));
+  function aplicarModoV() {
+    const c = modoV() === 'curioso';
+    document.querySelectorAll('#vmodo button').forEach(b => b.classList.toggle('on', b.dataset.vm === modoV()));
+    $('#vsovirais').hidden = c; $('#vsocurioso').hidden = !c; $('#vshorts').hidden = c;
+    $('#periodo').value = c ? '3650' : '30';
+    $('#vexpl').textContent = c ? 'Conteúdo de matemática de verdade: história, mistérios, problemas em aberto e novidades. Não precisa ter viralizado. Cada busca sorteia temas diferentes.'
+      : 'Vídeos que furaram a bolha: muito mais visualizações que o tamanho do canal.';
+    $('#buscar').textContent = c ? '🧠 Buscar curiosidades' : '🔥 Buscar virais';
+  }
+  function pedidosCuriosos() {  // o que procurar: assunto do professor, ou 3 temas + novidades
+    const tema = $('#vtema').value.trim(), en = $('#vingles').checked;
+    const pt = {relevanceLanguage: 'pt', regionCode: 'BR'}, ing = {relevanceLanguage: 'en'};
+    const recente = {publishedAfter: new Date(Date.now() - 60 * 864e5).toISOString(), nov: 1};
+    if (tema) return [{q: tema, ...pt, order: 'relevance'}, {q: tema + ' matemática', ...pt, order: 'date', nov: 1}, ...(en ? [{q: tema + ' mathematics', ...ing, order: 'relevance'}] : [])];
+    return [...sorteia(TEMAS, 3).map(q => ({q, ...pt, order: 'relevance'})), {q: sorteia(NOVIDADES, 1)[0], ...pt, ...recente, order: 'relevance'},
+      ...(en ? [{q: sorteia(TEMAS_EN, 1)[0], ...ing, order: 'relevance'}, {q: sorteia(NOVIDADES_EN, 1)[0], ...ing, ...recente, order: 'relevance'}] : [])];
+  }
+
   async function buscar() {
     if (!chaveYT()) { tela('config'); return alert('Primeiro cole a sua chave do YouTube (⚙️ no alto, à direita).'); }
+    const curioso = modoV() === 'curioso';
     const lista_ = $('#termos').value.split('\n').map(t => t.trim()).filter(Boolean);
-    if (!lista_.length) return alert('Escreva pelo menos um termo de busca.');
-    gravar('termos', lista_);
-    const dias = Number($('#periodo').value), curtos = $('#soshorts').checked;
+    if (!curioso && !lista_.length) return alert('Escreva pelo menos um termo de busca.');
+    if (!curioso) gravar('termos', lista_);
+    const dias = Number($('#periodo').value), curtos = !curioso && $('#soshorts').checked;
     const depois = new Date(Date.now() - dias * 864e5).toISOString();
+    const pedidos = curioso ? pedidosCuriosos()
+      : lista_.map(q => ({q, order: 'viewCount', regionCode: 'BR', relevanceLanguage: 'pt', ...(curtos ? {videoDuration: 'short'} : {})}));
+    const chaveGuarda = guardaV();
     $('#buscar').disabled = true;
-    $('#vlista').innerHTML = '<p class="dica">🔎 Buscando os vídeos que estão bombando… (uns 10 segundos)</p>';
+    $('#vlista').innerHTML = `<p class="dica">🔎 ${curioso ? 'Procurando curiosidades de matemática' : 'Buscando os vídeos que estão bombando'}… (uns 10 segundos)</p>`;
     try {
-      const ids = new Set();
-      for (const [k, q] of lista_.entries()) {
-        aviso(`Buscando no YouTube: “${q}” (${k + 1} de ${lista_.length})…`);
-        const r = await yt('search', {part: 'id', type: 'video', q, order: 'viewCount', publishedAfter: depois, regionCode: 'BR',
-          relevanceLanguage: 'pt', maxResults: 25, ...(curtos ? {videoDuration: 'short'} : {})});
-        r.items.forEach(i => ids.add(i.id.videoId));
+      const ids = new Map();  // id -> é novidade?
+      for (const [k, {nov, ...x}] of pedidos.entries()) {
+        aviso(`Buscando no YouTube: “${x.q}” (${k + 1} de ${pedidos.length})…`);
+        // quem quer só o que ainda não viu busca mais fundo (o YouTube devolve até 50 pelo mesmo preço)
+        const r = await yt('search', {part: 'id', type: 'video', publishedAfter: depois, maxResults: 50, ...x});
+        r.items.forEach(i => ids.set(i.id.videoId, ids.get(i.id.videoId) || !!nov));
       }
-      aviso('Calculando quais viralizaram…');
+      aviso(curioso ? 'Separando o que é conteúdo…' : 'Calculando quais viralizaram…');
       const videos = [];
-      for (const parte of emPartes([...ids], 50))
+      for (const parte of emPartes([...ids.keys()], 50))
         videos.push(...(await yt('videos', {part: 'snippet,statistics,contentDetails', id: parte.join(',')})).items);
       const inscritos = new Map();
       for (const parte of emPartes([...new Set(videos.map(v => v.snippet.channelId))], 50))
         (await yt('channels', {part: 'statistics', id: parte.join(',')})).items
           .forEach(c => inscritos.set(c.id, Number(c.statistics.subscriberCount || 0)));
-      const res = videos.map(v => {
+      const ja = $('#vnovos').checked ? new Set([...vistos(), ...usados()]) : new Set();
+      let escondidos = 0;
+      const todos = videos.filter(v => {
+        if (PROPAGANDA.test(v.snippet.title)) return false;
+        if (curioso) {
+          const seg_ = segundos(v.contentDetails.duration);
+          if (FORA.has(v.snippet.categoryId) && !/^(numberphile|veritasium|3blue1brown)/i.test(v.snippet.channelTitle)) return false;
+          if (seg_ < 60 || seg_ > 5400) return false;  // ao vivo em andamento (0 s) e aula de horas ficam fora
+          if (PROVA.test(v.snippet.title)) return false;  // resolução de prova não é curiosidade
+          const lingua = (v.snippet.defaultAudioLanguage || v.snippet.defaultLanguage || '').slice(0, 2);
+          if (lingua && lingua !== 'pt' && !(lingua === 'en' && $('#vingles').checked)) return false;
+          if (!MATEMATICA.test(v.snippet.title + ' ' + v.snippet.channelTitle)) return false;
+        }
+        if (ja.has(v.id)) { escondidos++; return false; }
+        return true;
+      }).map(v => {
         const views = Number(v.statistics.viewCount || 0), subs = inscritos.get(v.snippet.channelId) || 0;
         const idade = Math.max(1, (Date.now() - new Date(v.snippet.publishedAt)) / 864e5);
+        const likes = Number(v.statistics.likeCount || 0);
         return {id: v.id, titulo: v.snippet.title, canal: v.snippet.channelTitle, thumb: (v.snippet.thumbnails.medium || v.snippet.thumbnails.default).url,
-          views, subs, dias: Math.round(idade), dur: duracao(v.contentDetails.duration),
+          views, subs, dias: Math.round(idade), dur: duracao(v.contentDetails.duration), novidade: ids.get(v.id) && idade <= 60,
+          // curiosidade: vale a aprovação de quem viu (curtidas por visualização), não o tamanho. +50 no divisor: 3 views com 3 curtidas não ganha de todo mundo
+          gosto: likes / (views + 50),
           // viralizou = muito mais views que o tamanho do canal (piso de 1 000 para canal minúsculo não distorcer)
           vezes: views / Math.max(subs, 1000), comentarios: Number(v.statistics.commentCount || 0)};
-      }).filter(v => v.views >= 5000).sort((a, b) => b.vezes - a.vezes).slice(0, 40);
-      gravar('virais', {quando: new Date().toISOString(), res});
+      });
+      let res;
+      if (curioso) {
+        const porCanal = new Map();  // no máximo 3 por canal, para variar
+        res = todos.filter(v => v.views >= (v.novidade ? 200 : 1000)).sort((a, b) => (b.gosto + (b.novidade ? 0.04 : 0)) - (a.gosto + (a.novidade ? 0.04 : 0)))
+          .filter(v => { const n = (porCanal.get(v.canal) || 0) + 1; porCanal.set(v.canal, n); return n <= 3; }).slice(0, 30);
+      } else res = todos.filter(v => v.views >= 5000).sort((a, b) => b.vezes - a.vezes).slice(0, 40);
+      gravar(chaveGuarda, {quando: new Date().toISOString(), res, escondidos, temas: curioso ? pedidos.map(p => p.q) : null});
+      gravar('vistos', [...new Set([...vistos(), ...res.map(v => v.id)])].slice(-2000));
       mostrarVirais();
       aviso('');
     } catch (e) {
@@ -586,27 +662,30 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
   // ao abrir a aba: busca sozinho se ainda não buscou nas últimas 12 h
   function abrirVirais() {
     if (!$('#vlista')) return;
-    const v = ler('virais', null);
+    const v = ler(guardaV(), null);
     if (!chaveYT()) {
       $('#vlista').innerHTML = '<p class="dica">Falta a <b>chave do YouTube</b>: toque na <b>⚙️</b> (no alto, à direita), cole a chave na parte “Chave do YouTube” e toque em Salvar.</p>';
       return;
     }
+    if ($('#buscar').disabled) return;
     if (!v || Date.now() - new Date(v.quando) > 12 * 3600e3) buscar();
     else mostrarVirais();
   }
 
   function mostrarVirais() {
-    const v = ler('virais', null), u = usados();
-    if (!v) { $('#vlista').innerHTML = '<p class="dica">Toque em <b>🔥 Buscar virais</b> para ver os vídeos.</p>'; return; }
-    if (!v.res.length) { $('#vlista').innerHTML = '<p class="dica">Nenhum vídeo com 5 mil visualizações ou mais nesse período. Escolha um período maior ou troque os termos e busque de novo.</p>'; return; }
+    const v = ler(guardaV(), null), u = usados(), curioso = modoV() === 'curioso';
+    if (!v) { $('#vlista').innerHTML = `<p class="dica">Toque em <b>${curioso ? '🧠 Buscar curiosidades' : '🔥 Buscar virais'}</b> para ver os vídeos.</p>`; return; }
+    const esc_ = v.escondidos ? ` ${v.escondidos} que você já tinha visto ficaram escondidos.` : '';
+    if (!v.res.length) { $('#vlista').innerHTML = `<p class="dica">Nada novo nessa busca.${esc_} ${curioso ? 'Busque de novo: saem outros temas.' : 'Escolha um período maior, troque os termos ou desmarque “Esconder os vídeos que já apareceram”.'}</p>`; return; }
     const quando = new Date(v.quando);
-    $('#vlista').innerHTML = `<p class="dica">Busca de ${quando.toLocaleDateString('pt-BR')} às ${quando.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}. ` +
-      `<b>“× o canal”</b> = visualizações divididas pelos inscritos: quanto maior, mais o vídeo furou a bolha.</p>` +
+    $('#vlista').innerHTML = `<p class="dica">Busca de ${quando.toLocaleDateString('pt-BR')} às ${quando.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}.${esc_} ` +
+      (curioso ? `Temas desta vez: ${esc((v.temas || []).join(' · '))}.</p>`
+        : `<b>“× o canal”</b> = visualizações divididas pelos inscritos: quanto maior, mais o vídeo furou a bolha.</p>`) +
       v.res.map(x => `<div class="viral ${u.has(x.id) ? 'usado' : ''}">
         <a href="https://www.youtube.com/watch?v=${x.id}" target="_blank" rel="noopener"><img src="${esc(x.thumb)}" alt="" loading="lazy"><span class="dur">${x.dur}</span></a>
         <div><b>${esc(x.titulo)}</b>
         <small>${esc(x.canal)} · ${compacto(x.subs)} inscritos</small>
-        <small><span class="vez">${x.vezes >= 20 ? '🔥🔥🔥' : x.vezes >= 5 ? '🔥🔥' : '🔥'} ${compacto(x.vezes)}× o canal</span> · ${compacto(x.views)} views · há ${x.dias} d${u.has(x.id) ? ' · já usado ✓' : ''}</small>
+        <small><span class="vez">${curioso ? `${x.novidade ? '🆕 ' : ''}👍 ${Math.round(x.gosto * 100)}% curtiram` : `${x.vezes >= 20 ? '🔥🔥🔥' : x.vezes >= 5 ? '🔥🔥' : '🔥'} ${compacto(x.vezes)}× o canal`}</span> · ${compacto(x.views)} views · há ${x.dias > 730 ? Math.floor(x.dias / 365) + ' anos' : x.dias + ' d'}${u.has(x.id) ? ' · já usado ✓' : ''}</small>
         <div class="vacoes"><button class="principal" data-r="${x.id}">Roteiro</button><button class="sec" data-c="${x.id}">Carrossel</button></div></div>
       </div>`).join('');
     $('#vlista').querySelectorAll('[data-r]').forEach(b => b.onclick = () => gerar(`https://www.youtube.com/watch?v=${b.dataset.r}`));
@@ -633,6 +712,11 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     PROMPT_R = await fetch(BASE + 'prompt-roteiro.md').then(r => r.text());
     $('#termos').value = termos().join('\n');
     $('#buscar').onclick = buscar;
+    aplicarModoV();
+    document.querySelectorAll('#vmodo button').forEach(b => b.onclick = () => {
+      if ($('#buscar').disabled) return;
+      localStorage.setItem('vmodo', b.dataset.vm); aplicarModoV(); abrirVirais();
+    });
     mostrarVirais();
     $('#rvoltar').onclick = () => tela('roteiros');
     $('#rtp').onclick = abrirTP;
