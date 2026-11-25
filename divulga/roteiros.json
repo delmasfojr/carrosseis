@@ -1,6 +1,180 @@
 {
- "atualizado": "2026-11-24T20:07:25.092Z",
+ "atualizado": "2026-11-25T19:09:29.815Z",
  "roteiros": [
+  {
+   "id": "2026-11-25-1",
+   "criado": "2026-11-25T19:09:29.814Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "MITO x VERDADE",
+   "recurso": "Quiz relâmpago",
+   "conteudo": {
+    "tema": "App · Mito sobre reler a matéria",
+    "nota_viral": 9,
+    "por_que": "Derruba o hábito ineficiente de reler teoria e apresenta o estudo ativo pelo treino rápido do Quiz relâmpago.",
+    "ganchos": [
+     "Reler a teoria várias vezes não faz você aprender matemática.",
+     "Parar pra reler o livro todo dia é o maior erro nos seus estudos.",
+     "Você sabe responder essa conta simples em menos de três segundos?"
+    ],
+    "texto_capa": "RELER NÃO FUNCIONA",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "camera",
+      "fala": "Reler a teoria cinco vezes não faz você aprender matemática. Na hora de resolver exercício, a mente trava.",
+      "quadro": "",
+      "texto_tela": "RELER NÃO É ESTUDAR"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "quadro",
+      "fala": "Macho véi, repara nessa conta aqui. Quanto dá menos três ao quadrado, sem parênteses na estrutura?",
+      "quadro": "-3² = ?",
+      "texto_tela": "QUANTO DÁ ESSA CONTA?"
+     },
+     {
+      "tempo": "20–28 s",
+      "cena": "tela",
+      "fala": "Muita gente marca nove positivo na pressa. Só que o expoente só pega o três, então o resultado correto é menos nove.",
+      "quadro": "-3² = -9",
+      "texto_tela": "-3² É IGUAL A -9"
+     },
+     {
+      "tempo": "28–36 s",
+      "cena": "tela",
+      "fala": "É por isso que no meu app eu coloquei o Quiz relâmpago. Você treina questões rápidas contra o relógio e ganha agilidade.",
+      "quadro": "QUIZ RELÂMPAGO",
+      "texto_tela": "TREINE COM O QUIZ RELÂMPAGO"
+     },
+     {
+      "tempo": "36–45 s",
+      "cena": "camera",
+      "fala": "Você acertaria essa de primeira? Comenta aí sua resposta. O link do app tá na bio pra você testar e segue o Delmão Simplifica pra mais dicas.",
+      "quadro": "",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você respondeu 9 ou -9 antes de ver a explicação? Me conta aqui nos comentários!",
+    "duracao": "45 s",
+    "legenda": "Reler a matéria várias vezes dá uma falsa sensação de domínio! 🧠⚡\n\nEm matemática, o aprendizado real vem do treino ativo e rápido. O Quiz relâmpago do app coloca seu cérebro pra trabalhar sob pressão de tempo.\n\nVocê acertou a conta do vídeo de primeira? 👇\n\nLink do app na bio!\n\n#matematica #estudos #dicasdeestudo #quiz #app #matematicabasica"
+   }
+  },
+  {
+   "id": "2026-11-25-2",
+   "criado": "2026-11-25T19:09:29.815Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "PEGADINHA",
+   "recurso": "Trilha de estudo com lições, vidas e CONFERIR",
+   "conteudo": {
+    "tema": "App · Pegadinha da divisão",
+    "nota_viral": 9,
+    "por_que": "Usa uma pegadinha viral de ordem de operações para engajar e mostrar a utilidade das lições com vidas no app.",
+    "ganchos": [
+     "99% das pessoas erram essa conta simples por causa de uma pegadinha.",
+     "Você faz dez dividido por dois vezes cinco da esquerda pra direita?",
+     "Pare de multiplicar antes de dividir nessa conta rápida de matemática."
+    ],
+    "texto_capa": "PEGADINHA DA DIVISÃO",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "camera",
+      "fala": "Muita gente escorrega em conta simples por falta de atenção na ordem das operações fundamentais.",
+      "quadro": "",
+      "texto_tela": "ERRO CLÁSSICO DE MATEMÁTICA"
+     },
+     {
+      "tempo": "11–19 s",
+      "cena": "quadro",
+      "fala": "Olha só, major. Quanto dá dez dividido por dois vezes cinco? Tem gente que faz dois vezes cinco primeiro e acha que dá um.",
+      "quadro": "10 ÷ 2 × 5 = ?",
+      "texto_tela": "QUAL É O RESULTADO?"
+     },
+     {
+      "tempo": "19–27 s",
+      "cena": "tela",
+      "fala": "Tá errado! Divisão e multiplicação têm a mesma prioridade. A gente resolve da esquerda pra direita. Dez por dois dá cinco, vezes cinco dá vinte e cinco.",
+      "quadro": "10 ÷ 2 × 5 = 25",
+      "texto_tela": "RESOLVA DA ESQUERDA PRA DIREITA"
+     },
+     {
+      "tempo": "27–36 s",
+      "cena": "tela",
+      "fala": "Pra não cair mais nessas armadilhas, a trilha de estudo do meu app tem lições curtas com cinco vidas e o botão conferir pra você fixar a regra.",
+      "quadro": "TRILHA DE ESTUDO",
+      "texto_tela": "APRENDA NA TRILHA DE ESTUDO"
+     },
+     {
+      "tempo": "36–45 s",
+      "cena": "camera",
+      "fala": "Qual resultado você tinha achado antes? Diz nos comentários. O link do app tá na bio pra você treinar agora e segue o Delmão Simplifica.",
+      "quadro": "",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Confessa aqui: você tinha achado 1 ou 25 antes de assistir até o final?",
+    "duracao": "45 s",
+    "legenda": "Cair em pegadinha de prioridade de sinal é mais comum do que parece! ❌🔢\n\nMultiplicação e divisão não têm preferência entre si. A regra é resolver na ordem em que aparecem, da esquerda para a direita.\n\nNa Trilha de Estudo do nosso app, você treina essas regras em lições práticas para zerar os erros bobos.\n\nQual resultado você achou? Comente aí!\n\nLink do app na bio!\n\n#matematica #raciociniologico #dicasdeestudo #app #aprendamatematica"
+   }
+  },
+  {
+   "id": "2026-11-25-3",
+   "criado": "2026-11-25T19:09:29.815Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "ROTINA DE 10 MINUTOS",
+   "recurso": "Caderno de erros",
+   "conteudo": {
+    "tema": "App · Rotina com caderno de erros",
+    "nota_viral": 8,
+    "por_que": "Mostra como criar um hábito eficiente de 10 minutos focando nos próprios erros com o Caderno de erros.",
+    "ganchos": [
+     "Dez minutos diários no lugar certo valem mais que horas estudando errado.",
+     "Como montar uma rotina de dez minutos pra nunca mais errar em matemática?",
+     "Você sabe quanto dá cinquenta por cento ao quadrado de cabeça?"
+    ],
+    "texto_capa": "ROTINA DE 10 MINUTOS",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "camera",
+      "fala": "Você não precisa de quatro horas seguidas pra evoluir em matemática. Dez minutos bem aproveitados todo dia já mudam seu jogo.",
+      "quadro": "",
+      "texto_tela": "ROTINA RÁPIDA DE ESTUDO"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "quadro",
+      "fala": "Repara nessa questão: quanto é cinquenta por cento ao quadrado? Muita gente responde vinte e cinco por cento sem pensar.",
+      "quadro": "(50%)² = ?",
+      "texto_tela": "QUANTO DÁ ESSA CONTA?"
+     },
+     {
+      "tempo": "20–28 s",
+      "cena": "tela",
+      "fala": "E tá certo! Cinquenta por cento é meio, e meio ao quadrado dá vinte e cinco centésimos, que é vinte e cinco por cento.",
+      "quadro": "(0,5)² = 0,25 = 25%",
+      "texto_tela": "50% AO QUADRADO É 25%"
+     },
+     {
+      "tempo": "28–36 s",
+      "cena": "tela",
+      "fala": "Se você errasse essa, no meu app ela iria direto pro caderno de erros. Ela só sai de lá quando você acertar duas vezes seguidas.",
+      "quadro": "CADERNO DE ERROS",
+      "texto_tela": "CADERNO DE ERROS NO APP"
+     },
+     {
+      "tempo": "36–45 s",
+      "cena": "camera",
+      "fala": "Acertou de primeira? Se acertou, esse aí é 100%! Fala pra mim nos comentários. O link do app tá na bio e segue o Delmão Simplifica pra mais dicas.",
+      "quadro": "",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Conseguiu responder 25% de primeira ou travou no meio da conversão?",
+    "duracao": "45 s",
+    "legenda": "Dez minutos de estudo focado por dia trazem mais resultado do que estudar horas sem método! ⏱️📘\n\nNo nosso app, o Caderno de erros guarda cada questão que você erra e só libera quando você acerta duas vezes seguidas. É o fim da repetição de deslizes!\n\nVocê acertou a conta do vídeo de cabeça?\n\nLink do app na bio!\n\n#matematica #porcentagem #estudodiario #rotinadeestudos #app #delmaosimplifica"
+   }
+  },
   {
    "id": "2026-11-24-1",
    "criado": "2026-11-24T20:07:25.091Z",
