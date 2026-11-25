@@ -2851,8 +2851,12 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     item.videoDur = totalDur(); delete item.youtube;
     await salvar(item);
     aviso(''); ocupado = false;
-    alert(`Vídeo pronto! ${Math.round(item.videoDur)} s. Ele aparece no roteiro, com o botão de compartilhar.${falhouVoz ? '\n⚠️ Não deu para limpar a voz neste aparelho: o som ficou como foi gravado.' : ''}`);
+    alert(`Vídeo pronto! ${Math.round(item.videoDur)} s.\nAgora é só postar: ▶ YouTube ou 📲 Instagram, logo embaixo do vídeo.${falhouVoz ? '\n⚠️ Não deu para limpar a voz neste aparelho: o som ficou como foi gravado.' : ''}`);
     fechar();
+    setTimeout(() => {  // desce até o vídeo pronto, onde ficam os botões de postar
+      const v = document.getElementById('rvideofinal');
+      if (v && v.firstChild) { v.scrollIntoView({behavior: 'smooth', block: 'start'}); v.classList.add('pronto'); setTimeout(() => v.classList.remove('pronto'), 2500); }
+    }, 450);
   }
 
   return {abrir, buscarClipes, pedirFigura, previaFigura, espelharFigura};

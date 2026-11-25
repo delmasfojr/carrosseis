@@ -452,8 +452,9 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     if (atual.video) {
       urlVideo = URL.createObjectURL(atual.video);
       $('#rvideofinal').innerHTML = `<video controls playsinline src="${urlVideo}"></video>
-        <div class="acoes"><button id="rcompvid" class="principal">Compartilhar vídeo no Instagram</button>
-        <button id="rytvid" class="sec" style="grid-column:1/-1">▶ Postar no YouTube</button>
+        <p style="margin:12px 0 6px;text-align:center;font-weight:700;color:var(--navy)">Postar:</p>
+        <div class="acoes"><button id="rytvid" class="principal" style="grid-column:auto;margin:0;background:#FF0000">${atual.youtube ? '▶ YouTube de novo' : '▶ YouTube'}</button>
+        <button id="rcompvid" class="principal" style="grid-column:auto;margin:0">📲 Instagram</button>
         ${atual.youtube ? `<a href="https://www.youtube.com/watch?v=${esc(atual.youtube.id)}" target="_blank" rel="noopener" style="grid-column:1/-1;text-align:center;color:var(--navy)">✓ Já está no YouTube: ver o vídeo</a>` : ''}
         <button id="rbaixvid" class="sec" style="grid-column:1/-1">Baixar vídeo</button></div>`;
       $('#rytvid').onclick = () => YouTubePost.abrir(atual, $('#rlegenda').value, salvarR, () => abrir(atual.id));
