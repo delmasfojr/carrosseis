@@ -133,7 +133,13 @@ const Gravador = (() => {
 .eiab button{background:linear-gradient(90deg,#FF7A00,#ff9a3c) !important;color:#fff !important;border:0 !important;font-size:15px}
 .eiab button small{display:block;font-weight:400;font-size:11px;opacity:.9}
 .efemo button{flex:1 0 16% !important;font-size:24px !important;padding:6px 0 !important}
-#edes{position:absolute;inset:0;background:#FFF6E6;z-index:3;display:flex;flex-direction:column}
+#edes,#efoto{position:absolute;inset:0;background:#FFF6E6;z-index:3;display:flex;flex-direction:column}
+.efonota{margin:0;padding:8px 12px;font-size:12px;color:#0F1B2D;background:#E6F1FF}
+#efgrade{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;align-content:start}
+#efgrade button{background:#fff;border:2px solid #D9DDE3 !important;padding:4px;display:flex;flex-direction:column;align-items:center;font-size:10px;font-weight:600;color:#0F1B2D}
+#efgrade img{width:100%;aspect-ratio:1;object-fit:cover;background:#eee}
+#efgrade span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+#efgrade small{font-weight:400;opacity:.7}
 .edtopo{display:flex;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:#0F1B2D}
 .edtopo input{flex:1;font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:0}
 .edtopo button{background:#33415a;color:#fff;padding:0 16px}
@@ -1865,10 +1871,22 @@ Se não houver fala, devolva a lista vazia.`;
         ctx.drawImage(im, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, W, H);
       }
       ctx.restore();
+      if (f.credito) { ctx.save(); ctx.globalAlpha = alfa; creditoFoto(ctx, f.credito, W / 2, 128, W - 80, true); ctx.restore(); }
       if (alfa > 0.5) cobriu = true;
       if (sel) { ctx.save(); ctx.setLineDash([18, 12]); ctx.lineWidth = 8; ctx.strokeStyle = LAR; ctx.strokeRect(10, 10, W - 20, H - 20); ctx.restore(); }
     }
     return cobriu;
+  }
+  function molduraFoto(ctx, w, h, comCredito) {  // foto real: moldura branca de "foto revelada", com sombra
+    const m = Math.max(10, h * 0.03), base = comCredito ? 52 : m;
+    ctx.save(); ctx.shadowColor = '#0007'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 10; ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.roundRect(-w / 2 - m, -h / 2 - m, w + 2 * m, h + m + base, 10); ctx.fill(); ctx.restore();
+  }
+  function creditoFoto(ctx, t, x, y, larg, sobreImagem) {
+    ctx.save(); ctx.font = '600 21px "Open Sans", "Segoe UI", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    while (t.length > 12 && ctx.measureText(t).width > larg) t = t.slice(0, -2).trimEnd() + '…';
+    if (sobreImagem) { ctx.shadowColor = '#000c'; ctx.shadowBlur = 8; ctx.fillStyle = '#fff'; } else ctx.fillStyle = '#5a6270';
+    ctx.fillText(t, x, y); ctx.restore();
   }
   function desenharFigs(ctx, k, local, lay) {
     const pos = posicionarFigs(ctx, k, lay);
@@ -1889,7 +1907,11 @@ Se não houver fala, devolva a lista vazia.`;
       if (f.tipo === 'emoji') {
         ctx.font = `${f.tam}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(f.valor, 0, f.tam * 0.05);
-      } else { const im = imgFig(f); if (im && im.naturalWidth) ctx.drawImage(im, -w0 / 2, -h0 / 2, w0, h0); }
+      } else { const im = imgFig(f); if (im && im.naturalWidth) {
+        if (f.foto) molduraFoto(ctx, w0, h0, !!f.credito);
+        ctx.drawImage(im, -w0 / 2, -h0 / 2, w0, h0);
+        if (f.foto && f.credito) creditoFoto(ctx, f.credito, 0, h0 / 2 + 31, w0, false);
+      } }
       ctx.restore();
       if (sel) {
         ctx.save(); ctx.setLineDash([18, 12]); ctx.lineWidth = 6; ctx.strokeStyle = LAR;
@@ -1914,6 +1936,11 @@ Se não houver fala, devolva a lista vazia.`;
     let emTelaCheia = false;
     g('efimg').onclick = () => { emTelaCheia = false; g('efarq').click(); };
     g('efcheia').onclick = () => { emTelaCheia = true; g('efarq').click(); };
+    g('effoto').onclick = () => escolherFoto((blob, x) => {
+      const id = 'img' + Date.now().toString(36);
+      (item.imagens || (item.imagens = {}))[id] = blob;
+      nova('imagem', id, 480, {foto: true, credito: x.credito || ''});
+    });
     g('efarq').onchange = async () => {
       const f = g('efarq').files[0]; g('efarq').value = ''; if (!f) return;
       if (f.size > 12e6) return alert('Imagem grande demais (mais de 12 MB).');
@@ -1924,13 +1951,13 @@ Se não houver fala, devolva a lista vazia.`;
     };
     function lista() {
       g('eflista').innerHTML = e.figs.length ? '<label>Figuras deste bloco <small>(toque para ajustar)</small></label><div class="ebot" style="flex-wrap:wrap">' +
-        e.figs.map(f => `<button data-fig="${f.id}" class="${f.id === figSel ? 'on' : ''}" style="flex:0 0 auto">${f.tipo === 'emoji' ? esc(f.valor) : f.tipo === 'desenho' ? '🎨 ' + esc(f.valor) : f.cheia ? '🖼️ tela cheia' : '📷 imagem'}${f.ia ? ' ✨' : ''}</button>`).join('') + '</div>' : '';
+        e.figs.map(f => `<button data-fig="${f.id}" class="${f.id === figSel ? 'on' : ''}" style="flex:0 0 auto">${f.tipo === 'emoji' ? esc(f.valor) : f.tipo === 'desenho' ? '🎨 ' + esc(f.valor) : f.cheia ? '🖼️ tela cheia' : f.foto ? '📸 foto' : '📷 imagem'}${f.ia ? ' ✨' : ''}</button>`).join('') + '</div>' : '';
       g('eflista').querySelectorAll('[data-fig]').forEach(b => b.onclick = () => { figSel = b.dataset.fig; lista(); const f = e.figs.find(x => x.id === figSel); verNoTempo(f.ini + 0.4); });
       configFig();
     }
     function configFig() {
       const f = e.figs.find(x => x.id === figSel);
-      if (!f) { g('efcfg').innerHTML = e.figs.length ? '' : '<p class="eaviso2">Escolha um emoji, um desenho do banco ou uma imagem do celular (PNG recortado fica sem fundo). Depois toque ou arraste na prévia para mudar de lugar.</p>'; return; }
+      if (!f) { g('efcfg').innerHTML = e.figs.length ? '' : '<p class="eaviso2">Escolha um emoji, um desenho do banco, uma foto real (📸) ou uma imagem do celular (PNG recortado fica sem fundo). Depois toque ou arraste na prévia para mudar de lugar.</p>'; return; }
       const ANIMS = f.cheia ? {flutua: 'Zoom lento', pop: 'Entra com zoom', nenhuma: 'Corte seco'} : {pop: 'Pula', flutua: 'Flutua', nenhuma: 'Parada'};
       g('efcfg').innerHTML = (f.tipo === 'imagem' ? `<label>Mostrar como</label><div class="ebot"><button data-fc="0" class="${f.cheia ? '' : 'on'}">📷 Figura</button><button data-fc="1" class="${f.cheia ? 'on' : ''}">🖼️ Tela cheia</button></div>` : '') +
         (f.cheia ? `<label>Encaixe</label><div class="ebot"><button data-fe="preencher" class="${f.encaixe !== 'inteira' ? 'on' : ''}">Preencher a tela</button><button data-fe="inteira" class="${f.encaixe === 'inteira' ? 'on' : ''}">Imagem inteira</button></div>
@@ -1993,6 +2020,99 @@ Se não houver fala, devolva a lista vazia.`;
     };
     cv.onpointerup = cv.onpointercancel = () => { if (arrastando) { arrastando = null; guardar(); mostrarQuadro(k, tQuadro); } };
   }
+  /* ---------------------------------------------------------------- 📸 foto real
+     Wikipédia/Wikimedia Commons (sem chave; SÓ imagem de licença livre, com o crédito que a licença pede) e Pixabay (com a chave). */
+  const semHtml = x => String(x || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/\s+/g, ' ').trim();
+  function creditoWiki(m) {  // m = extmetadata da imagem; null = não é livre (não usa)
+    const v = x => m && m[x] ? semHtml(m[x].value) : '';
+    const lic = v('LicenseShortName');
+    if (v('NonFree') === 'true' || !lic || /fair use|non-free/i.test(lic)) return null;
+    if (/public domain|dom[ií]nio p[uú]blico|^pd\b|^cc0/i.test(lic)) return 'Foto: domínio público';
+    const autor = v('Artist').replace(/^(unknown|autor desconhecido|desconhecido).*$/i, '').slice(0, 40);
+    return `Foto: ${autor ? autor + ' · ' : ''}${lic} · Wikimedia`;
+  }
+  const miniWiki = u => u.replace(/\/(\d+)px-([^/]+)$/, '/320px-$2');
+  async function jsonDe(url) { const r = await fetch(url); if (!r.ok) throw new Error(`a busca respondeu ${r.status}`); return r.json(); }
+  async function buscarFotos(termo, {soPrimeira = false} = {}) {
+    const q = encodeURIComponent(termo.trim()), achou = [], vistos = new Set();
+    const por = x => { const nome = normal(decodeURIComponent((x.arquivo || x.url).split('/').pop()).replace(/^(file|arquivo|ficheiro):/i, '')); if (!vistos.has(nome)) { vistos.add(nome); achou.push(x); } };
+    // 1) a foto principal dos artigos da Wikipédia (português e inglês)
+    for (const l of ['pt', 'en']) {
+      try {
+        const api = `https://${l}.wikipedia.org/w/api.php?format=json&origin=*&action=query`;
+        const j = await jsonDe(`${api}&generator=search&gsrsearch=${q}&gsrlimit=6&prop=pageimages&piprop=thumbnail|name&pithumbsize=1400&pilicense=free`);
+        const pags = Object.values((j.query || {}).pages || {}).filter(p => p.thumbnail && p.pageimage).sort((a, b) => a.index - b.index);
+        if (!pags.length) continue;
+        const li = await jsonDe(`${api}&prop=imageinfo&iiprop=extmetadata&iiextmetadatafilter=LicenseShortName|Artist|NonFree&titles=` +
+          encodeURIComponent(pags.map(p => 'File:' + p.pageimage).join('|')));
+        const meta = {};
+        Object.values((li.query || {}).pages || {}).forEach(p => { if (p.imageinfo) meta[normal(p.title.replace(/^[^:]+:/, ''))] = p.imageinfo[0].extmetadata; });
+        for (const p of pags) {
+          const cr = creditoWiki(meta[normal(p.pageimage.replace(/_/g, ' '))]);
+          if (cr) por({fonte: 'Wikipédia', titulo: p.title, url: p.thumbnail.source, capa: miniWiki(p.thumbnail.source), arquivo: p.pageimage, credito: cr});
+        }
+      } catch (err) { /* sem internet ou a busca falhou: segue para a próxima fonte */ }
+      if (soPrimeira && achou.length) return achou;
+    }
+    // 2) arquivos do Wikimedia Commons
+    try {
+      const j = await jsonDe(`https://commons.wikimedia.org/w/api.php?format=json&origin=*&action=query&generator=search&gsrnamespace=6&gsrsearch=${q}&gsrlimit=18` +
+        '&prop=imageinfo&iiprop=url|mime|extmetadata&iiurlwidth=1400&iiextmetadatafilter=LicenseShortName|Artist|NonFree');
+      Object.values((j.query || {}).pages || {}).sort((a, b) => a.index - b.index).forEach(p => {
+        const ii = p.imageinfo && p.imageinfo[0];
+        if (!ii || !/^image\/(jpeg|png|webp|gif|tiff)/.test(ii.mime || '') || !ii.thumburl) return;
+        const cr = creditoWiki(ii.extmetadata);
+        if (cr) por({fonte: 'Wikimedia', titulo: p.title.replace(/^File:/, '').replace(/\.\w+$/, ''), url: ii.thumburl, capa: miniWiki(ii.thumburl), arquivo: p.title, credito: cr});
+      });
+    } catch (err) {}
+    if (soPrimeira && achou.length) return achou;
+    // 3) Pixabay (fotos genéricas: sala de aula, quadro-negro…), se houver a chave
+    const pb = localStorage.getItem('pixabay');
+    if (pb) try {
+      const j = await jsonDe(`https://pixabay.com/api/?key=${encodeURIComponent(pb)}&q=${q}&image_type=photo&per_page=12&safesearch=true&lang=pt`);
+      (j.hits || []).forEach(h => por({fonte: 'Pixabay', titulo: (h.tags || '').split(',')[0], url: h.largeImageURL || h.webformatURL, capa: h.previewURL || h.webformatURL,
+        credito: `Foto: ${h.user || 'Pixabay'} · Pixabay`}));
+    } catch (err) {}
+    return achou;
+  }
+  async function baixarFoto(x) {
+    const r = await fetch(x.url);
+    if (!r.ok) throw new Error(`o site respondeu ${r.status}`);
+    const blob = await r.blob();
+    if (!/^image\//.test(blob.type)) throw new Error('não veio uma imagem');
+    if (blob.size > 12e6) throw new Error('imagem grande demais');
+    return blob;
+  }
+  function escolherFoto(aoEscolher, termo0 = '') {
+    let cx = g('efoto');
+    if (!cx) {
+      cx = document.createElement('div'); cx.id = 'efoto';
+      cx.innerHTML = `<div class="edtopo"><input id="efobusca" type="search" enterkeyhint="search" placeholder="Quem ou o quê? (ex.: George Dantzig)"><button id="efoir">🔎</button><button id="efofechar">✕</button></div>
+        <p class="efonota">Só fotos de licença livre (Wikipédia/Wikimedia e, com a chave, Pixabay). Quando a licença pede, o crédito sai pequeno no vídeo.</p><div id="efgrade"></div>`;
+      g('gedit').appendChild(cx);
+      g('efofechar').onclick = () => { cx.hidden = true; };
+    }
+    let vez = 0;
+    const buscar = async () => {
+      const t = g('efobusca').value.trim(); if (!t) return;
+      const minha = ++vez;
+      g('efgrade').innerHTML = '<p style="padding:20px;grid-column:1/-1">Buscando fotos…</p>';
+      const lista = await buscarFotos(t);
+      if (minha !== vez) return;
+      if (!lista.length) { g('efgrade').innerHTML = '<p style="padding:20px;grid-column:1/-1">Nenhuma foto livre encontrada. Tente o nome completo, em inglês, ou mais curto.</p>'; return; }
+      g('efgrade').innerHTML = lista.map((x, n) => `<button data-n="${n}" title="${esc(x.credito)}"><img src="${esc(x.capa)}" loading="lazy" alt=""><span>${esc(x.titulo)}</span><small>${esc(x.fonte)}</small></button>`).join('');
+      g('efgrade').querySelectorAll('[data-n]').forEach(b => b.onclick = async () => {
+        const x = lista[b.dataset.n], sp = b.querySelector('span');
+        b.disabled = true; sp.textContent = 'Baixando…';
+        try { const blob = await baixarFoto(x); cx.hidden = true; aoEscolher(blob, x); }
+        catch (err) { b.disabled = false; sp.textContent = x.titulo; alert(`Não consegui baixar essa foto (${err.message}). Escolha outra.`); }
+      });
+    };
+    g('efoir').onclick = buscar;
+    g('efobusca').onkeydown = ev => { if (ev.key === 'Enter') buscar(); };
+    g('efobusca').value = termo0; g('efgrade').innerHTML = ''; cx.hidden = false;
+    if (termo0) buscar(); else g('efobusca').focus();
+  }
   function escolherDesenho(aoEscolher) {
     let caixa_ = g('edes');
     if (!caixa_) {
@@ -2054,6 +2174,10 @@ Se não houver fala, devolva a lista vazia.`;
   (o meio é da conta); duas figuras do mesmo bloco em posições diferentes.`
       : `- figuras: 0 a 2 por bloco, cada uma ligada a UMA palavra que o professor fala naquele bloco (copie a palavra exatamente como está na fala).
   tipo "emoji" (um emoji só) ou "desenho" (use SÓ nomes exatos da lista abaixo). posicao: alto_esquerda, alto_direita, meio_esquerda, meio_direita ou centro.`;
+    const regraFoto = `- tipo "foto": FOTO REAL buscada na Wikipédia, só para PESSOA, LUGAR, OBRA ou FATO HISTÓRICO real que a fala cita pelo nome
+  (ex.: "George Dantzig", "Jerzy Neyman", "Universidade da Califórnia em Berkeley", "Pirâmide de Quéops"). valor = o nome como está na Wikipédia, completo.
+  Quando a fala cita alguém real pelo nome, use a foto dele no bloco em que o nome aparece. No máximo 1 foto por bloco e 4 no vídeo.
+  NUNCA use foto para coisa genérica (dinheiro, pizza, aluno, prova): para isso use desenho ou emoji.`;
     const prompt = `Você é editor de vídeos curtos (Reels) de matemática do professor Delmão (@delmaosimplifica), com mascote.
 Tema do vídeo: "${item.conteudo.tema}". Abaixo, o que o professor FALOU em cada bloco. Monte a cena de cada bloco para o vídeo prender a atenção,
 sem poluir. Regras:
@@ -2066,6 +2190,7 @@ ${regrasLayout}
 - mascote_canto: true se o mascote pequeno no canto ajuda naquele bloco (não use em blocos com layout de mascote).
 ${regrasApoio}
 ${regrasFig}
+${regraFoto}
 Desenhos disponíveis (nome = o que mostra):
 ${desenhos}
 
@@ -2078,7 +2203,7 @@ ${textoBlocos}`;
       escala_sentido: E('sai', 'entra'), busca_clipe: {type: 'STRING'},
       pose: E(...Object.keys(POSES)), mascote_canto: {type: 'BOOLEAN'}, titulo: {type: 'STRING'}, cor_titulo: E(...Object.keys(CORES_TITULO)),
       conta: {type: 'STRING'}, transicao: E(...Object.keys(TRANSICOES)),
-      figuras: {type: 'ARRAY', items: {type: 'OBJECT', properties: {tipo: E('emoji', 'desenho'), valor: {type: 'STRING'}, palavra: {type: 'STRING'},
+      figuras: {type: 'ARRAY', items: {type: 'OBJECT', properties: {tipo: E('emoji', 'desenho', 'foto'), valor: {type: 'STRING'}, palavra: {type: 'STRING'},
         posicao: semVideo ? E('alto_esquerda', 'alto_direita', 'baixo_esquerda', 'baixo_direita') : E('alto_esquerda', 'alto_direita', 'meio_esquerda', 'meio_direita', 'centro')}, required: ['tipo', 'valor', 'palavra', 'posicao']}}},
       required: ['bloco', 'layout', 'pose', 'mascote_canto', 'titulo', 'cor_titulo', 'conta', 'transicao', 'figuras']}}}, required: ['blocos']};
     const r = await chamarGemini(JSON.stringify({contents: [{parts: [{text: prompt}]}],
@@ -2090,7 +2215,7 @@ ${textoBlocos}`;
     const POS = {alto_esquerda: [0.24, 0.3], alto_direita: [0.76, 0.3], meio_esquerda: [0.22, 0.5], meio_direita: [0.78, 0.5], centro: [0.5, 0.46],
       baixo_esquerda: [0.25, 0.58], baixo_direita: [0.75, 0.58]};
     let nFig = 0;
-    const pedirClipe = [];
+    const pedirClipe = [], pedirFoto = [];
     const ehEmoji = v => /\p{Extended_Pictographic}/u.test(v || '');
     for (const x of r.blocos || []) {
       const k = x.bloco - 1; if (!(k >= 0 && k < blocos.length)) continue;
@@ -2119,9 +2244,26 @@ ${textoBlocos}`;
         const ini = quandoFala(k, fg.palavra);
         const [px, py] = POS[fg.posicao] || POS.centro;
         const inicio = ini == null ? 0.3 : Math.max(0, ini - 0.1);
+        if (fg.tipo === 'foto') { if (fg.valor && pedirFoto.length < 4) pedirFoto.push({k, termo: fg.valor, px, py, inicio, dur}); continue; }
         e.figs.push({id: 'ia' + Date.now().toString(36) + nFig++, tipo: fg.tipo, valor: fg.valor, x: px, y: py, tam: fg.tipo === 'emoji' ? 200 : 280,
           ini: +inicio.toFixed(2), fim: +Math.min(dur, inicio + 2.4).toFixed(2), anim: 'pop', ia: true});
       }
+    }
+    const fotoAchada = new Map();
+    for (const [n, p] of pedirFoto.entries()) {  // busca as fotos reais que a IA pediu (a 1ª foto livre da Wikipédia)
+      aviso(`📸 Buscando foto: ${p.termo}… (${n + 1} de ${pedirFoto.length})`);
+      try {
+        let ach = fotoAchada.get(p.termo);
+        if (!ach) {
+          const x = (await buscarFotos(p.termo, {soPrimeira: true})).find(z => z.fonte !== 'Pixabay');
+          if (!x) continue;
+          const id = 'img' + Date.now().toString(36) + n;
+          (item.imagens || (item.imagens = {}))[id] = await baixarFoto(x);
+          fotoAchada.set(p.termo, ach = {id, credito: x.credito});
+        }
+        est(p.k).figs.push({id: 'ia' + Date.now().toString(36) + nFig++, tipo: 'imagem', valor: ach.id, foto: true, credito: ach.credito, x: p.px, y: p.py, tam: 520,
+          ini: +p.inicio.toFixed(2), fim: +Math.min(p.dur, p.inicio + 3).toFixed(2), anim: 'pop', ia: true});
+      } catch (err) { /* sem foto livre: o bloco fica sem ela */ }
     }
     for (const [n, [k, termo]] of pedirClipe.entries()) {  // baixa os vídeos de apoio que a IA pediu
       aviso(`🎞️ Buscando vídeo de apoio… (${n + 1} de ${pedirClipe.length})`);
@@ -2454,7 +2596,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       <label>Pôr na tela <small>(toque num emoji)</small></label>
       <div class="ebot efemo" style="flex-wrap:wrap">${EMOJIS.map(x => `<button data-emo="${x}">${x}</button>`).join('')}</div>
       <div class="ebot"><button id="efoutro">😀 Outro emoji</button><button id="efdes">🎨 Desenho</button><button id="efimg">📷 Imagem</button></div>
-      <div class="ebot"><button id="efcheia">🖼️ Imagem em tela cheia</button></div>
+      <div class="ebot"><button id="effoto">📸 Foto real <small>(pessoa, lugar, fato)</small></button><button id="efcheia">🖼️ Imagem em tela cheia</button></div>
       <input id="efarq" type="file" accept="image/*" hidden>
       <div id="eflista"></div>
       <div id="efcfg"></div>
