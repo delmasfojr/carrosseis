@@ -255,8 +255,10 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       aviso('📄 Lendo o arquivo…');
       const {questao, roteiros, partes} = await pedirPdf(arquivo, numero, pagina, obs, res, extra.gab || '');
       const conteudo = roteiros[0];
-      const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '', assunto: extra.enem ? `ENEM ${extra.enem.ano} · Questão ${numero} · ${extra.enem.assunto}` : `Questão ${numero} de ${arquivo.name}`,
-        ...(extra.enem ? {enem: extra.enem.id} : {}),
+      const bq = extra.enem || extra.basica;
+      const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '',
+        assunto: extra.enem ? `ENEM ${extra.enem.ano} · Questão ${numero} · ${extra.enem.assunto}` : extra.basica ? `${extra.basica.lista.replace(/^A/, 'Aula ')} · Questão ${numero} · ${extra.basica.tema}` : `Questão ${numero} de ${arquivo.name}`,
+        ...(bq ? {questaoBanco: bq.id} : {}),
         conteudo, gancho: 0, visual: true, edicao: {soVoz: true}, questao,
         enunciado: [questao.enunciado, questao.alternativas, questao.figura_descricao ? 'FIGURA: ' + questao.figura_descricao : ''].filter(Boolean).join('\n')};
       // a figura animada já sai junto, presa às palavras do roteiro (o professor lê o roteiro ao gravar)
@@ -276,7 +278,7 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       } catch (e) { item.erroFigura = e.message; }
       // gancho com a figura ORIGINAL da prova (recortada da página); a figura animada entra a partir do bloco 2
       try {
-        const q = extra.enem ? arquivo : await recortarFigura(partes, questao.questao_pagina, questao.questao_caixa);  // a questão inteira, como na prova (do banco: o próprio recorte)
+        const q = bq ? arquivo : await recortarFigura(partes, questao.questao_pagina, questao.questao_caixa);  // a questão inteira, como na prova (do banco: o próprio recorte)
         const real = await recortarFigura(partes, questao.figura_pagina, questao.figura_caixa);  // só a figura
         item.imagens = {...(q ? {questao: q} : {}), ...(real ? {real} : {})};
         const mostra = q ? 'questao' : real ? 'real' : null;
@@ -293,7 +295,7 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       if (!ehConta(conteudo.gancho_quadro)) conteudo.gancho_quadro = '';
       for (const b of conteudo.blocos) if (!ehConta(b.quadro)) b.quadro = '';
       await salvarR(item);
-      if (extra.enem) gravar('questoesFeitas', [...new Set([...ler('questoesFeitas', []), extra.enem.id])]);
+      if (bq) gravar('questoesFeitas', [...new Set([...ler('questoesFeitas', []), bq.id])]);
       aviso('');
       const cf = questao.conferencia || {};
       const conf = (questao.confere === 'sim' ? `✅ Bate com o gabarito ${extra.gab ? 'oficial' : 'do documento'}.` : questao.confere === 'nao' ? `⚠️ NÃO bate com o gabarito ${extra.gab ? 'oficial (' + extra.gab + ')' : 'do documento'}: confira antes de gravar!` : 'O documento não trouxe gabarito.')
@@ -687,64 +689,100 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
 
   /* ---------------------------------------------------------------- 📝 Questões do ENEM
      Banco do professor (2017–2026, regular): recorte ORIGINAL da prova + gabarito oficial + assunto. Gerado por montar_questoes.py. */
-  let QUESTOES = null, fazendoQuestao = false, qMostrar = 20;
-  async function carregarQuestoes() {
-    if (!QUESTOES) {
-      const r = await fetch(BASE + 'questoes.json', {cache: 'no-cache'});
-      if (!r.ok) throw new Error('não achei o banco de questões (questoes.json).');
-      QUESTOES = await r.json();
+  const BANCOS = {
+    enem: {arq: 'questoes.json', pasta: 'questoes', rotA: 'Assunto', rotN: 'Ano',
+      expl: 'Questões do ENEM (2017–2026), recortadas da prova. Toque em <b>🎬 Fazer vídeo</b>: a IA resolve (tem de bater com o gabarito oficial), escreve o roteiro e desenha a figura. Você só grava a voz lendo o teleprompter.'},
+    basicas: {arq: 'basicas.json', pasta: 'basicas', rotA: 'Lista', rotN: 'Nível',
+      expl: 'Questões das NOSSAS listas (Bloco 01 e Matemática Básica): frações, potências, notação científica, razão e proporção, porcentagem, álgebra… O vídeo segue o NOSSO gabarito comentado: a IA não resolve, só transforma em roteiro. Você grava a voz lendo o teleprompter.'},
+  };
+  const bancoQ = {};
+  let fazendoQuestao = false, qMostrar = 20;
+  const fonteQ = () => localStorage.getItem('qfonte') === 'enem' ? 'enem' : 'basicas';
+  async function carregarQuestoes(f) {
+    if (!bancoQ[f]) {
+      const r = await fetch(BASE + BANCOS[f].arq, {cache: 'no-cache'});
+      if (!r.ok) throw new Error(`não achei o banco de questões (${BANCOS[f].arq}).`);
+      bancoQ[f] = await r.json();
     }
-    return QUESTOES;
+    return bancoQ[f];
   }
   async function mostrarQuestoes(mais = false) {
+    const f = fonteQ(), B = BANCOS[f];
     qMostrar = mais ? qMostrar + 20 : 20;
-    if (!QUESTOES) $('#vlista').innerHTML = '<p class="dica">Abrindo o banco de questões…</p>';
+    document.querySelectorAll('#qfonte button').forEach(b => {
+      b.classList.toggle('on', b.dataset.qf === f);
+      b.onclick = () => { if (fazendoQuestao) return; localStorage.setItem('qfonte', b.dataset.qf); mostrarQuestoes(); };
+    });
+    $('#qrotA').textContent = B.rotA; $('#qrotN').textContent = B.rotN; $('#qexpl').innerHTML = B.expl;
+    if (!bancoQ[f]) $('#vlista').innerHTML = '<p class="dica">Abrindo o banco de questões…</p>';
     let qs;
-    try { qs = await carregarQuestoes(); } catch (e) { $('#vlista').innerHTML = `<p class="dica">${esc(e.message)}</p>`; return; }
+    try { qs = await carregarQuestoes(f); } catch (e) { $('#vlista').innerHTML = `<p class="dica">${esc(e.message)}</p>`; return; }
     const selA = $('#qassunto'), selN = $('#qano'), chk = $('#qesconder');
-    if (!selA.options.length) {
+    const grupo = q => f === 'enem' ? q.aula : q.lista, sub = q => f === 'enem' ? String(q.ano) : q.nivel;
+    if (selA.dataset.fonte !== f) {
+      selA.dataset.fonte = f;
       const por = new Map();
-      qs.forEach(q => { if (!por.has(q.aula)) por.set(q.aula, {nome: q.assunto, n: 0}); por.get(q.aula).n++; });
-      selA.innerHTML = '<option value="">Todos os assuntos</option>' + [...por].sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([k, x]) => `<option value="${k}">${esc(x.nome)} (${x.n})</option>`).join('');
-      selN.innerHTML = '<option value="">Todos os anos</option>' + [...new Set(qs.map(q => q.ano))].sort((a, b) => b - a).map(a => `<option>${a}</option>`).join('');
-      selA.value = localStorage.getItem('qassunto') || ''; selN.value = localStorage.getItem('qano') || '';
+      qs.forEach(q => { const g = grupo(q); if (!por.has(g)) por.set(g, {nome: f === 'enem' ? q.assunto : `${g.replace(/^A/, 'Aula ')} · ${q.tema}`, n: 0}); por.get(g).n++; });
+      const ordem = f === 'enem' ? [...por].sort((a, b) => a[0].localeCompare(b[0])) : [...por];
+      selA.innerHTML = `<option value="">${f === 'enem' ? 'Todos os assuntos' : 'Todas as listas'}</option>` + ordem.map(([k, x]) => `<option value="${k}">${esc(x.nome)} (${x.n})</option>`).join('');
+      const subs = [...new Set(qs.map(sub))];
+      if (f === 'enem') subs.sort((a, b) => b - a);
+      selN.innerHTML = `<option value="">${f === 'enem' ? 'Todos os anos' : 'Todos os níveis'}</option>` + subs.map(a => `<option>${esc(a)}</option>`).join('');
+      selA.value = localStorage.getItem('qassunto-' + f) || ''; selN.value = localStorage.getItem('qano-' + f) || '';
+      if (selA.selectedIndex < 0) selA.value = ''; if (selN.selectedIndex < 0) selN.value = '';
       chk.checked = localStorage.getItem('qesconder') !== '0';
-      selA.onchange = selN.onchange = chk.onchange = () => {
-        localStorage.setItem('qassunto', selA.value); localStorage.setItem('qano', selN.value); localStorage.setItem('qesconder', chk.checked ? '1' : '0');
-        mostrarQuestoes();
-      };
     }
+    selA.onchange = selN.onchange = chk.onchange = () => {
+      localStorage.setItem('qassunto-' + f, selA.value); localStorage.setItem('qano-' + f, selN.value); localStorage.setItem('qesconder', chk.checked ? '1' : '0');
+      mostrarQuestoes();
+    };
     const feitas = new Set(ler('questoesFeitas', []));
-    const doFiltro = qs.filter(q => (!selA.value || q.aula === selA.value) && (!selN.value || String(q.ano) === selN.value)).sort((a, b) => b.ano - a.ano || a.q - b.q);
+    let doFiltro = qs.filter(q => (!selA.value || grupo(q) === selA.value) && (!selN.value || sub(q) === selN.value));
+    if (f === 'enem') doFiltro = doFiltro.sort((a, b) => b.ano - a.ano || a.q - b.q);
     const lista_ = doFiltro.filter(q => !(chk.checked && feitas.has(q.id)));
     const nFeitas = doFiltro.length - lista_.length;
-    if (!lista_.length) { $('#vlista').innerHTML = `<p class="dica">Nenhuma questão aqui${nFeitas ? ` (as ${nFeitas} deste filtro já viraram vídeo)` : ''}. Troque o assunto ou o ano.</p>`; return; }
+    if (!lista_.length) { $('#vlista').innerHTML = `<p class="dica">Nenhuma questão aqui${nFeitas ? ` (as ${nFeitas} deste filtro já viraram vídeo)` : ''}. Troque o filtro.</p>`; return; }
+    const titulo = q => f === 'enem' ? `ENEM ${q.ano} · Questão ${q.q}` : `${q.lista.replace(/^A/, 'Aula ')} · Questão ${q.q}`;
+    const linhas = q => f === 'enem' ? `<small>${esc(q.assunto)} · ${esc(q.cobra)}</small><small>Gabarito: ${esc(q.gab)}${q.extraoficial ? ' (extraoficial)' : ''}</small>`
+      : `<small>${esc(q.tema)} · ${esc(q.nivel)}</small>`;
     $('#vlista').innerHTML = `<p class="dica">${lista_.length} questões${nFeitas ? ` · ${nFeitas} já viraram vídeo (escondidas)` : ''}.</p>` +
       lista_.slice(0, qMostrar).map(q => `<div class="qcard ${feitas.has(q.id) ? 'usado' : ''}">
-        <div class="qimg"><img src="${BASE}questoes/${q.id}.jpg" loading="lazy" alt="Questão ${q.q} do ENEM ${q.ano}"></div>
-        <b>ENEM ${q.ano} · Questão ${q.q}${feitas.has(q.id) ? ' · já virou vídeo ✓' : ''}</b>
-        <small>${esc(q.assunto)} · ${esc(q.cobra)}</small>
-        <small>Gabarito: ${esc(q.gab)}${q.extraoficial ? ' (extraoficial)' : ''}</small>
+        <div class="qimg"><img src="${BASE}${B.pasta}/${q.id}.jpg" loading="lazy" alt="${esc(titulo(q))}"></div>
+        <b>${esc(titulo(q))}${feitas.has(q.id) ? ' · já virou vídeo ✓' : ''}</b>${linhas(q)}
         <button class="principal" data-q="${q.id}">🎬 Fazer vídeo</button></div>`).join('') +
       (lista_.length > qMostrar ? '<button id="qmais" class="sec" style="width:100%;margin-top:12px">Mostrar mais</button>' : '');
-    $('#vlista').querySelectorAll('.qimg').forEach(d => d.onclick = () => d.classList.toggle('aberta'));
-    $('#vlista').querySelectorAll('[data-q]').forEach(b => b.onclick = () => videoDaQuestao(b.dataset.q, b));
+    $('#vlista').querySelectorAll('.qimg').forEach(d => {
+      const im = d.querySelector('img'), medir = () => d.classList.toggle('curta', im.offsetHeight <= d.clientHeight + 2);
+      if (im.complete) medir(); else im.onload = medir;
+      d.onclick = () => { if (!d.classList.contains('curta')) d.classList.toggle('aberta'); };
+    });
+    $('#vlista').querySelectorAll('[data-q]').forEach(b => b.onclick = () => videoDaQuestao(f, b.dataset.q, b));
     if ($('#qmais')) $('#qmais').onclick = () => mostrarQuestoes(true);
   }
-  async function videoDaQuestao(id, botao) {
+  async function videoDaQuestao(f, id, botao) {
     if (fazendoQuestao) return;
-    const q = QUESTOES.find(x => x.id === id);
+    const q = (bancoQ[f] || []).find(x => x.id === id);
     if (!q) return;
     if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
     fazendoQuestao = true;
-    const antes = botao.textContent; botao.disabled = true; botao.textContent = '⏳ Resolvendo e montando o roteiro… (1 a 2 min)';
+    const antes = botao.textContent; botao.disabled = true; botao.textContent = '⏳ Montando o roteiro… (1 a 2 min)';
     try {
-      const r = await fetch(`${BASE}questoes/${id}.jpg`);
+      const r = await fetch(`${BASE}${BANCOS[f].pasta}/${id}.jpg`);
       if (!r.ok) throw new Error('não consegui abrir o recorte da questão.');
-      const arq = new File([await r.blob()], `ENEM ${q.ano} - Questão ${q.q}.jpg`, {type: 'image/jpeg'});
-      await gerarPdf(arq, q.q, '', `É a questão ${q.q} do ENEM ${q.ano} (prova_citada = "ENEM ${q.ano}"). Assunto: ${q.assunto} (${q.cobra}). ` +
-        'A imagem é o recorte da própria prova: a questão inteira, com as alternativas.', '', {gab: q.gab, enem: q});
+      const blob = await r.blob();
+      if (f === 'enem') {
+        const arq = new File([blob], `ENEM ${q.ano} - Questão ${q.q}.jpg`, {type: 'image/jpeg'});
+        await gerarPdf(arq, q.q, '', `É a questão ${q.q} do ENEM ${q.ano} (prova_citada = "ENEM ${q.ano}"). Assunto: ${q.assunto} (${q.cobra}). ` +
+          'A imagem é o recorte da própria prova: a questão inteira, com as alternativas.', '', {gab: q.gab, enem: q});
+      } else {
+        const nome = q.lista.replace(/^A/, 'Aula ');
+        const arq = new File([blob], `${nome} - Questão ${q.q}.jpg`, {type: 'image/jpeg'});
+        await gerarPdf(arq, q.q, '', `É a questão ${q.q} da lista "${q.tema}" (${nome}) do próprio professor Delmão: questão ORIGINAL, não é de prova (prova_citada = ""). ` +
+          `Nível: ${q.nivel}. A imagem é o recorte da lista. O enunciado em LaTeX (para ler sem erro): """${q.tex}"""\n` +
+          'Se a questão tiver vários itens (a, b, c…), o vídeo resolve só 1 ou 2 itens (os que mais ensinam) e convida a resolver os outros nos comentários. ' +
+          'Fale para quem faz concurso e vestibular e tem dificuldade na base: calma, passo a passo, mostrando o porquê.',
+          q.res, {basica: q});
+      }
     } catch (e) { alert('Deu erro: ' + e.message); }
     finally { fazendoQuestao = false; botao.disabled = false; botao.textContent = antes; }
   }
