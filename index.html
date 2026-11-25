@@ -79,6 +79,14 @@ details.mais .check{margin-top:4px}
 .rodape .perigo{padding:8px 0}
 select{width:100%;font:inherit;padding:12px 14px;border:2px solid var(--cinza);border-radius:12px;background:#fff;color:var(--navy)}
 #termos{min-height:150px}
+.qcard{background:#fff;border-radius:12px;padding:10px;margin-top:10px}
+.qcard.usado{opacity:.6}
+.qcard .qimg{max-height:230px;overflow:hidden;border-radius:8px;border:1px solid #D9DDE3;position:relative;cursor:zoom-in}
+.qcard .qimg.aberta{max-height:none;cursor:zoom-out}
+.qcard .qimg:not(.aberta)::after{content:'toque para ver inteira';position:absolute;left:0;right:0;bottom:0;padding:18px 0 6px;text-align:center;font-size:12px;color:#0F1B2D;background:linear-gradient(transparent,#fff 70%)}
+.qcard .qimg img{width:100%;display:block}
+.qcard b{display:block;margin-top:8px}.qcard small{display:block;color:#556}
+.qcard .principal{width:100%;margin-top:8px}
 .viral{display:flex;gap:10px;background:#fff;border-radius:12px;padding:10px;margin-top:10px}
 .viral>a{position:relative;flex:none;width:38%}
 .viral img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block}
@@ -255,19 +263,25 @@ nav button i{position:relative}
 
   <section class="tela" id="virais" hidden>
     <h2>Ideias <span>de vídeo</span></h2>
-    <div class="seg" id="vmodo"><button data-vm="virais">🔥 Viralizando</button><button data-vm="curioso">🧠 Curiosidades</button></div>
+    <div class="seg" id="vmodo"><button data-vm="virais">🔥 Viralizando</button><button data-vm="curioso">🧠 Curiosidades</button><button data-vm="questoes">📝 Questões</button></div>
     <p id="vexpl" style="margin:-4px 0 0;color:#556"></p>
     <div id="vsovirais"><label for="termos">O que buscar no YouTube (um termo por linha)</label>
     <textarea id="termos" spellcheck="false"></textarea></div>
     <div id="vsocurioso" hidden><label for="vtema">Um assunto seu (opcional)</label>
     <input id="vtema" type="text" placeholder="ex.: hipótese de Riemann" autocomplete="off">
     <label class="check"><input id="vingles" type="checkbox" checked> <span>Incluir vídeos em inglês (o roteiro sai em português)</span></label></div>
+    <div id="vsoquestoes" hidden>
+    <label for="qassunto">Assunto</label><select id="qassunto"></select>
+    <label for="qano">Ano</label><select id="qano"></select>
+    <label class="check"><input id="qesconder" type="checkbox" checked> <span>Esconder as que já viraram vídeo</span></label>
+    <p class="dica">Questões do ENEM (2017–2026), recortadas da prova. Toque em <b>🎬 Fazer vídeo</b>: a IA resolve (tem de bater com o gabarito oficial), escreve o roteiro e desenha a figura. Você só grava a voz lendo o teleprompter.</p></div>
+    <div id="vbusca">
     <label for="periodo">Publicados nos últimos</label>
     <select id="periodo"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option><option value="365">1 ano</option><option value="3650">Qualquer data</option></select>
     <label class="check" id="vshorts"><input id="soshorts" type="checkbox" checked> <span>Só vídeos curtos (até 4 min, inclui Shorts)</span></label>
     <button id="buscar" class="principal">🔥 Buscar virais</button>
     <label class="check"><input id="vnovos" type="checkbox" checked> <span>Esconder os vídeos que já apareceram para mim</span></label>
-    <p class="dica">Cada termo gasta 1% da cota grátis do dia (dá ~90 termos por dia). Toque em <b>Roteiro</b> num vídeo para gerar o roteiro na hora.</p>
+    <p class="dica">Cada termo gasta 1% da cota grátis do dia (dá ~90 termos por dia). Toque em <b>Roteiro</b> num vídeo para gerar o roteiro na hora.</p></div>
     <div id="vlista"></div>
   </section>
 

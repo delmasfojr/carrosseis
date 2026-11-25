@@ -154,7 +154,7 @@ Se a questão começa numa página e continua na outra, dê a primeira. achou = 
     return {votos: votos.length, maioria, nMaioria, unanime: votos.length === 3 && nMaioria === 3,
       principalNaMaioria: letraDe(questao.resposta) === maioria && nMaioria >= 2, extras};
   }
-  async function pedirPdf(arquivo, numero, pagina, obs, res) {
+  async function pedirPdf(arquivo, numero, pagina, obs, res, gab = '') {
     // PDF sem página informada: primeiro acha a página; depois só ela (e a seguinte) vai em alta resolução,
     // para a IA enxergar os detalhes da figura (com 30 páginas de uma vez, cada figura chega pequena demais)
     if (!pagina && !/^image\//.test(arquivo.type)) {
@@ -166,7 +166,10 @@ Se a questão começa numa página e continua na outra, dê a primeira. achou = 
 
 NÃO HÁ VÍDEO DO YOUTUBE NESTE PEDIDO (vale acima de tudo o que fala em "vídeo enviado")
 O professor mandou um DOCUMENTO (PDF ou foto de uma prova/lista) e quer um Reels resolvendo UMA questão dele:
-a questão número ${numero}${pagina ? ` (na página ${pagina} do arquivo)` : ''}.${obs ? `\nObservação do professor: """${obs}"""` : ''}
+a questão número ${numero}${pagina ? ` (na página ${pagina} do arquivo)` : ''}.${obs ? `\nObservação do professor: """${obs}"""` : ''}${gab ? `
+GABARITO OFICIAL (INEP) desta questão: letra ${gab}. Vale como gabarito impresso: copie "${gab}" em gabarito_documento.
+A sua resolução TEM de chegar nessa letra PELA CONTA (nunca force a conta para chegar nela). Se a sua conta der outra letra, releia o enunciado e a figura
+e refaça; se ainda assim não chegar, confere = "nao" e explique em alerta onde está a dúvida.` : ''}
 
 1. ACHE a questão${pagina ? ` (ela está na página ${pagina} enviada)` : ''}: é a que o documento numera como ${numero} ("QUESTÃO ${numero}", "${numero}.", "${numero})" etc.), não a ${numero}ª que
    aparece na página. Se não achar, achou = false e explique em enunciado o que encontrou; o resto pode ficar vazio.
@@ -245,14 +248,15 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
     if (cf.nMaioria >= 2) return `⚠️ A MAIORIA (${cf.nMaioria} de ${cf.votos}) deu ${cf.maioria}, diferente do roteiro (${questao.resposta}). Confira antes de gravar!`;
     return `⚠️ As resoluções deram respostas diferentes (${questao.resposta} e ${outras}). Confira com calma antes de gravar!`;
   }
-  async function gerarPdf(arquivo, numero, pagina, obs, res = '') {
+  async function gerarPdf(arquivo, numero, pagina, obs, res = '', extra = {}) {
     if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
     $('#gerar').disabled = true;
     try {
       aviso('📄 Lendo o arquivo…');
-      const {questao, roteiros, partes} = await pedirPdf(arquivo, numero, pagina, obs, res);
+      const {questao, roteiros, partes} = await pedirPdf(arquivo, numero, pagina, obs, res, extra.gab || '');
       const conteudo = roteiros[0];
-      const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '', assunto: `Questão ${numero} de ${arquivo.name}`,
+      const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '', assunto: extra.enem ? `ENEM ${extra.enem.ano} · Questão ${numero} · ${extra.enem.assunto}` : `Questão ${numero} de ${arquivo.name}`,
+        ...(extra.enem ? {enem: extra.enem.id} : {}),
         conteudo, gancho: 0, visual: true, edicao: {soVoz: true}, questao,
         enunciado: [questao.enunciado, questao.alternativas, questao.figura_descricao ? 'FIGURA: ' + questao.figura_descricao : ''].filter(Boolean).join('\n')};
       // a figura animada já sai junto, presa às palavras do roteiro (o professor lê o roteiro ao gravar)
@@ -272,7 +276,7 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       } catch (e) { item.erroFigura = e.message; }
       // gancho com a figura ORIGINAL da prova (recortada da página); a figura animada entra a partir do bloco 2
       try {
-        const q = await recortarFigura(partes, questao.questao_pagina, questao.questao_caixa);  // a questão inteira, como na prova
+        const q = extra.enem ? arquivo : await recortarFigura(partes, questao.questao_pagina, questao.questao_caixa);  // a questão inteira, como na prova (do banco: o próprio recorte)
         const real = await recortarFigura(partes, questao.figura_pagina, questao.figura_caixa);  // só a figura
         item.imagens = {...(q ? {questao: q} : {}), ...(real ? {real} : {})};
         const mostra = q ? 'questao' : real ? 'real' : null;
@@ -289,9 +293,10 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       if (!ehConta(conteudo.gancho_quadro)) conteudo.gancho_quadro = '';
       for (const b of conteudo.blocos) if (!ehConta(b.quadro)) b.quadro = '';
       await salvarR(item);
+      if (extra.enem) gravar('questoesFeitas', [...new Set([...ler('questoesFeitas', []), extra.enem.id])]);
       aviso('');
       const cf = questao.conferencia || {};
-      const conf = (questao.confere === 'sim' ? '✅ Bate com o gabarito do documento.' : questao.confere === 'nao' ? '⚠️ NÃO bate com o gabarito do documento: confira!' : 'O documento não trouxe gabarito.')
+      const conf = (questao.confere === 'sim' ? `✅ Bate com o gabarito ${extra.gab ? 'oficial' : 'do documento'}.` : questao.confere === 'nao' ? `⚠️ NÃO bate com o gabarito ${extra.gab ? 'oficial (' + extra.gab + ')' : 'do documento'}: confira antes de gravar!` : 'O documento não trouxe gabarito.')
         + '\n' + resumoVotos(cf, questao);
       alert(`Pronto! Questão ${numero}: resposta ${questao.resposta}.\n${conf}` + (item.erroFigura ? `\n(A figura não saiu: ${item.erroFigura}. Dá para desenhar depois no editor.)` : '\nA figura animada já está montada.'));
       tela('roteiros'); abrir(item.id);
@@ -569,7 +574,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
   const PROVA = /enem|vestibular|concurso|quest[ãa]o|JEE|SAT|lista de exerc|resolvid[ao]s? passo/i;
   const FORA = new Set(['10', '20', '17', '2', '15', '19', '23', '24']);  // categorias do YouTube que não são aula: música, jogos, esportes, carros, animais, viagem, humor, entretenimento
   const MATEMATICA = /matem|math|n[úu]mero|number|teorema|theorem|conjectur|hip[óo]tese|hypothesis|equa[çc]|equation|geometr|[áa]lgebra|algebra|primo|prime|infinit|paradox|probabil|fractal|fibonacci|\bpi\b|riemann|euler|gauss|ramanujan|fermat|galois|g[öo]del|cantor|noether|topolog|cripto|crypto|l[óo]gica|logic|prova|proof|collatz|goldbach|\bzero\b|c[áa]lculo|calculus|teoria|theory|fields|p vs|p versus/i;
-  const modoV = () => localStorage.getItem('vmodo') === 'curioso' ? 'curioso' : 'virais';
+  const modoV = () => { const m = localStorage.getItem('vmodo'); return m === 'curioso' || m === 'questoes' ? m : 'virais'; };
   const guardaV = () => modoV() === 'curioso' ? 'curiosos' : 'virais';
   const vistos = () => new Set(ler('vistos', []));
   function aplicarModoV() {
@@ -580,6 +585,9 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     $('#vexpl').textContent = c ? 'Conteúdo de matemática de verdade: história, mistérios, problemas em aberto e novidades. Não precisa ter viralizado. Cada busca sorteia temas diferentes.'
       : 'Vídeos que furaram a bolha: muito mais visualizações que o tamanho do canal.';
     $('#buscar').textContent = c ? '🧠 Buscar curiosidades' : '🔥 Buscar virais';
+    const qz = modoV() === 'questoes';
+    $('#vsoquestoes').hidden = !qz; $('#vbusca').hidden = qz;
+    if (qz) { $('#vsovirais').hidden = $('#vsocurioso').hidden = true; $('#vexpl').textContent = 'Vídeo resolvendo uma questão, sem você aparecer: a questão da prova na tela, a resolução se desenhando e a sua voz.'; }
   }
   function pedidosCuriosos() {  // o que procurar: assunto do professor, ou 3 temas + novidades
     const tema = $('#vtema').value.trim(), en = $('#vingles').checked;
@@ -666,6 +674,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
   // ao abrir a aba: busca sozinho se ainda não buscou nas últimas 12 h
   function abrirVirais() {
     if (!$('#vlista')) return;
+    if (modoV() === 'questoes') return mostrarQuestoes();
     const v = ler(guardaV(), null);
     if (!chaveYT()) {
       $('#vlista').innerHTML = '<p class="dica">Falta a <b>chave do YouTube</b>: toque na <b>⚙️</b> (no alto, à direita), cole a chave na parte “Chave do YouTube” e toque em Salvar.</p>';
@@ -676,6 +685,69 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     else mostrarVirais();
   }
 
+  /* ---------------------------------------------------------------- 📝 Questões do ENEM
+     Banco do professor (2017–2026, regular): recorte ORIGINAL da prova + gabarito oficial + assunto. Gerado por montar_questoes.py. */
+  let QUESTOES = null, fazendoQuestao = false, qMostrar = 20;
+  async function carregarQuestoes() {
+    if (!QUESTOES) {
+      const r = await fetch(BASE + 'questoes.json', {cache: 'no-cache'});
+      if (!r.ok) throw new Error('não achei o banco de questões (questoes.json).');
+      QUESTOES = await r.json();
+    }
+    return QUESTOES;
+  }
+  async function mostrarQuestoes(mais = false) {
+    qMostrar = mais ? qMostrar + 20 : 20;
+    if (!QUESTOES) $('#vlista').innerHTML = '<p class="dica">Abrindo o banco de questões…</p>';
+    let qs;
+    try { qs = await carregarQuestoes(); } catch (e) { $('#vlista').innerHTML = `<p class="dica">${esc(e.message)}</p>`; return; }
+    const selA = $('#qassunto'), selN = $('#qano'), chk = $('#qesconder');
+    if (!selA.options.length) {
+      const por = new Map();
+      qs.forEach(q => { if (!por.has(q.aula)) por.set(q.aula, {nome: q.assunto, n: 0}); por.get(q.aula).n++; });
+      selA.innerHTML = '<option value="">Todos os assuntos</option>' + [...por].sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([k, x]) => `<option value="${k}">${esc(x.nome)} (${x.n})</option>`).join('');
+      selN.innerHTML = '<option value="">Todos os anos</option>' + [...new Set(qs.map(q => q.ano))].sort((a, b) => b - a).map(a => `<option>${a}</option>`).join('');
+      selA.value = localStorage.getItem('qassunto') || ''; selN.value = localStorage.getItem('qano') || '';
+      chk.checked = localStorage.getItem('qesconder') !== '0';
+      selA.onchange = selN.onchange = chk.onchange = () => {
+        localStorage.setItem('qassunto', selA.value); localStorage.setItem('qano', selN.value); localStorage.setItem('qesconder', chk.checked ? '1' : '0');
+        mostrarQuestoes();
+      };
+    }
+    const feitas = new Set(ler('questoesFeitas', []));
+    const doFiltro = qs.filter(q => (!selA.value || q.aula === selA.value) && (!selN.value || String(q.ano) === selN.value)).sort((a, b) => b.ano - a.ano || a.q - b.q);
+    const lista_ = doFiltro.filter(q => !(chk.checked && feitas.has(q.id)));
+    const nFeitas = doFiltro.length - lista_.length;
+    if (!lista_.length) { $('#vlista').innerHTML = `<p class="dica">Nenhuma questão aqui${nFeitas ? ` (as ${nFeitas} deste filtro já viraram vídeo)` : ''}. Troque o assunto ou o ano.</p>`; return; }
+    $('#vlista').innerHTML = `<p class="dica">${lista_.length} questões${nFeitas ? ` · ${nFeitas} já viraram vídeo (escondidas)` : ''}.</p>` +
+      lista_.slice(0, qMostrar).map(q => `<div class="qcard ${feitas.has(q.id) ? 'usado' : ''}">
+        <div class="qimg"><img src="${BASE}questoes/${q.id}.jpg" loading="lazy" alt="Questão ${q.q} do ENEM ${q.ano}"></div>
+        <b>ENEM ${q.ano} · Questão ${q.q}${feitas.has(q.id) ? ' · já virou vídeo ✓' : ''}</b>
+        <small>${esc(q.assunto)} · ${esc(q.cobra)}</small>
+        <small>Gabarito: ${esc(q.gab)}${q.extraoficial ? ' (extraoficial)' : ''}</small>
+        <button class="principal" data-q="${q.id}">🎬 Fazer vídeo</button></div>`).join('') +
+      (lista_.length > qMostrar ? '<button id="qmais" class="sec" style="width:100%;margin-top:12px">Mostrar mais</button>' : '');
+    $('#vlista').querySelectorAll('.qimg').forEach(d => d.onclick = () => d.classList.toggle('aberta'));
+    $('#vlista').querySelectorAll('[data-q]').forEach(b => b.onclick = () => videoDaQuestao(b.dataset.q, b));
+    if ($('#qmais')) $('#qmais').onclick = () => mostrarQuestoes(true);
+  }
+  async function videoDaQuestao(id, botao) {
+    if (fazendoQuestao) return;
+    const q = QUESTOES.find(x => x.id === id);
+    if (!q) return;
+    if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
+    fazendoQuestao = true;
+    const antes = botao.textContent; botao.disabled = true; botao.textContent = '⏳ Resolvendo e montando o roteiro… (1 a 2 min)';
+    try {
+      const r = await fetch(`${BASE}questoes/${id}.jpg`);
+      if (!r.ok) throw new Error('não consegui abrir o recorte da questão.');
+      const arq = new File([await r.blob()], `ENEM ${q.ano} - Questão ${q.q}.jpg`, {type: 'image/jpeg'});
+      await gerarPdf(arq, q.q, '', `É a questão ${q.q} do ENEM ${q.ano} (prova_citada = "ENEM ${q.ano}"). Assunto: ${q.assunto} (${q.cobra}). ` +
+        'A imagem é o recorte da própria prova: a questão inteira, com as alternativas.', '', {gab: q.gab, enem: q});
+    } catch (e) { alert('Deu erro: ' + e.message); }
+    finally { fazendoQuestao = false; botao.disabled = false; botao.textContent = antes; }
+  }
   function mostrarVirais() {
     const v = ler(guardaV(), null), u = usados(), curioso = modoV() === 'curioso';
     if (!v) { $('#vlista').innerHTML = `<p class="dica">Toque em <b>${curioso ? '🧠 Buscar curiosidades' : '🔥 Buscar virais'}</b> para ver os vídeos.</p>`; return; }
@@ -721,7 +793,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       if ($('#buscar').disabled) return;
       localStorage.setItem('vmodo', b.dataset.vm); aplicarModoV(); abrirVirais();
     });
-    mostrarVirais();
+    if (modoV() !== 'questoes') mostrarVirais();
     $('#rvoltar').onclick = () => tela('roteiros');
     $('#rtp').onclick = abrirTP;
     $('#rgravar').onclick = () => Gravador.abrir(atual, salvarR, () => abrir(atual.id));
