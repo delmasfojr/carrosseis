@@ -1770,7 +1770,7 @@ Se não houver fala, devolva a lista vazia.`;
       const c = takes()[k]; if (!c) continue;
       let v;
       let limpo = null;
-      if (modoVoz()) {
+      if (modoVoz() && !c.semVoz) {
         if (!gravador) aviso('Limpando a sua voz…');  // na primeira vez demora alguns segundos
         try { limpo = await abrirVideo(await vozLimpa(c, modoVoz())); } catch (e) { falhouVoz = true; }
         if (!gravador) aviso('');
@@ -2876,5 +2876,82 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     }, 450);
   }
 
-  return {abrir, buscarClipes, pedirFigura, previaFigura, espelharFigura};
+  /* ---------------------------------------------------------------- 🎵 vídeo SEM VOZ
+     Cada bloco vira um "take mudo" com o tempo de leitura do texto: a legenda (palavra por palavra), a conta e a figura
+     aparecem nesse ritmo, e por baixo toca uma musiquinha feita aqui mesmo (original, sem direito autoral). */
+  function wavDe(buf) {  // AudioBuffer → WAV 16 bits
+    const nc = buf.numberOfChannels, n = buf.length, sr = buf.sampleRate, b = new ArrayBuffer(44 + n * nc * 2), d = new DataView(b);
+    const s = (o, t) => [...t].forEach((x, i) => d.setUint8(o + i, x.charCodeAt(0)));
+    s(0, 'RIFF'); d.setUint32(4, 36 + n * nc * 2, true); s(8, 'WAVE'); s(12, 'fmt '); d.setUint32(16, 16, true); d.setUint16(20, 1, true);
+    d.setUint16(22, nc, true); d.setUint32(24, sr, true); d.setUint32(28, sr * nc * 2, true); d.setUint16(32, nc * 2, true); d.setUint16(34, 16, true);
+    s(36, 'data'); d.setUint32(40, n * nc * 2, true);
+    const ch = [...Array(nc)].map((_, k) => buf.getChannelData(k));
+    let o = 44;
+    for (let i = 0; i < n; i++) for (let k = 0; k < nc; k++) { const v = Math.max(-1, Math.min(1, ch[k][i])); d.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2; }
+    return new Blob([b], {type: 'audio/wav'});
+  }
+  const wavMudo = seg => { const sr = 8000, n = Math.max(1, Math.round(seg * sr)); return wavDe(new AudioBuffer({length: n, sampleRate: sr, numberOfChannels: 1})); };
+  // tempo para LER o texto na tela (≈ 2,3 palavras por segundo + respiro); o gancho mostra a questão, então fica mais
+  const tempoLeitura = (txt, gancho) => {
+    const p = String(txt || '').split(/\s+/).filter(Boolean).length;
+    return +Math.max(gancho ? 7 : 3.2, p / 2.3 + (gancho ? 4 : 1.5)).toFixed(2);
+  };
+  async function musiquinha() {  // lo-fi calminho em loop: 8 compassos, Dó7M – Lá m7 – Fá 7M – Sol6
+    const sr = 22050, bpm = 86, bt = 60 / bpm, cp = bt * 4, dur = cp * 8;
+    const a = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
+    const comp = a.createDynamicsCompressor(), corte = a.createBiquadFilter();
+    corte.type = 'lowpass'; corte.frequency.value = 5200; corte.connect(comp); comp.connect(a.destination);
+    const pad = a.createBiquadFilter(); pad.type = 'lowpass'; pad.frequency.value = 1000; pad.connect(corte);
+    const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+    const ACORDES = [[48, 52, 55, 59], [45, 48, 52, 55], [41, 45, 48, 52], [43, 47, 50, 52]];
+    const ruido = a.createBuffer(1, sr, sr); { const d = ruido.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const sustenta = (tipo, f, t0, t1, vol, destino, det = 0) => {
+      const o = a.createOscillator(), gg = a.createGain(); o.type = tipo; o.frequency.value = f; o.detune.value = det;
+      gg.gain.setValueAtTime(0, t0); gg.gain.linearRampToValueAtTime(vol, t0 + 0.5); gg.gain.setValueAtTime(vol, t1 - 0.3); gg.gain.linearRampToValueAtTime(0, t1);
+      o.connect(gg); gg.connect(destino); o.start(t0); o.stop(t1 + 0.05);
+    };
+    const toque = (tipo, f, t0, vol, cai, destino) => {
+      const o = a.createOscillator(), gg = a.createGain(); o.type = tipo; o.frequency.value = f;
+      gg.gain.setValueAtTime(0, t0); gg.gain.linearRampToValueAtTime(vol, t0 + 0.012); gg.gain.setTargetAtTime(0, t0 + 0.012, cai);
+      o.connect(gg); gg.connect(destino); o.start(t0); o.stop(t0 + cai * 6);
+    };
+    const chiado = (t0, vol, cai, tipo, f) => {
+      const s = a.createBufferSource(), fl = a.createBiquadFilter(), gg = a.createGain(); s.buffer = ruido; fl.type = tipo; fl.frequency.value = f;
+      gg.gain.setValueAtTime(vol, t0); gg.gain.setTargetAtTime(0, t0, cai); s.connect(fl); fl.connect(gg); gg.connect(corte); s.start(t0); s.stop(t0 + cai * 6);
+    };
+    const bumbo = t0 => {
+      const o = a.createOscillator(), gg = a.createGain(); o.frequency.setValueAtTime(115, t0); o.frequency.exponentialRampToValueAtTime(42, t0 + 0.14);
+      gg.gain.setValueAtTime(0.55, t0); gg.gain.exponentialRampToValueAtTime(0.001, t0 + 0.3); o.connect(gg); gg.connect(corte); o.start(t0); o.stop(t0 + 0.32);
+    };
+    const ARPEJO = [0, 2, 1, 3, 2, 1, 3, 2];
+    ACORDES.forEach((ac_, i) => {
+      const t0 = i * 2 * cp, t1 = t0 + 2 * cp;
+      ac_.forEach((m, j) => { sustenta('triangle', hz(m + 12), t0, t1, 0.035, pad, j % 2 ? 7 : -7); });
+      for (let c = 0; c < 2; c++) {
+        const tc = t0 + c * cp;
+        for (let b = 0; b < 4; b++) {
+          const tb = tc + b * bt;
+          if (b === 0 || b === 2) { bumbo(tb); toque('sine', hz(ac_[0] - 12), tb, 0.2, 0.35, corte); }
+          if (b === 1 || b === 3) chiado(tb, 0.12, 0.07, 'bandpass', 1900);
+          chiado(tb + bt / 2, 0.035, 0.025, 'highpass', 7000);
+        }
+        if (c === 0 || i % 2 === 0) ARPEJO.forEach((x, n) => toque('triangle', hz(ac_[x] + 24), tc + n * bt / 2 + 0.01, 0.045, 0.16, corte));
+      }
+    });
+    return wavDe(await a.startRendering());
+  }
+  async function prepararSemVoz(it) {
+    const bl = montarBlocos(it);
+    it.takes = bl.map((b, k) => {
+      const d = tempoLeitura(b.fala, k === 0);
+      return {blob: wavMudo(d), dur: d, soVoz: true, semVoz: true, facing: 'user', segs: [[0.3, d - 0.4]], ini: 0, fim: d, transcricao: []};
+    });
+    delete it.video;
+    it.semVoz = true;
+    it.edicao = Object.assign(it.edicao || {}, {soVoz: true, voz: false, legenda: true, legendaVoz: false, mascote: true, seco: false, volMusica: 0.45});
+    if (!it.musica) { it.musica = await musiquinha(); it.musicaNome = 'Musiquinha do Delmão'; }
+    return it;
+  }
+
+  return {abrir, prepararSemVoz, buscarClipes, pedirFigura, previaFigura, espelharFigura};
 })();

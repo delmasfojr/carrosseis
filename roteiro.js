@@ -294,13 +294,14 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       const ehConta = q => /\d/.test(q || '') && String(q).length <= 30 && !/@/.test(q);
       if (!ehConta(conteudo.gancho_quadro)) conteudo.gancho_quadro = '';
       for (const b of conteudo.blocos) if (!ehConta(b.quadro)) b.quadro = '';
+      if (bq) { aviso('🎵 Montando o vídeo sem voz (texto na tela + musiquinha)…'); await Gravador.prepararSemVoz(item); }
       await salvarR(item);
       if (bq) gravar('questoesFeitas', [...new Set([...ler('questoesFeitas', []), bq.id])]);
       aviso('');
       const cf = questao.conferencia || {};
       const conf = (questao.confere === 'sim' ? `✅ Bate com o gabarito ${extra.gab ? 'oficial' : 'do documento'}.` : questao.confere === 'nao' ? `⚠️ NÃO bate com o gabarito ${extra.gab ? 'oficial (' + extra.gab + ')' : 'do documento'}: confira antes de gravar!` : 'O documento não trouxe gabarito.')
         + '\n' + resumoVotos(cf, questao);
-      alert(`Pronto! Questão ${numero}: resposta ${questao.resposta}.\n${conf}` + (item.erroFigura ? `\n(A figura não saiu: ${item.erroFigura}. Dá para desenhar depois no editor.)` : '\nA figura animada já está montada.'));
+      alert(`Pronto! Questão ${numero}: resposta ${questao.resposta}.\n${conf}` + (bq ? '\n🎵 Vídeo SEM VOZ: toque em “Ver e exportar o vídeo”.' : '') + (item.erroFigura ? `\n(A figura não saiu: ${item.erroFigura}. Dá para desenhar depois no editor.)` : '\nA figura animada já está montada.'));
       tela('roteiros'); abrir(item.id);
     } catch (e) {
       aviso('');
@@ -453,7 +454,9 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     // gravação e vídeo pronto
     const nt = (atual.takes || []).filter(Boolean).length, nb = c.blocos.length + 1;
     const vz = atual.edicao && atual.edicao.soVoz;
-    $('#rgravar').textContent = atual.video ? '🎥 Regravar ou remontar' : nt ? `🎥 Continuar a gravação (${nt} de ${nb} blocos)` : vz ? '🎙 Gravar a voz (vídeo só com visual)' : '🎥 Gravar o vídeo';
+    $('#rgravar').textContent = atual.semVoz ? (atual.video ? '🎵 Remontar o vídeo (sem voz)' : '🎵 Ver e exportar o vídeo (sem voz)')
+      : atual.video ? '🎥 Regravar ou remontar' : nt ? `🎥 Continuar a gravação (${nt} de ${nb} blocos)` : vz ? '🎙 Gravar a voz (vídeo só com visual)' : '🎥 Gravar o vídeo';
+    $('#rsemvoz').hidden = !atual.visual || !!atual.semVoz;
     $('#rdenovo').hidden = !(nt || atual.video);
     if (urlVideo) { URL.revokeObjectURL(urlVideo); urlVideo = null; }
     if (atual.video) {
@@ -691,9 +694,9 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
      Banco do professor (2017–2026, regular): recorte ORIGINAL da prova + gabarito oficial + assunto. Gerado por montar_questoes.py. */
   const BANCOS = {
     enem: {arq: 'questoes.json', pasta: 'questoes', rotA: 'Assunto', rotN: 'Ano',
-      expl: 'Questões do ENEM (2017–2026), recortadas da prova. Toque em <b>🎬 Fazer vídeo</b>: a IA resolve (tem de bater com o gabarito oficial), escreve o roteiro e desenha a figura. Você só grava a voz lendo o teleprompter.'},
+      expl: 'Questões do ENEM (2017–2026), recortadas da prova. Toque em <b>🎬 Fazer vídeo</b>: a IA resolve (tem de bater com o gabarito oficial), escreve o roteiro e desenha a figura. O vídeo sai SEM VOZ: o texto aparece na tela com uma musiquinha.'},
     basicas: {arq: 'basicas.json', pasta: 'basicas', rotA: 'Lista', rotN: 'Nível',
-      expl: 'Questões das NOSSAS listas (Bloco 01 e Matemática Básica): frações, potências, notação científica, razão e proporção, porcentagem, álgebra… O vídeo segue o NOSSO gabarito comentado: a IA não resolve, só transforma em roteiro. Você grava a voz lendo o teleprompter.'},
+      expl: 'Questões das NOSSAS listas (Bloco 01 e Matemática Básica): frações, potências, notação científica, razão e proporção, porcentagem, álgebra… O vídeo segue o NOSSO gabarito comentado: a IA não resolve, só transforma em roteiro. O vídeo sai SEM VOZ: o texto aparece na tela com uma musiquinha.'},
   };
   const bancoQ = {};
   let fazendoQuestao = false, qMostrar = 20;
@@ -773,14 +776,16 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       if (f === 'enem') {
         const arq = new File([blob], `ENEM ${q.ano} - Questão ${q.q}.jpg`, {type: 'image/jpeg'});
         await gerarPdf(arq, q.q, '', `É a questão ${q.q} do ENEM ${q.ano} (prova_citada = "ENEM ${q.ano}"). Assunto: ${q.assunto} (${q.cobra}). ` +
-          'A imagem é o recorte da própria prova: a questão inteira, com as alternativas.', '', {gab: q.gab, enem: q});
+          'A imagem é o recorte da própria prova: a questão inteira, com as alternativas.' + '\nO VÍDEO NÃO TEM VOZ: cada fala aparece ESCRITA na tela (legenda palavra por palavra), com música de fundo. Escreva cada fala como TEXTO DE TELA: '
+          + 'curta (até 14 palavras), direta, sem "olha", "repara", "como eu disse" e sem pedir para ouvir. O gancho: até 10 palavras, uma pergunta que desafia.', '', {gab: q.gab, enem: q});
       } else {
         const nome = q.lista.replace(/^A/, 'Aula ');
         const arq = new File([blob], `${nome} - Questão ${q.q}.jpg`, {type: 'image/jpeg'});
         await gerarPdf(arq, q.q, '', `É a questão ${q.q} da lista "${q.tema}" (${nome}) do próprio professor Delmão: questão ORIGINAL, não é de prova (prova_citada = ""). ` +
           `Nível: ${q.nivel}. A imagem é o recorte da lista. O enunciado em LaTeX (para ler sem erro): """${q.tex}"""\n` +
           'Se a questão tiver vários itens (a, b, c…), o vídeo resolve só 1 ou 2 itens (os que mais ensinam) e convida a resolver os outros nos comentários. ' +
-          'Fale para quem faz concurso e vestibular e tem dificuldade na base: calma, passo a passo, mostrando o porquê.',
+          'Fale para quem faz concurso e vestibular e tem dificuldade na base: calma, passo a passo, mostrando o porquê.' + '\nO VÍDEO NÃO TEM VOZ: cada fala aparece ESCRITA na tela (legenda palavra por palavra), com música de fundo. Escreva cada fala como TEXTO DE TELA: '
+          + 'curta (até 14 palavras), direta, sem "olha", "repara", "como eu disse" e sem pedir para ouvir. O gancho: até 10 palavras, uma pergunta que desafia.',
           q.res, {basica: q});
       }
     } catch (e) { alert('Deu erro: ' + e.message); }
@@ -840,9 +845,16 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     $('#rlegenda').onchange = async () => { atual.conteudo.legenda = $('#rlegenda').value; await salvarR(atual); };
     $('#rmarcar').onclick = async () => { atual.gravado = !atual.gravado; await salvarR(atual); abrir(atual.id); };
     // apaga takes e vídeo pronto e abre o gravador no bloco 1; textos, legenda, estilos e música ficam
+    $('#rsemvoz').onclick = async () => {
+      if ((atual.takes || []).some(Boolean) && !confirm('Trocar o que já foi gravado por um vídeo SEM VOZ (só texto na tela e música)? A sua gravação deste roteiro será apagada.')) return;
+      $('#rsemvoz').disabled = true; aviso('🎵 Montando o vídeo sem voz…');
+      try { await Gravador.prepararSemVoz(atual); await salvarR(atual); aviso(''); Gravador.abrir(atual, salvarR, () => abrir(atual.id)); }
+      catch (e) { aviso(''); alert('Não deu: ' + e.message); } finally { $('#rsemvoz').disabled = false; }
+    };
     $('#rdenovo').onclick = async () => {
       if (!confirm('Apagar tudo o que já foi gravado deste roteiro e começar do bloco 1?\nO roteiro, a legenda, os estilos e a música ficam. (não dá para desfazer)')) return;
       atual.takes = []; delete atual.video; atual.gravado = false;
+      if (atual.semVoz) { delete atual.semVoz; Object.assign(atual.edicao || (atual.edicao = {}), {voz: true, legendaVoz: true}); }
       await salvarR(atual);
       Gravador.abrir(atual, salvarR, () => abrir(atual.id));
     };
