@@ -633,7 +633,10 @@ Se não houver fala, devolva a lista vazia.`;
           `transcreva o que foi DE FATO falado): "${blocos[k].fala}"`}]}],
       generationConfig: {responseMimeType: 'application/json', responseSchema: ESQ_T, temperature: 0},
     });
-    const r = await chamarGemini(corpo, () => {});
+    // ouvir é tarefa leve: o flash-lite entra na fila (cota grátis própria) para a legenda não cair no texto do roteiro
+    const r = await chamarGemini(corpo, () => {}, false, [...MODELOS, 'gemini-flash-lite-latest']);
+    if (!(r.palavras || []).some(x => String(x.palavra || '').trim()) && c.segs && c.segs.length)
+      throw new Error('o Gemini devolveu a legenda vazia, mas o take tem voz');
     c.transcricao = ajustarTempos((r.palavras || []).map(x => ({w: String(x.palavra || '').trim(), a: Number(x.inicio), b: Number(x.fim)})), c);
     if (!c.corteManual && c.transcricao.length) {  // a transcrição sabe melhor onde a fala começa e termina
       c.ini = Math.max(0, c.transcricao[0].a - 0.15);
@@ -687,7 +690,7 @@ Se não houver fala, devolva a lista vazia.`;
     if (!chave() || !opcoes().legendaVoz || transcrevendo.has(k)) return;
     const c = takes()[k];
     transcrevendo.add(k);
-    try { await transcrever(k); } catch (e) { c.erroTranscricao = e.message; }
+    try { await transcrever(k); delete c.erroTranscricao; } catch (e) { c.erroTranscricao = e.message; }
     finally {
       transcrevendo.delete(k);
       if (takes()[k] === c && !g('gedit').hidden) { desenharTimeline(); if (sel === k) selecionar(k); }
@@ -2501,7 +2504,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     g('etl').innerHTML = blocos.map((b, k) => {
       const c = takes()[k];
       return `<button data-k="${k}" class="${k === sel ? 'at' : ''} ${c ? '' : 'falta'}" style="width:${Math.max(58, Math.round((c ? tamanho(k) : alvo(b)) * 16))}px">
-        <b>${k + 1}</b> ${b.gancho ? 'gancho' : esc(b.cena)}<br>${c ? seg(tamanho(k)) + (transcrevendo.has(k) ? ' ⏳' : c.transcricao ? ' 💬' : '') : 'falta'}</button>`;
+        <b>${k + 1}</b> ${b.gancho ? 'gancho' : esc(b.cena)}<br>${c ? seg(tamanho(k)) + (transcrevendo.has(k) ? ' ⏳' : c.transcricao && c.transcricao.length ? ' 💬' : c.erroTranscricao ? ' 📜' : '') : 'falta'}</button>`;
     }).join('');
     g('etl').querySelectorAll('button').forEach(bt => bt.onclick = () => selecionar(Number(bt.dataset.k)));
   }
@@ -2522,7 +2525,11 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     pararCamera(); g('gprev').srcObject = null;
     g('ggrava').hidden = true; g('gedit').hidden = false;
     selecionar(k);
+    // take que ficou com a legenda pelo roteiro (Gemini ocupado na hora): tenta ouvir a voz de novo, em silêncio
+    if (opcoes().legendaVoz) blocos.forEach((_, n) => { const t = takes()[n]; if (t && t.erroTranscricao) transcreverFundo(n); });
   }
+  const semVoz = () => blocos.map((_, k) => k).filter(k => { const t = takes()[k]; 
+    return t && !(t.transcricao && t.transcricao.length) && !(Array.isArray(t.transcricao) && !t.erroTranscricao); });  // [] sem erro = take sem fala
   function selecionar(k) {
     pararPrevia();
     sel = k;
@@ -2821,11 +2828,21 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
     }
     pararPrevia(); ocupado = true;
     if (!opcoes().seco && opcoes().legenda && opcoes().legendaVoz && chave()) {
-      const faltam = blocos.map((_, k) => k).filter(k => !takes()[k].transcricao);
-      for (const [n, k] of faltam.entries()) {
-        aviso(`Fazendo a legenda pela sua voz… (${n + 1} de ${faltam.length})`);
-        if (transcrevendo.has(k)) while (transcrevendo.has(k)) await espera(300);
-        else await transcreverFundo(k);
+      for (;;) {
+        const faltam = semVoz();
+        for (const [n, k] of faltam.entries()) {
+          aviso(`Fazendo a legenda pela sua voz… (${n + 1} de ${faltam.length})`);
+          if (transcrevendo.has(k)) while (transcrevendo.has(k)) await espera(300);
+          else await transcreverFundo(k);
+        }
+        const ruins = semVoz();
+        if (!ruins.length) break;
+        // não troca a sua fala pelo roteiro sem avisar: as palavras que você mudou ao gravar sumiriam da legenda
+        const motivo = takes()[ruins[0]].erroTranscricao || '';
+        if (!confirm(`A legenda do${ruins.length > 1 ? 's blocos' : ' bloco'} ${ruins.map(k => k + 1).join(', ')} não saiu pela sua voz ` +
+          `(o Gemini não respondeu${/cota/i.test(motivo) ? ': a cota grátis de hoje acabou' : ''}).\n` +
+          `Se você mudou palavras ao falar, nesses blocos a legenda vai mostrar o texto do roteiro.\n\n` +
+          `OK = tentar ouvir de novo\nCancelar = montar assim mesmo`)) break;
       }
     }
     falhouVoz = false;
