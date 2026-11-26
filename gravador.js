@@ -2556,7 +2556,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       <label>✂️ Termina em <b id="vfim"></b> <small>(take de ${seg(c.dur)})</small></label><input id="rfim" type="range" min="0" max="${c.dur}" step="0.05" value="${c.fim}">
       <div class="ebot"><button id="etrecho">▶ Ver este bloco</button><button id="eregravar">🎥 Regravar</button></div>
       <label>Velocidade deste bloco</label>
-      <div class="ebot">${[1, 1.15, 1.3, 1.5].map(x => `<button data-v="${x}">${String(x).replace('.', ',')}×</button>`).join('')}</div>
+      <div class="ebot">${[1, 1.15, 1.2, 1.3, 1.5].map(x => `<button data-v="${x}">${String(x).replace('.', ',')}×</button>`).join('')}</div>
       </div>
       <div class="eaba" data-aba="titulo">
       <label for="etexto">Título na tela</label><input id="etexto" type="text" value="${esc(b.texto_tela)}" placeholder="(sem título neste bloco)">
@@ -2955,7 +2955,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
 
   /* ---------------------------------------------------------------- 🤖 voz robô (Piper: grátis, roda no próprio aparelho)
      Código em vendor/piper (piper-tts-web 1.0.5, MIT). Na 1ª vez baixa o motor e a voz (~80 MB) e o navegador guarda. */
-  const VOZ_ROBO = 'pt_BR-faber-medium';
+  const VOZ_ROBO = 'pt_BR-faber-medium', VEL_ROBO = 1.2;
   let piper = null;
   const carregarPiper = () => piper = piper || import(BASE + 'vendor/piper/piper-tts-web.js').catch(e => { piper = null; throw e; });
   function paraFala(t) {  // símbolos viram palavras (a voz não sabe ler "×", "÷", "%"…)
@@ -2984,12 +2984,13 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       jaTem = true;
       const buf = await a.decodeAudioData(await wav.arrayBuffer());
       // respiro antes e depois; o gancho fica mais tempo (é quando a questão aparece inteira na tela)
-      const antesS = 0.3, depoisS = k === 0 ? Math.max(1.2, tempoLeitura(b.fala, true) - buf.duration - antesS) : 0.6;
+      // a voz toca a 1,2× (pedido do professor); o gancho continua com tempo para ler a questão
+      const antesS = 0.3, depoisS = k === 0 ? Math.max(1.2, tempoLeitura(b.fala, true) * VEL_ROBO - buf.duration - antesS) : 0.6 * VEL_ROBO;
       const sr = buf.sampleRate, out = new AudioBuffer({length: Math.round((antesS + buf.duration + depoisS) * sr), sampleRate: sr, numberOfChannels: 1});
       out.getChannelData(0).set(buf.getChannelData(0), Math.round(antesS * sr));
       const d = out.duration;
       novos.push({blob: wavDe(out), dur: d, soVoz: true, robo: true, facing: 'user', segs: [[antesS, antesS + buf.duration]], ini: 0, fim: d,
-        corteManual: true, transcricao: []});
+        corteManual: true, transcricao: [], vel: VEL_ROBO});
     }
     it.takes = novos;
     delete it.video; delete it.semVoz;
