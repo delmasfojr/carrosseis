@@ -2946,12 +2946,58 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       const d = tempoLeitura(b.fala, k === 0);
       return {blob: wavMudo(d), dur: d, soVoz: true, semVoz: true, facing: 'user', segs: [[0.3, d - 0.4]], ini: 0, fim: d, transcricao: []};
     });
-    delete it.video;
+    delete it.video; delete it.robo;
     it.semVoz = true;
     it.edicao = Object.assign(it.edicao || {}, {soVoz: true, voz: false, legenda: true, legendaVoz: false, mascote: true, seco: false, volMusica: 0.45});
     if (!it.musica) { it.musica = await musiquinha(); it.musicaNome = 'Musiquinha do Delmão'; }
     return it;
   }
 
-  return {abrir, prepararSemVoz, buscarClipes, pedirFigura, previaFigura, espelharFigura};
+  /* ---------------------------------------------------------------- 🤖 voz robô (Piper: grátis, roda no próprio aparelho)
+     Código em vendor/piper (piper-tts-web 1.0.5, MIT). Na 1ª vez baixa o motor e a voz (~80 MB) e o navegador guarda. */
+  const VOZ_ROBO = 'pt_BR-faber-medium';
+  let piper = null;
+  const carregarPiper = () => piper = piper || import(BASE + 'vendor/piper/piper-tts-web.js').catch(e => { piper = null; throw e; });
+  function paraFala(t) {  // símbolos viram palavras (a voz não sabe ler "×", "÷", "%"…)
+    return String(t || '')
+      .replace(/R\$\s?(\d[\d.]*(?:,\d+)?)/g, '$1 reais')
+      .replace(/(\d)\s*%/g, '$1 por cento')
+      .replace(/(\d)\s*\/\s*(\d)/g, '$1 sobre $2')
+      .replace(/(\d)\s*[−–-]\s*(\d)/g, '$1 menos $2')
+      .replace(/[×·]/g, ' vezes ').replace(/÷/g, ' dividido por ').replace(/≈/g, ' aproximadamente ').replace(/−/g, ' menos ')
+      .replace(/²/g, ' ao quadrado').replace(/³/g, ' ao cubo').replace(/√/g, ' raiz de ')
+      .replace(/=/g, ' igual a ').replace(/\+/g, ' mais ').replace(/≤/g, ' menor ou igual a ').replace(/≥/g, ' maior ou igual a ')
+      .replace(/</g, ' menor que ').replace(/>/g, ' maior que ')
+      .replace(/[*_#@~^|\\[\]{}"“”]/g, ' ').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '')
+      .replace(/\s+/g, ' ').trim();
+  }
+  async function prepararComVoz(it, avisar = () => {}) {
+    const tts = await carregarPiper();
+    let jaTem = false;
+    try { jaTem = (await tts.stored()).includes(VOZ_ROBO); } catch (e) { /* segue */ }
+    const bl = montarBlocos(it), novos = [], a = ac();
+    for (const [k, b] of bl.entries()) {
+      avisar(`🤖 Narrando… (${k + 1} de ${bl.length})`);
+      const wav = await tts.predict({text: paraFala(b.fala) || 'Bora.', voiceId: VOZ_ROBO}, p => {
+        if (!jaTem && p && p.total) avisar(`🤖 Baixando a voz (só na 1ª vez)… ${Math.round(100 * p.loaded / p.total)}%`);
+      });
+      jaTem = true;
+      const buf = await a.decodeAudioData(await wav.arrayBuffer());
+      // respiro antes e depois; o gancho fica mais tempo (é quando a questão aparece inteira na tela)
+      const antesS = 0.3, depoisS = k === 0 ? Math.max(1.2, tempoLeitura(b.fala, true) - buf.duration - antesS) : 0.6;
+      const sr = buf.sampleRate, out = new AudioBuffer({length: Math.round((antesS + buf.duration + depoisS) * sr), sampleRate: sr, numberOfChannels: 1});
+      out.getChannelData(0).set(buf.getChannelData(0), Math.round(antesS * sr));
+      const d = out.duration;
+      novos.push({blob: wavDe(out), dur: d, soVoz: true, robo: true, facing: 'user', segs: [[antesS, antesS + buf.duration]], ini: 0, fim: d,
+        corteManual: true, transcricao: []});
+    }
+    it.takes = novos;
+    delete it.video; delete it.semVoz;
+    it.robo = true;
+    it.edicao = Object.assign(it.edicao || {}, {soVoz: true, voz: false, legenda: false, legendaVoz: false, mascote: true, seco: false, volMusica: 0.1});
+    if (!it.musica) { it.musica = await musiquinha(); it.musicaNome = 'Musiquinha do Delmão'; }
+    return it;
+  }
+
+  return {abrir, prepararSemVoz, prepararComVoz, buscarClipes, pedirFigura, previaFigura, espelharFigura};
 })();
