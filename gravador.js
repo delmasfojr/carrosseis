@@ -885,7 +885,7 @@ Se não houver fala, devolva a lista vazia.`;
     const im = poses.get(pose) || poses.get('explicando');
     if (!im || !im.naturalWidth) return;
     const w = im.naturalWidth * h / im.naturalHeight;
-    const x = lado === 'dir' ? W - w - 20 : 20;
+    const x = lado === 'dir' ? W - w - 20 : lado === 'centro' ? (W - w) / 2 : 20;
     const q = Math.min(1, t / 0.5), sai = 1 - q;  // 0 → 1 nos primeiros 0,5 s
     const mola = q >= 1 ? 1 : 1 - Math.cos(q * Math.PI * 2.5) * Math.exp(-q * 5);  // passa um pouco e volta (efeito mola)
     let dx = 0, dy = 0, rot = 0, esc = 1;
@@ -898,6 +898,20 @@ Se não houver fala, devolva a lista vazia.`;
     ctx.save();
     ctx.translate(x + w / 2 + dx, base + dy); ctx.rotate(inclina + rot); ctx.scale(esc / Math.sqrt(estica), esc * estica);
     ctx.drawImage(im, -w / 2, -h - quique, w, h);
+    ctx.restore();
+  }
+  const ALTURA_FINAL = 1080, BASE_FINAL = H * 0.9;
+  function solFinal(ctx, local) {  // disco laranja com raios girando devagar, atrás do mascote do final
+    const cx = W / 2, cy = BASE_FINAL - ALTURA_FINAL * 0.5, q = Math.min(1, local / 0.45);
+    const esc = q >= 1 ? 1 : 1 - Math.cos(q * Math.PI * 2.2) * Math.exp(-q * 5), R = W * 0.6 * Math.max(0.01, esc), giro = local * 0.25;
+    ctx.save(); ctx.translate(cx, cy);
+    ctx.beginPath(); ctx.arc(0, 0, R * 1.06, 0, Math.PI * 2); ctx.fillStyle = '#FFE2C2'; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fillStyle = LAR; ctx.fill();
+    ctx.save(); ctx.clip(); ctx.rotate(giro); ctx.fillStyle = '#FF9533';
+    for (let i = 0; i < 16; i++) { const a0 = i * Math.PI / 8; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, a0, a0 + Math.PI / 16); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    ctx.lineWidth = 14; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, R * 0.985, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.42, 0, Math.PI * 2); ctx.fillStyle = '#FFB066'; ctx.fill();
     ctx.restore();
   }
   // troca de pose a cada frase (dá a sensação de gesto): começa na pose escolhida
@@ -941,14 +955,14 @@ Se não houver fala, devolva a lista vazia.`;
   const LAYOUTS = {auto: 'Automático', cheia: 'Câmera cheia', inteira: 'Câmera inteira', circulo: 'Conta + círculo',
     dividida: 'Tela dividida', canto: 'Conta + rosto no canto', mascote: 'Mascote + lousa',
     mascote_fundo: 'Mascote comigo de fundo', alternar: 'Alternar eu ↔ mascote', visual: 'Visual: conta + mascote',
-    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio', figura: '📐 Figura animada', questao: '📄 Questão da prova'};
+    escala: '🔭 Zoom de escala', clipe: '🎞️ Vídeo de apoio', figura: '📐 Figura animada', questao: '📄 Questão da prova', final: '🎉 Final: mascote gigante'};
   // take gravado só com a voz não tem imagem: só valem os layouts sem câmera
-  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe', 'figura', 'questao'];
+  const SEM_CAMERA = ['visual', 'mascote', 'escala', 'clipe', 'figura', 'questao', 'final'];
   const semImagem = k => !!(takes()[k] && takes()[k].soVoz);
   const POSES = {explicando: 'Explicando', ideia: 'Ideia', resolvendo: 'Resolvendo', pensando: 'Pensando',
     desafiando: 'Desafiando', confiante: 'Confiante', estudando: 'Estudando', joinha: 'Joinha'};
   const COM_TEXTO = ['circulo', 'dividida', 'canto', 'mascote', 'mascote_fundo', 'alternar', 'visual', 'figura'];
-  const COM_MASCOTE = ['mascote', 'mascote_fundo', 'alternar', 'visual'];
+  const COM_MASCOTE = ['mascote', 'mascote_fundo', 'alternar', 'visual', 'final'];
   const TRANSICOES = {nenhuma: 'Corte seco', zoom: 'Zoom', esmaecer: 'Esmaecer', deslizar: 'Deslizar', subir: 'Subir', flash: 'Flash', desfoque: 'Desfoque'};
   const CORES_TITULO = {laranja: [LAR, '#fff'], navy: [NAVY, '#fff'], branco: ['#fff', NAVY], amarelo: ['#FFD21F', NAVY], sem: [null, '#fff']};
   const TAM_TITULO = {P: 62, M: 80, G: 104};
@@ -989,6 +1003,7 @@ Se não houver fala, devolva a lista vazia.`;
     const e = est(k);
     let h = 0, base = 0;
     if (lay === 'visual') { h = 560 * e.tamMascote; base = H * 0.98; }
+    else if (lay === 'final') { h = ALTURA_FINAL * e.tamMascote; const im = poses.get(e.pose) || poses.get('joinha'); const w = im && im.naturalWidth ? im.naturalWidth * h / im.naturalHeight : h * 0.75; return [(W - w) / 2, BASE_FINAL - h, w, h]; }
     else if (lay === 'mascote' || lay === 'mascote_fundo') { h = ALTURA_MASCOTE * e.tamMascote; base = H * 0.97; }
     else if (lay === 'escala' || lay === 'clipe' || lay === 'questao' || (lay === 'figura' && !e.mascoteCanto && k !== blocos.length - 1)) return null;
     else if (e.mascoteCanto) { h = 430 * e.tamMascote; base = H * 0.95; }
@@ -1078,7 +1093,7 @@ Se não houver fala, devolva a lista vazia.`;
       const n = cortados(c).filter(sg => sg[0] <= t + 0.05).length;
       lay = n % 2 === 1 || n === 0 ? (v.videoWidth / v.videoHeight > 0.8 ? 'inteira' : 'cheia') : 'mascote_fundo';
     }
-    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' || lay === 'figura' || lay === 'questao' ||
+    const creme = lay === 'circulo' || lay === 'dividida' || lay === 'canto' || lay === 'mascote' || lay === 'visual' || lay === 'figura' || lay === 'questao' || lay === 'final' ||
       (lay === 'escala' && fundoEscala(e, local, tamanho(k)) < 0.5);
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     const filtro = FILTROS[op.filtro] || 'none';
@@ -1105,6 +1120,10 @@ Se não houver fala, devolva a lista vazia.`;
       for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       conta(ctx, k, lay, local);
       boneco(ctx, poseAgora(k, t), e.ladoMascote, H * 0.98, 560 * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
+    } else if (lay === 'final') {  // fechamento: o mascote GIGANTE no meio, com um sol laranja girando atrás
+      ctx.filter = 'none';
+      solFinal(ctx, local);
+      boneco(ctx, poseAgora(k, t), 'centro', BASE_FINAL, ALTURA_FINAL * e.tamMascote, falandoEm(grupos, t), local, e.entradaMascote);
     } else if (lay === 'figura') {  // sem câmera: folha de caderno, figura desenhada no ritmo da fala e a conta embaixo
       ctx.filter = 'none';
       ctx.strokeStyle = '#0F1B2D14'; ctx.lineWidth = 3;
@@ -2946,6 +2965,8 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       const d = tempoLeitura(b.fala, k === 0);
       return {blob: wavMudo(d), dur: d, soVoz: true, semVoz: true, facing: 'user', segs: [[0.3, d - 0.4]], ini: 0, fim: d, transcricao: []};
     });
+    const ult = (it.estilo || [])[bl.length - 1];
+    if (bl.length > 1 && (!ult || ult.layout === 'visual' || !ult.layout)) { (it.estilo || (it.estilo = []))[bl.length - 1] = {...(ult || {}), layout: 'final', pose: (ult && ult.pose) || 'joinha'}; }
     delete it.video; delete it.robo;
     it.semVoz = true;
     it.edicao = Object.assign(it.edicao || {}, {soVoz: true, voz: false, legenda: true, legendaVoz: false, mascote: true, seco: false, volMusica: 0.45});
@@ -3025,6 +3046,8 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       novos.push({blob: wavDe(out), dur: d, soVoz: true, robo: true, facing: 'user', segs: [[antesS, antesS + buf.duration]], ini: 0, fim: d,
         corteManual: true, transcricao: [], vel: VEL_ROBO});
     }
+    const ult = (it.estilo || [])[bl.length - 1];
+    if (bl.length > 1 && (!ult || ult.layout === 'visual' || !ult.layout)) { (it.estilo || (it.estilo = []))[bl.length - 1] = {...(ult || {}), layout: 'final', pose: (ult && ult.pose) || 'joinha'}; }
     it.takes = novos;
     delete it.video; delete it.semVoz;
     it.robo = true;

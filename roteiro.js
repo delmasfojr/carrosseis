@@ -290,7 +290,7 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
         }
       } catch (e) { /* sem o recorte: o gancho fica com a figura animada */ }
       // o último bloco (comentar + seguir) fecha com o mascote, sem figura (o joinha não cobre a conta)
-      if (item.estilo && item.estilo.length > 1) item.estilo[item.estilo.length - 1] = {layout: 'visual', pose: 'joinha'};
+      if (item.estilo && item.estilo.length > 1) item.estilo[item.estilo.length - 1] = {layout: 'final', pose: 'joinha'};
       const ehConta = q => /\d/.test(q || '') && String(q).length <= 30 && !/@/.test(q);
       if (!ehConta(conteudo.gancho_quadro)) conteudo.gancho_quadro = '';
       for (const b of conteudo.blocos) if (!ehConta(b.quadro)) b.quadro = '';
