@@ -2955,7 +2955,7 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
 
   /* ---------------------------------------------------------------- 🤖 voz robô (Piper: grátis, roda no próprio aparelho)
      Código em vendor/piper (piper-tts-web 1.0.5, MIT). Na 1ª vez baixa o motor e a voz (~80 MB) e o navegador guarda. */
-  const VOZ_ROBO = 'pt_BR-faber-medium', VEL_ROBO = 1.2;
+  const VOZ_ROBO = 'pt_BR-faber-medium', VEL_ROBO = 1;
   let piper = null;
   const carregarPiper = () => piper = piper || import(BASE + 'vendor/piper/piper-tts-web.js').catch(e => { piper = null; throw e; });
   function paraFala(t) {  // símbolos viram palavras (a voz não sabe ler "×", "÷", "%"…)
@@ -2971,6 +2971,40 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
       .replace(/[*_#@~^|\\[\]{}"“”]/g, ' ').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '')
       .replace(/\s+/g, ' ').trim();
   }
+  // pausas da própria voz (entre frases, depois de vírgula) passam de 0,18 s: corta o excesso. Começo e fim mudos saem.
+  function encurtarPausas(buf, maxPausa = 0.18) {
+    const sr = buf.sampleRate, d = buf.getChannelData(0), j = Math.round(sr * 0.01), n = Math.floor(d.length / j), rms = new Float32Array(n);
+    for (let q = 0; q < n; q++) { let s2 = 0; for (let i = q * j; i < (q + 1) * j; i++) s2 += d[i] * d[i]; rms[q] = Math.sqrt(s2 / j); }
+    let pico = 0; for (const r of rms) if (r > pico) pico = r;
+    const lim = pico * 0.04, manter = Math.round(maxPausa / 0.01);
+    let ini = 0, fim = n - 1;
+    while (ini < n && rms[ini] < lim) ini++;
+    while (fim > ini && rms[fim] < lim) fim--;
+    if (ini >= fim) return buf;
+    const partes = [];
+    let q = ini;
+    while (q <= fim) {
+      let r = q;
+      if (rms[q] < lim) {
+        while (r <= fim && rms[r] < lim) r++;
+        const tam = r - q, fica = Math.min(tam, manter), corte = q + Math.floor((tam - fica) / 2);
+        partes.push([corte, corte + fica]);
+      } else {
+        while (r <= fim && rms[r] >= lim) r++;
+        partes.push([q, r]);
+      }
+      q = r;
+    }
+    const total = partes.reduce((t, [x, y]) => t + (y - x) * j, 0) + 2 * j;
+    const out = new AudioBuffer({length: total, sampleRate: sr, numberOfChannels: 1}), o = out.getChannelData(0);
+    let pos = 0;
+    for (const [x, y] of partes) {
+      const seg = d.subarray(x * j, Math.min(d.length, y * j)), f = Math.max(1, Math.min(64, seg.length >> 1));  // emenda sem estalo
+      for (let i = 0; i < seg.length; i++) o[pos + i] = seg[i] * Math.min(1, i / f, (seg.length - 1 - i) / f);
+      pos += seg.length;
+    }
+    return out;
+  }
   async function prepararComVoz(it, avisar = () => {}) {
     const tts = await carregarPiper();
     let jaTem = false;
@@ -2982,10 +3016,9 @@ os mesmos rótulos e a mesma ordem dos acontecimentos. A figura animada é a fig
         if (!jaTem && p && p.total) avisar(`🤖 Baixando a voz (só na 1ª vez)… ${Math.round(100 * p.loaded / p.total)}%`);
       });
       jaTem = true;
-      const buf = await a.decodeAudioData(await wav.arrayBuffer());
-      // respiro antes e depois; o gancho fica mais tempo (é quando a questão aparece inteira na tela)
-      // a voz toca a 1,2× (pedido do professor); o gancho continua com tempo para ler a questão
-      const antesS = 0.3, depoisS = k === 0 ? Math.max(1.2, tempoLeitura(b.fala, true) * VEL_ROBO - buf.duration - antesS) : 0.6 * VEL_ROBO;
+      const buf = encurtarPausas(await a.decodeAudioData(await wav.arrayBuffer()));
+      // vídeo ágil (pedido do professor): quase sem respiro entre os blocos; o gancho segura só um pouquinho a questão na tela
+      const antesS = 0.08, depoisS = k === 0 ? Math.max(0.6, 4.5 - buf.duration - antesS) : 0.22;
       const sr = buf.sampleRate, out = new AudioBuffer({length: Math.round((antesS + buf.duration + depoisS) * sr), sampleRate: sr, numberOfChannels: 1});
       out.getChannelData(0).set(buf.getChannelData(0), Math.round(antesS * sr));
       const d = out.duration;
