@@ -216,6 +216,7 @@ body.gravando-voz nav{display:none}
 .rotacoes button{margin:0;width:auto;padding:8px 14px;font-size:15px}
 .rotcal summary{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}.rotcal summary span{font-size:13px;color:#667}.rotcal summary small{color:var(--lar);margin-left:auto}
 .rotcal.passou summary{opacity:.55}
+.rottrilha button.on{background:var(--lar)}
 </style>
 </head>
 <body>
@@ -392,6 +393,7 @@ body.gravando-voz nav{display:none}
 
   <section class="tela" id="rotina" hidden>
     <h2>Rotina <span>de vídeos</span></h2>
+    <div class="seg rottrilha"><button data-rt="enem">📘 ENEM</button><button data-rt="concurso">🏛️ Concurso</button></div>
     <div class="seg"><button data-rv="hoje">📲 Hoje</button><button data-rv="semana">🗓️ Semana</button><button data-rv="calendario">📅 Calendário</button></div>
     <div id="rotconteudo"></div>
   </section>

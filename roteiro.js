@@ -167,7 +167,7 @@ Se a questão começa numa página e continua na outra, dê a primeira. achou = 
 NÃO HÁ VÍDEO DO YOUTUBE NESTE PEDIDO (vale acima de tudo o que fala em "vídeo enviado")
 O professor mandou um DOCUMENTO (PDF ou foto de uma prova/lista) e quer um Reels resolvendo UMA questão dele:
 a questão número ${numero}${pagina ? ` (na página ${pagina} do arquivo)` : ''}.${obs ? `\nObservação do professor: """${obs}"""` : ''}${gab ? `
-GABARITO OFICIAL (INEP) desta questão: letra ${gab}. Vale como gabarito impresso: copie "${gab}" em gabarito_documento.
+GABARITO OFICIAL desta questão: letra ${gab}. Vale como gabarito impresso: copie "${gab}" em gabarito_documento.
 A sua resolução TEM de chegar nessa letra PELA CONTA (nunca force a conta para chegar nela). Se a sua conta der outra letra, releia o enunciado e a figura
 e refaça; se ainda assim não chegar, confere = "nao" e explique em alerta onde está a dúvida.` : ''}
 
@@ -255,9 +255,9 @@ ${res ? `4. NÃO RESOLVA SOZINHO. A resolução CERTA, conferida pelo professor,
       aviso('📄 Lendo o arquivo…');
       const {questao, roteiros, partes} = await pedirPdf(arquivo, numero, pagina, obs, res, extra.gab || '');
       const conteudo = roteiros[0];
-      const bq = extra.enem || extra.basica;
+      const bq = extra.enem || extra.basica || extra.concurso;
       const item = {id: `${Date.now()}-0`, criado: new Date().toISOString(), link: '',
-        assunto: extra.enem ? `ENEM ${extra.enem.ano} · Questão ${numero} · ${extra.enem.assunto}` : extra.basica ? `${extra.basica.lista.replace(/^A/, 'Aula ')} · Questão ${numero} · ${extra.basica.tema}` : `Questão ${numero} de ${arquivo.name}`,
+        assunto: extra.enem ? `ENEM ${extra.enem.ano} · Questão ${numero} · ${extra.enem.assunto}` : extra.concurso ? `${extra.concurso.banca} ${extra.concurso.ano} · Questão ${numero} · ${extra.concurso.assunto}` : extra.basica ? `${extra.basica.lista.replace(/^A/, 'Aula ')} · Questão ${numero} · ${extra.basica.tema}` : `Questão ${numero} de ${arquivo.name}`,
         ...(bq ? {questaoBanco: bq.id} : {}),
         conteudo, gancho: 0, visual: true, edicao: {soVoz: true}, questao,
         enunciado: [questao.enunciado, questao.alternativas, questao.figura_descricao ? 'FIGURA: ' + questao.figura_descricao : ''].filter(Boolean).join('\n')};
@@ -797,6 +797,28 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     } catch (e) { alert('Deu erro: ' + e.message); }
     finally { fazendoQuestao = false; botao.disabled = false; botao.textContent = antes; }
   }
+  /** 🎬 Rotina: cria o roteiro de um item do cronograma (questão do ENEM, de concurso ou um assunto) com o Gemini */
+  async function daRotina(g, botao) {
+    if (g.enem) { await carregarQuestoes('enem'); return videoDaQuestao('enem', g.enem, botao); }
+    if (g.assunto) return gerarAssunto(g.assunto);
+    const c = g.concurso;
+    if (!c || fazendoQuestao) return;
+    if (!chave()) { tela('config'); return alert('Primeiro cole a sua chave do Gemini.'); }
+    fazendoQuestao = true;
+    const antes = botao.textContent; botao.disabled = true; botao.textContent = '⏳ Montando o roteiro… (1 a 2 min)';
+    try {
+      const r = await fetch(`${BASE}rotina/q/${c.id}.jpg`);
+      if (!r.ok) throw new Error('não consegui abrir a questão.');
+      const arq = new File([await r.blob()], `${c.banca} ${c.ano} - Questão ${c.n}.jpg`, {type: 'image/jpeg'});
+      await gerarPdf(arq, c.n, '', `É a questão ${c.n} de uma prova de concurso da banca ${c.banca} (${c.ano}); prova_citada = "concurso ${c.banca}". ` +
+        `Assunto: ${c.assunto} (${c.cobra}). A imagem é a questão inteira, com as alternativas. O texto dela (para ler sem erro): """${c.texto}"""
+` +
+        'Fale para quem estuda para concurso: mostre o caminho mais curto e o macete que a banca premia.' + '\nO VÍDEO É NARRADO por uma voz sintética (robô), SEM legenda, com música baixinha. Escreva cada fala para ser OUVIDA: '
+        + 'frases curtas e claras (até 22 palavras por bloco), em português falado, sem emojis e sem símbolos (escreva "vezes", "dividido por", "por cento", "igual a"). '
+        + 'Os números e as contas também aparecem na tela (quadro). O gancho: uma pergunta curta que desafia.', '', {gab: c.gab || '', concurso: c});
+    } catch (e) { alert('Deu erro: ' + e.message); }
+    finally { fazendoQuestao = false; botao.disabled = false; botao.textContent = antes; }
+  }
   function mostrarVirais() {
     const v = ler(guardaV(), null), u = usados(), curioso = modoV() === 'curioso';
     if (!v) { $('#vlista').innerHTML = `<p class="dica">Toque em <b>${curioso ? '🧠 Buscar curiosidades' : '🔥 Buscar virais'}</b> para ver os vídeos.</p>`; return; }
@@ -954,5 +976,5 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
       if (n) { await mostrarLista(); aviso(`🤖 ${n} roteiro(s) novo(s) do App de Revisão em Meus posts › Roteiros`); setTimeout(() => aviso(''), 8000); }
     } catch (e) { console.warn('roteiros do robô:', e); }
   }
-  return {iniciar, gerar, gerarAssunto, gerarPdf, DURACOES, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
+  return {iniciar, gerar, gerarAssunto, gerarPdf, daRotina, todos: todosR, abrir, DURACOES, mostrarLista, abrirVirais, contar: async () => (await todosR()).length};
 })();

@@ -1,252 +1,782 @@
 {
  "atualizado": "2026-11-27",
- "semanas": [
-  {
-   "grava": "2026-11-29",
-   "tema": "Razão, proporção e regra de três",
-   "aula": "06",
-   "porque": "1º do ENEM: 62 de 450 questões (13,8%)",
-   "itens": [
-    {
-     "dia": 0,
-     "tipo": "enem",
-     "titulo": "ENEM 2022 Q139 · escala da geladeira (fácil)",
-     "etapa": "roteiro",
-     "roteiro": "questao-enem2022-139-voz"
-    },
-    {
-     "dia": 1,
-     "tipo": "curiosidade",
-     "titulo": "Regra de três em 10 segundos",
-     "etapa": "roteiro",
-     "obs": "roteiro short-razao-01 já está no PC"
-    },
-    {
-     "dia": 2,
-     "tipo": "enem",
-     "titulo": "ENEM 2023 Q167 · folhas e alunos (médio)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 3,
-     "tipo": "concurso",
-     "titulo": "Regra de três de concurso (FGV ou Vunesp)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 4,
-     "tipo": "enem",
-     "titulo": "ENEM 2025 Q150 · regra de três composta (difícil)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 5,
-     "tipo": "vestibular",
-     "titulo": "Proporção num vestibular (Fuvest/Unicamp)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 6,
-     "tipo": "aula",
-     "titulo": "Aula resumida · Razão e regra de três (com lápis)",
-     "etapa": "roteiro",
-     "obs": "piloto aula06-lapis já montado"
-    }
-   ]
-  },
-  {
-   "grava": "2026-12-06",
-   "tema": "Porcentagem",
-   "aula": "07",
-   "porque": "2º do ENEM: 33 questões (7,3%)",
-   "itens": [
-    {
-     "dia": 0,
-     "tipo": "enem",
-     "titulo": "ENEM 2024 Q153 · taxa em forma decimal (fácil)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 1,
-     "tipo": "curiosidade",
-     "titulo": "Desconto de 25% de cabeça",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 2,
-     "tipo": "enem",
-     "titulo": "ENEM 2023 Q143 · lista de espera (médio)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 3,
-     "tipo": "concurso",
-     "titulo": "Aumentos sucessivos (concurso)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 4,
-     "tipo": "enem",
-     "titulo": "ENEM 2026 Q145 · variações sucessivas (difícil)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 5,
-     "tipo": "vestibular",
-     "titulo": "Porcentagem num vestibular",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 6,
-     "tipo": "aula",
-     "titulo": "Aula resumida · Porcentagem",
-     "etapa": "ideia"
-    }
-   ]
-  },
-  {
-   "grava": "2026-12-13",
-   "tema": "Probabilidade",
-   "aula": "63",
-   "porque": "3º do ENEM: 27 questões (6,0%)",
-   "itens": [
-    {
-     "dia": 0,
-     "tipo": "enem",
-     "titulo": "ENEM 2024 Q165 · eventos independentes (fácil)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 1,
-     "tipo": "curiosidade",
-     "titulo": "O paradoxo do aniversário",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 2,
-     "tipo": "enem",
-     "titulo": "ENEM 2024 Q169 · sem reposição (médio)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 3,
-     "tipo": "concurso",
-     "titulo": "Probabilidade de concurso (Cebraspe)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 4,
-     "tipo": "enem",
-     "titulo": "ENEM 2026 Q136 · probabilidade geométrica (difícil)",
-     "etapa": "roteiro",
-     "obs": "roteiro questao-enem2026-136 já está no PC"
-    },
-    {
-     "dia": 5,
-     "tipo": "vestibular",
-     "titulo": "Probabilidade num vestibular",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 6,
-     "tipo": "aula",
-     "titulo": "Aula resumida · Probabilidade",
-     "etapa": "ideia"
-    }
-   ]
-  },
-  {
-   "grava": "2026-12-20",
-   "tema": "Unidades e notação científica",
-   "aula": "05",
-   "porque": "4º do ENEM: 22 questões (4,9%)",
-   "itens": [
-    {
-     "dia": 0,
-     "tipo": "enem",
-     "titulo": "ENEM 2025 Q159 · cm³ para mL (fácil)",
-     "etapa": "roteiro",
-     "obs": "roteiro questao-unidades já está no PC"
-    },
-    {
-     "dia": 1,
-     "tipo": "curiosidade",
-     "titulo": "Quanto é um trilhão de segundos?",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 2,
-     "tipo": "enem",
-     "titulo": "ENEM 2026 Q143 · decilitro e custo (médio)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 3,
-     "tipo": "concurso",
-     "titulo": "Conversão de unidades (concurso)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 4,
-     "tipo": "enem",
-     "titulo": "ENEM 2026 Q162 · milímetro e notação científica (difícil)",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 5,
-     "tipo": "vestibular",
-     "titulo": "Unidades num vestibular",
-     "etapa": "ideia"
-    },
-    {
-     "dia": 6,
-     "tipo": "aula",
-     "titulo": "Aula resumida · Unidades de medida",
-     "etapa": "ideia"
-    }
-   ]
-  },
-  {
-   "grava": "2026-12-27",
-   "tema": "Leitura de gráficos e tabelas",
-   "aula": "99",
-   "porque": "5º do ENEM: 21 questões (4,7%)",
-   "itens": []
-  },
-  {
-   "grava": "2027-01-03",
-   "tema": "Prismas e cilindros",
-   "aula": "49",
-   "porque": "6º do ENEM: 21 questões (4,7%)",
-   "itens": []
-  },
-  {
-   "grava": "2027-01-10",
-   "tema": "Análise combinatória",
-   "aula": "61",
-   "porque": "7º do ENEM: 20 questões (4,4%)",
-   "itens": []
-  },
-  {
-   "grava": "2027-01-17",
-   "tema": "Áreas de figuras planas",
-   "aula": "36",
-   "porque": "8º do ENEM: 18 questões (4,0%)",
-   "itens": []
-  },
-  {
-   "grava": "2027-01-24",
-   "tema": "Estatística descritiva",
-   "aula": "64",
-   "porque": "9º do ENEM: 18 questões (4,0%)",
-   "itens": []
-  },
-  {
-   "grava": "2027-01-31",
-   "tema": "Médias",
-   "aula": "29",
-   "porque": "10º do ENEM: 15 questões (3,3%)",
-   "itens": []
-  }
- ]
+ "trilhas": {
+  "enem": [
+   {
+    "grava": "2026-11-29",
+    "tema": "Razão, proporção e regra de três",
+    "aula": "06",
+    "porque": "1º do ENEM: 62 de 450 questões (13,8%)",
+    "itens": [
+     {
+      "id": "enem-2022-139",
+      "dia": 0,
+      "tipo": "enem",
+      "titulo": "ENEM 2022 Q139 · escala de planta (fácil)",
+      "etapa": "roteiro",
+      "gerar": {
+       "enem": "2022-139"
+      },
+      "roteiro": "questao-enem2022-139-voz"
+     },
+     {
+      "id": "cur-2026-11-29",
+      "dia": 1,
+      "tipo": "curiosidade",
+      "titulo": "Regra de três: quando é direta e quando é inversa, com um exemplo do dia a dia",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Regra de três: quando é direta e quando é inversa, com um exemplo do dia a dia"
+      }
+     },
+     {
+      "id": "enem-2023-167",
+      "dia": 2,
+      "tipo": "enem",
+      "titulo": "ENEM 2023 Q167 · regra de três com folhas e alunos (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2023-167"
+      }
+     },
+     {
+      "id": "enem-2025-148",
+      "dia": 3,
+      "tipo": "enem",
+      "titulo": "ENEM 2025 Q148 · escala e comprimento real (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2025-148"
+      }
+     },
+     {
+      "id": "enem-2025-150",
+      "dia": 4,
+      "tipo": "enem",
+      "titulo": "ENEM 2025 Q150 · regra de três composta (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2025-150"
+      }
+     },
+     {
+      "id": "aula-e-2026-11-29",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Razão, proporção e regra de três",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de razão, proporção e regra de três (simples e composta), com os erros mais comuns no ENEM"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-06",
+    "tema": "Porcentagem",
+    "aula": "07",
+    "porque": "2º do ENEM: 33 questões (7,3%)",
+    "itens": [
+     {
+      "id": "enem-2024-153",
+      "dia": 0,
+      "tipo": "enem",
+      "titulo": "ENEM 2024 Q153 · taxa percentual em forma decimal (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2024-153"
+      }
+     },
+     {
+      "id": "cur-2026-12-06",
+      "dia": 1,
+      "tipo": "curiosidade",
+      "titulo": "Por que 25% de desconto e depois 25% de aumento não voltam ao preço original",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Por que 25% de desconto e depois 25% de aumento não voltam ao preço original"
+      }
+     },
+     {
+      "id": "enem-2023-143",
+      "dia": 2,
+      "tipo": "enem",
+      "titulo": "ENEM 2023 Q143 · percentual sobre lista de espera (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2023-143"
+      }
+     },
+     {
+      "id": "enem-2024-140",
+      "dia": 3,
+      "tipo": "enem",
+      "titulo": "ENEM 2024 Q140 · porcentagem de porcentagem e faixas (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2024-140"
+      }
+     },
+     {
+      "id": "enem-2026-145",
+      "dia": 4,
+      "tipo": "enem",
+      "titulo": "ENEM 2026 Q145 · variações percentuais sucessivas (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2026-145"
+      }
+     },
+     {
+      "id": "aula-e-2026-12-06",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Porcentagem",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de porcentagem: fator multiplicativo, aumentos e descontos sucessivos, porcentagem de porcentagem"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-13",
+    "tema": "Probabilidade",
+    "aula": "63",
+    "porque": "3º do ENEM: 27 questões (6,0%)",
+    "itens": [
+     {
+      "id": "enem-2024-165",
+      "dia": 0,
+      "tipo": "enem",
+      "titulo": "ENEM 2024 Q165 · probabilidade de eventos independentes (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2024-165"
+      }
+     },
+     {
+      "id": "cur-2026-12-13",
+      "dia": 1,
+      "tipo": "curiosidade",
+      "titulo": "O paradoxo do aniversário: com 23 pessoas, a chance de duas fazerem aniversário no mesmo dia passa de 50%",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "O paradoxo do aniversário: com 23 pessoas, a chance de duas fazerem aniversário no mesmo dia passa de 50%"
+      }
+     },
+     {
+      "id": "enem-2024-169",
+      "dia": 2,
+      "tipo": "enem",
+      "titulo": "ENEM 2024 Q169 · probabilidade sem reposição (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2024-169"
+      }
+     },
+     {
+      "id": "enem-2026-148",
+      "dia": 3,
+      "tipo": "enem",
+      "titulo": "ENEM 2026 Q148 · probabilidade em grupos sanguíneos (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2026-148"
+      }
+     },
+     {
+      "id": "enem-2026-136",
+      "dia": 4,
+      "tipo": "enem",
+      "titulo": "ENEM 2026 Q136 · probabilidade geométrica com áreas de círculos (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2026-136"
+      }
+     },
+     {
+      "id": "aula-e-2026-12-13",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Probabilidade",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de probabilidade: casos favoráveis sobre possíveis, eventos independentes, sem reposição"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-20",
+    "tema": "Unidades e notação científica",
+    "aula": "05",
+    "porque": "4º do ENEM: 22 questões (4,9%)",
+    "itens": [
+     {
+      "id": "enem-2025-159",
+      "dia": 0,
+      "tipo": "enem",
+      "titulo": "ENEM 2025 Q159 · conversão cm³ para mL (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2025-159"
+      }
+     },
+     {
+      "id": "cur-2026-12-20",
+      "dia": 1,
+      "tipo": "curiosidade",
+      "titulo": "Quanto tempo dá um milhão de segundos e um bilhão de segundos (notação científica no dia a dia)",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Quanto tempo dá um milhão de segundos e um bilhão de segundos (notação científica no dia a dia)"
+      }
+     },
+     {
+      "id": "enem-2026-143",
+      "dia": 2,
+      "tipo": "enem",
+      "titulo": "ENEM 2026 Q143 · conversão dL para litro e custo (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2026-143"
+      }
+     },
+     {
+      "id": "enem-2025-166",
+      "dia": 3,
+      "tipo": "enem",
+      "titulo": "ENEM 2025 Q166 · pace em segundos por quilômetro (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2025-166"
+      }
+     },
+     {
+      "id": "enem-2026-162",
+      "dia": 4,
+      "tipo": "enem",
+      "titulo": "ENEM 2026 Q162 · conversão para milímetro, notação científica (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "enem": "2026-162"
+      }
+     },
+     {
+      "id": "aula-e-2026-12-20",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Unidades e notação científica",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de conversão de unidades (comprimento, área, volume, litro) e notação científica"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-27",
+    "tema": "Leitura de gráficos e tabelas",
+    "aula": "99",
+    "porque": "5º do ENEM: 21 questões (4,7%)",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-03",
+    "tema": "Prismas e cilindros",
+    "aula": "49",
+    "porque": "6º do ENEM: 21 questões (4,7%)",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-10",
+    "tema": "Análise combinatória",
+    "aula": "61",
+    "porque": "7º do ENEM: 20 questões (4,4%)",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-17",
+    "tema": "Áreas de figuras planas",
+    "aula": "36",
+    "porque": "8º do ENEM: 18 questões (4,0%)",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-24",
+    "tema": "Estatística descritiva",
+    "aula": "64",
+    "porque": "9º do ENEM: 18 questões (4,0%)",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-31",
+    "tema": "Médias",
+    "aula": "29",
+    "porque": "10º do ENEM: 15 questões (3,3%)",
+    "itens": []
+   }
+  ],
+  "concurso": [
+   {
+    "grava": "2026-11-29",
+    "tema": "Porcentagem",
+    "aula": "C01",
+    "porque": "o assunto que mais cai nas 4 bancas",
+    "itens": [
+     {
+      "id": "conc-2026-cprm-14",
+      "dia": 0,
+      "tipo": "concurso",
+      "titulo": "FGV 2026 · desconto percentual, preço original (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "2026-cprm-14",
+        "banca": "FGV",
+        "ano": 2026,
+        "n": 14,
+        "gab": "C",
+        "assunto": "Porcentagem",
+        "cobra": "desconto percentual, preço original",
+        "texto": "Após receber um desconto de 15%, o preço de um produto passou a ser R$44,20. Se o desconto dado ao preço do produto tivesse sido de 25%, então o produto teria passado a custar\n(A) R$44,10\n(B) R$39,78\n(C) R$39,00\n(D) R$34,20\n(E) R$33,15"
+       }
+      }
+     },
+     {
+      "id": "mac-2026-11-29",
+      "dia": 1,
+      "tipo": "macete",
+      "titulo": "porcentagem de porcentagem é só multiplicar (30% de 45% = 13,5%)",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Macete de concurso: porcentagem de porcentagem é só multiplicar (30% de 45% = 13,5%)"
+      }
+     },
+     {
+      "id": "conc-cebr-2023-pmsc-oficial-64",
+      "dia": 2,
+      "tipo": "concurso",
+      "titulo": "Cebraspe 2023 · porcentagem de porcentagem (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "cebr-2023-pmsc-oficial-64",
+        "banca": "Cebraspe",
+        "ano": 2023,
+        "n": 64,
+        "gab": "B",
+        "assunto": "Porcentagem",
+        "cobra": "porcentagem de porcentagem",
+        "texto": "Uma pesquisa revelou que 45% dos policiais militares de Santa Catarina haviam sido surfistas e, entre esses policiais militares surfistas, 30% deles construíam suas próprias pranchas de surfe. Com base nessa situação hipotética, é correto afirmar que a porcentagem de policiais militares de Santa Catarina que tinham sido surfistas e que construíram as suas próprias pranchas de surfe é\nA inferior a 10%.\nB superior a 11% e inferior a 16%.\nC superior a 17% e inferior a 21%.\nD superior a 21% e inferior a 29%.\nE superior a 30%."
+       }
+      }
+     },
+     {
+      "id": "conc-vune-2026-jundiai-assistente-13",
+      "dia": 3,
+      "tipo": "concurso",
+      "titulo": "Vunesp 2026 · mesma porcentagem em preços diferentes (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "vune-2026-jundiai-assistente-13",
+        "banca": "Vunesp",
+        "ano": 2026,
+        "n": 13,
+        "gab": "",
+        "assunto": "Porcentagem",
+        "cobra": "mesma porcentagem em preços diferentes",
+        "texto": "O preço de um produto na loja Mais Fácil é 50% mais alto do que o preço do mesmo produto na loja Mais Barato. Uma mesma porcentagem que, se aplicada a esse produto nas duas lojas, aumentaria o preço dele na loja Mais Barato e reduziria o preço dele na loja Mais Fácil, de modo que os novos preços ficassem iguais, é\n(A) 5%\n(B) 10%\n(C) 15%\n(D) 20%\n(E) 25%"
+       }
+      }
+     },
+     {
+      "id": "conc-cesg-2024-basa-tecnico-35",
+      "dia": 4,
+      "tipo": "concurso",
+      "titulo": "Cesgranrio 2024 · desconto e aumento sucessivos, desconto para voltar (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "cesg-2024-basa-tecnico-35",
+        "banca": "Cesgranrio",
+        "ano": 2024,
+        "n": 35,
+        "gab": "",
+        "assunto": "Porcentagem",
+        "cobra": "desconto e aumento sucessivos, desconto para voltar",
+        "texto": "O preço de lançamento de um produto é indicado por P. Ao longo de um ano, o preço do produto passou por alterações, feitas na seguinte ordem:\n• Um desconto de 20%;\n• Um aumento de 100%. O percentual de cada alteração foi relativo ao preço em curso no momento da alteração. Considerando-se que Q é o preço do produto ao final das duas alterações, então, para retornar ao preço de lançamento P, bastaria que se desse, sobre Q, um desconto de\n(A) 37,5%\n(B) 40,0%\n(C) 60,0%\n(D) 62,5%\n(E) 80,0%"
+       }
+      }
+     },
+     {
+      "id": "aula-c-2026-11-29",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Porcentagem",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de porcentagem para concurso: fator, aumentos e descontos sucessivos, como cada banca cobra"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-06",
+    "tema": "Razão e regra de três",
+    "aula": "C02",
+    "porque": "cai em toda prova de nível médio",
+    "itens": [
+     {
+      "id": "conc-vune-2026-gcmsp-guarda-16",
+      "dia": 0,
+      "tipo": "concurso",
+      "titulo": "Vunesp 2026 · fração de um total (4 em 5) (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "vune-2026-gcmsp-guarda-16",
+        "banca": "Vunesp",
+        "ano": 2026,
+        "n": 16,
+        "gab": "",
+        "assunto": "Razão e regra de três",
+        "cobra": "fração de um total (4 em 5)",
+        "texto": "Em 2019, a Organização Mundial de Saúde (OMS) fez um alerta sobre a saúde dos adolescentes ao afirmar que quatro entre cinco jovens no mundo, entre 11 e 17 anos, são sedentários. Na ocasião, a população estudada foi de 1,6 milhões de estudantes. Isso significa que, na população estudada, o número de adolescentes que não foram considerados sedentários foi igual a\n(A) 0,30 milhões.\n(B) 0,31 milhões.\n(C) 0,33 milhões.\n(D) 0,34 milhões.\n(E) 0,32 milhões."
+       }
+      }
+     },
+     {
+      "id": "mac-2026-12-06",
+      "dia": 1,
+      "tipo": "macete",
+      "titulo": "regra de três composta sem montar tabela (o que aumenta e o que diminui)",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Macete de concurso: regra de três composta sem montar tabela (o que aumenta e o que diminui)"
+      }
+     },
+     {
+      "id": "conc-2026-cprm-12",
+      "dia": 2,
+      "tipo": "concurso",
+      "titulo": "FGV 2026 · regra de três composta (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "2026-cprm-12",
+        "banca": "FGV",
+        "ano": 2026,
+        "n": 12,
+        "gab": "C",
+        "assunto": "Razão e regra de três",
+        "cobra": "regra de três composta",
+        "texto": "Sabe-se que uma equipe formada por 8 bibliotecários cataloga, em média, 192 obras, a cada 6 horas. Para todos os fins, considere que todos os bibliotecários trabalham em um mesmo ritmo de catalogação, por hora. Mantendo-se esse ritmo, quantas obras seriam catalogadas por 10 bibliotecários, em 8 horas de trabalho?\n(A) 1280\n(B) 640\n(C) 320\n(D) 256\n(E) 206"
+       }
+      }
+     },
+     {
+      "id": "conc-cesg-2023-banrisul-escriturario-19",
+      "dia": 3,
+      "tipo": "concurso",
+      "titulo": "Cesgranrio 2023 · regra de três composta (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "cesg-2023-banrisul-escriturario-19",
+        "banca": "Cesgranrio",
+        "ano": 2023,
+        "n": 19,
+        "gab": "",
+        "assunto": "Razão e regra de três",
+        "cobra": "regra de três composta",
+        "texto": "Considere que, em média, dois funcionários de um banco atendam 80 clientes em um período de 5 horas. O banco deseja montar uma equipe de funcionários para atender 500 clientes em, no máximo, 8 horas. Diante da média de atendimentos considerada e da intenção do banco, qual é o número mínimo de funcionários a serem utilizados na equipe?\n(A) 5\n(B) 7\n(C) 8\n(D) 10\n(E) 20"
+       }
+      }
+     },
+     {
+      "id": "conc-2026-mpes26-14",
+      "dia": 4,
+      "tipo": "concurso",
+      "titulo": "FGV 2026 · mistura de concentrações (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "2026-mpes26-14",
+        "banca": "FGV",
+        "ano": 2026,
+        "n": 14,
+        "gab": "E",
+        "assunto": "Razão e regra de três",
+        "cobra": "mistura de concentrações",
+        "texto": "O \"grau\" do álcool doméstico indica a concentração de etanol presente na mistura com água. No Brasil, essa medida é expressa em INPM. Por exemplo, o álcool 46 INPM possui, a cada 100 gramas de produto, 46 gramas de etanol e 54 gramas de água e outros componentes. Misturando-se 200g de álcool 46 INPM com 300 gramas de álcool 70 INPM, produz-se 500g de álcool com concentração INPM igual a\n(A) 59,4.\n(B) 59,6.\n(C) 59,8.\n(D) 60,2.\n(E) 60,4."
+       }
+      }
+     },
+     {
+      "id": "aula-c-2026-12-06",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Razão e regra de três",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de razão, divisão proporcional e regra de três composta para concurso"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-13",
+    "tema": "Estatística",
+    "aula": "C03",
+    "porque": "média, mediana e moda: presença garantida",
+    "itens": [
+     {
+      "id": "conc-2026-ssp-am-28",
+      "dia": 0,
+      "tipo": "concurso",
+      "titulo": "FGV 2026 · média, mediana e moda (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "2026-ssp-am-28",
+        "banca": "FGV",
+        "ano": 2026,
+        "n": 28,
+        "gab": "A",
+        "assunto": "Estatística",
+        "cobra": "média, mediana e moda",
+        "texto": "A sequência a seguir mostra o número de gols marcados pelo funcionário Ronaldão nos nove últimos jogos disputados pelo time da empresa onde ele trabalha: 2, 3, 1, 3, 0, 2, 0, 3, 1. Sobre a média, a mediana e a moda desses valores é verdade que:\n(A) média < mediana < moda;\n(B) média < moda < mediana;\n(C) moda < média < mediana;\n(D) mediana < moda < média;\n(E) mediana < média < moda."
+       }
+      }
+     },
+     {
+      "id": "mac-2026-12-13",
+      "dia": 1,
+      "tipo": "macete",
+      "titulo": "média depois de trocar um elemento, sem refazer a conta toda",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Macete de concurso: média depois de trocar um elemento, sem refazer a conta toda"
+      }
+     },
+     {
+      "id": "conc-vune-2026-tremembe-agente-19",
+      "dia": 2,
+      "tipo": "concurso",
+      "titulo": "Vunesp 2026 · média após troca de elementos (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "vune-2026-tremembe-agente-19",
+        "banca": "Vunesp",
+        "ano": 2026,
+        "n": 19,
+        "gab": "",
+        "assunto": "Estatística",
+        "cobra": "média após troca de elementos",
+        "texto": "Em abril, o time de futebol da prefeitura era formado por 20 atletas, sendo a média das suas alturas igual 1,77 m. Em maio, dois jogadores saíram do time, um com 1,73 m e outro com 1,70 m, e três novos jogadores se juntaram à equipe, sendo suas alturas respectivamente iguais a 1,78 m, 1,80 m e 1,83 m. Com essas mudanças, a média das alturas dos atletas desse time passou a ser igual a\n(A) 1,76 m.\n(B) 1,77 m.\n(C) 1,78 m.\n(D) 1,79 m.\n(E) 1,80 m."
+       }
+      }
+     },
+     {
+      "id": "conc-cesg-2024-basa-tecnico-36",
+      "dia": 3,
+      "tipo": "concurso",
+      "titulo": "Cesgranrio 2024 · média ponderada de distribuição (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "cesg-2024-basa-tecnico-36",
+        "banca": "Cesgranrio",
+        "ano": 2024,
+        "n": 36,
+        "gab": "",
+        "assunto": "Estatística",
+        "cobra": "média ponderada de distribuição",
+        "texto": "Um banco oferece dois serviços aos seus clientes. Sabe-se, no entanto, que 20% dos clientes não contratam qualquer um deles, 50% contratam apenas um e os 30% restantes contratam os dois serviços oferecidos. Qual é a média do número de serviços contratados pelos clientes desse banco?\n(A) 0,11\n(B) 1,00\n(C) 1,10\n(D) 1,30\n(E) 1,50"
+       }
+      }
+     },
+     {
+      "id": "conc-2026-bancodonordeste-27",
+      "dia": 4,
+      "tipo": "concurso",
+      "titulo": "FGV 2026 · média ponderada por percentual (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "2026-bancodonordeste-27",
+        "banca": "FGV",
+        "ano": 2026,
+        "n": 27,
+        "gab": "D",
+        "assunto": "Estatística",
+        "cobra": "média ponderada por percentual",
+        "texto": "Levantamento estatístico de uma empresa constatou que 70% dos funcionários eram do sexo masculino. Ainda de acordo com esse levantamento, a média salarial mensal dos funcionários do sexo masculino era de R$ 3.000,00 e a média salarial mensal dos funcionários do sexo feminino era de R$ 4.500,00. Considerando todos os funcionários dessa empresa, a média salarial mensal é de:\n(A) R$ 3.950,00\n(B) R$ 3.750,00\n(C) R$ 3.650,00\n(D) R$ 3.450,00\n(E) R$ 3.250,00"
+       }
+      }
+     },
+     {
+      "id": "aula-c-2026-12-13",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Estatística",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de estatística para concurso: média, mediana, moda e média ponderada"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-20",
+    "tema": "Números: MMC, MDC e frações",
+    "aula": "C04",
+    "porque": "base de quase toda questão de raciocínio",
+    "itens": [
+     {
+      "id": "conc-vune-2026-causp-assistente-22",
+      "dia": 0,
+      "tipo": "concurso",
+      "titulo": "Vunesp 2026 · MDC em distribuição (fácil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "vune-2026-causp-assistente-22",
+        "banca": "Vunesp",
+        "ano": 2026,
+        "n": 22,
+        "gab": "",
+        "assunto": "Números: MMC, MDC e frações",
+        "cobra": "MDC em distribuição",
+        "texto": "Um total de 1.170 folhas de papel sulfite, sendo 450 na cor amarela e as demais na cor branca, serão distribuí das em envelopes, de modo que cada envelope venha conter x unidades de folha na cor amarela e y unidades de folhas na cor branca, sem sobrar folha fora dos envelopes. Se a escolha do número de envelopes for feita pelo maior número possível e atendendo as condições apresentadas, a diferença y – x será igual a\n(A) 1.\n(B) 2.\n(C) 3.\n(D) 4.\n(E) 5."
+       }
+      }
+     },
+     {
+      "id": "mac-2026-12-20",
+      "dia": 1,
+      "tipo": "macete",
+      "titulo": "quando a questão é de MMC e quando é de MDC",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Macete de concurso: quando a questão é de MMC e quando é de MDC"
+      }
+     },
+     {
+      "id": "conc-cebr-2023-saocristovao-guarda-16",
+      "dia": 2,
+      "tipo": "concurso",
+      "titulo": "Cebraspe 2023 · conta com tarifa fixa e adicional (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "cebr-2023-saocristovao-guarda-16",
+        "banca": "Cebraspe",
+        "ano": 2023,
+        "n": 16,
+        "gab": "",
+        "assunto": "Números: MMC, MDC e frações",
+        "cobra": "conta com tarifa fixa e adicional",
+        "texto": "Uma locadora de veículos oferta a diária de um de seus automóveis por R$ 89,00, com quilometragem limitada a 50 km por dia. Caso o locatário ultrapasse o limite de quilometragem, cobra-se R$ 0,79 por quilômetro adicional. Ainda, no momento da devolução do automóvel, cobram-se R$ 35,00 para a lavagem do veículo.\nJoão alugou, nessa locadora, um desses automóveis, para uso por dois dias, e percorreu 120 km no total. Na situação hipotética precedente, João, no momento da devolução do veículo, deverá pagar à locadora o total de\nA R$ 193,80.\nB R$ 228,80.\nC R$ 307,80.\nD R$ 272,80."
+       }
+      }
+     },
+     {
+      "id": "conc-vune-2026-fapesp-analista-12",
+      "dia": 3,
+      "tipo": "concurso",
+      "titulo": "Vunesp 2026 · MMC em horários de partida (médio)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "vune-2026-fapesp-analista-12",
+        "banca": "Vunesp",
+        "ano": 2026,
+        "n": 12,
+        "gab": "",
+        "assunto": "Números: MMC, MDC e frações",
+        "cobra": "MMC em horários de partida",
+        "texto": "Em uma estação, os trens da linha F partem a cada 6 minutos, os da linha G, a cada 9 minutos, e os da linha H, a cada 15 minutos. Em um determinado dia, às 6 horas, os trens dessas linhas partiram ao mesmo tempo e mantiveram as respectivas regularidades de partida desse horário em diante. Nesse dia, das 6 horas às 8 horas, o número de vezes em que os trens da linha F partiram sozinhos supera o número total de vezes em que os trens das linhas G e H partiram, simultaneamente, em\n(A) 6.\n(B) 8.\n(C) 5.\n(D) 7.\n(E) 4."
+       }
+      }
+     },
+     {
+      "id": "conc-2026-amazul-18",
+      "dia": 4,
+      "tipo": "concurso",
+      "titulo": "FGV 2026 · soma de dízimas periódicas (difícil)",
+      "etapa": "ideia",
+      "gerar": {
+       "concurso": {
+        "id": "2026-amazul-18",
+        "banca": "FGV",
+        "ano": 2026,
+        "n": 18,
+        "gab": "E",
+        "assunto": "Números: MMC, MDC e frações",
+        "cobra": "soma de dízimas periódicas",
+        "texto": "A seguir são apresentados dois números racionais, cujas representações no sistema decimal são dízimas periódicas: X = 0, 84 = 0,8484 … Y = 0,48 = 0,4848 …\nA soma X + Y é igual a\n(A) 1,1321...\n(B) 1,2222...\n(C) 1,3232...\n(D) 1,3233...\n(E) 1,3333..."
+       }
+      }
+     },
+     {
+      "id": "aula-c-2026-12-20",
+      "dia": 6,
+      "tipo": "aula",
+      "titulo": "Aula resumida · Números: MMC, MDC e frações",
+      "etapa": "ideia",
+      "gerar": {
+       "assunto": "Aula resumida de MMC, MDC e frações para concurso"
+      }
+     }
+    ]
+   },
+   {
+    "grava": "2026-12-27",
+    "tema": "Equações e sistemas",
+    "aula": "C05",
+    "porque": "",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-03",
+    "tema": "Matemática financeira",
+    "aula": "C06",
+    "porque": "",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-10",
+    "tema": "Lógica proposicional",
+    "aula": "C07",
+    "porque": "",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-17",
+    "tema": "Quantificadores e conjuntos",
+    "aula": "C08",
+    "porque": "",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-24",
+    "tema": "Contagem e probabilidade",
+    "aula": "C09",
+    "porque": "",
+    "itens": []
+   },
+   {
+    "grava": "2027-01-31",
+    "tema": "Geometria e medidas",
+    "aula": "C10",
+    "porque": "",
+    "itens": []
+   }
+  ]
+ }
 }

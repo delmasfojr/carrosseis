@@ -1,154 +1,175 @@
-/* 🎬 ROTINA — o cronograma de vídeos do professor (semana temática).
+/* 🎬 ROTINA — o cronograma de vídeos do professor, em duas trilhas: 📘 ENEM e 🏛️ Concurso.
  *
- * Cada semana tem um assunto (na ordem do ranking do ENEM) e 7 vídeos, um por dia:
- *   seg ENEM fácil · ter curiosidade · qua ENEM médio · qui concurso · sex ENEM difícil · sáb vestibular · dom aula resumida.
- * Grava tudo no DOMINGO anterior (~1 h) e posta 1 por dia, de segunda a domingo.
+ * Cada semana tem um assunto e um vídeo por dia (seg a dom); grava no DOMINGO anterior e posta 1 por dia.
+ *   ENEM:     seg/qua/qui/sex questões do ENEM (fácil → difícil), ter curiosidade, dom aula resumida.
+ *   Concurso: seg/qua/qui/sex questões das bancas (FGV, Cebraspe, Vunesp, Cesgranrio), ter macete, dom aula resumida.
+ * O plano vem de rotina/semanas.json (montado no PC por montar_rotina.py; o Claude atualiza e dá push).
  *
- * O plano vem de rotina/semanas.json (o Claude atualiza no PC e dá push).
- * Etapas de cada vídeo: ideia → roteiro → gravado → pronto → postado.
- *   - "gravado" também vem sozinho da aba 🎙️ Gravar (quando ele manda a gravação ao Drive);
- *   - "postado" ele marca aqui no app (fica guardado neste aparelho).
+ * ✨ Criar roteiro: o PRÓPRIO APP cria o roteiro com o Gemini (Roteiro.daRotina): questão do ENEM pelo banco do app,
+ * questão de concurso pelo cartão rotina/q/<id>.jpg, curiosidade/macete/aula pelo assunto.
+ * Os roteiros criados ficam ligados ao item (localStorage rotinaRoteiros) e a etapa anda sozinha:
+ *   ideia → roteiro (criado) → gravado → pronto (vídeo montado) → postado (YouTube, ou ✅ Postei).
  */
 const Rotina = (() => {
   const $ = s => document.querySelector(s);
   const BASE_R = new URL('./', location.href).href;
   const ETAPAS = ['ideia', 'roteiro', 'gravado', 'pronto', 'postado'];
-  const ROTULO = {ideia: '💡 Escolhido', roteiro: '📝 Roteiro pronto', gravado: '🎙️ Gravado · Claude edita', pronto: '🎬 Vídeo pronto', postado: '✅ Postado'};
-  const TIPO = {enem: '📘 ENEM', curiosidade: '🧠 Curiosidade', concurso: '🏛️ Concurso', vestibular: '🎓 Vestibular', aula: '🖥️ Aula'};
+  const ROTULO = {ideia: '💡 Falta o roteiro', roteiro: '📝 Roteiro pronto', gravado: '🎙️ Gravado', pronto: '🎬 Vídeo pronto', postado: '✅ Postado'};
+  const TIPO = {enem: '📘 ENEM', curiosidade: '🧠 Curiosidade', concurso: '🏛️ Concurso', macete: '⚡ Macete', vestibular: '🎓 Vestibular', aula: '🖥️ Aula'};
   const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
   const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-  let plano = null, vista = 'hoje';
+  let plano = null, doApp = new Map(), criando = false;
+  let vista = 'hoje', trilha = 'enem';
 
   const lerLS = (k, p) => { try { return JSON.parse(localStorage.getItem(k)) ?? p; } catch { return p; } };
   const gravarLS = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-  try { vista = localStorage.getItem('rotinaVista') || 'hoje'; } catch {}
+  try { vista = localStorage.getItem('rotinaVista') || 'hoje'; trilha = localStorage.getItem('rotinaTrilha') || 'enem'; } catch {}
 
   const data = s => { const [a, m, d] = s.split('-').map(Number); return new Date(a, m - 1, d); };
   const mais = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const hoje0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const fmt = d => `${d.getDate()} ${MES[d.getMonth()]}`;
-  const chave = (s, i) => `${s.grava}#${i}`;
   const esc = t => String(t).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const semanas = () => (plano && plano.trilhas && plano.trilhas[trilha]) || [];
 
-  /** etapa real do vídeo: a maior entre a do plano, a da aba Gravar e a marcada aqui */
-  function etapa(s, i) {
-    const x = s.itens[i];
+  /** roteiros do app ligados a este item (os criados pelo ✨) */
+  const ligados = x => (lerLS('rotinaRoteiros', {})[x.id] || []).map(id => doApp.get(id)).filter(Boolean);
+
+  /** etapa real: a maior entre a do plano, a dos roteiros do app, a da aba Gravar e a marcada aqui */
+  function etapa(x) {
     let e = ETAPAS.indexOf(x.etapa || 'ideia');
-    const gs = lerLS('gravarStatus', {})[x.roteiro];
-    if (gs === 'enviado') e = Math.max(e, 2);
-    if (lerLS('rotinaPostado', {})[chave(s, i)]) e = 4;
+    for (const r of ligados(x)) e = Math.max(e, r.youtube ? 4 : r.video ? 3 : r.gravado ? 2 : 1);
+    if (lerLS('gravarStatus', {})[x.roteiro] === 'enviado') e = Math.max(e, 2);
+    if (lerLS('rotinaPostado', {})[x.id]) e = 4;
     return ETAPAS[Math.max(0, e)];
   }
-  const diaPost = (s, i) => mais(data(s.grava), 1 + s.itens[i].dia);
+  const diaPost = (s, x) => mais(data(s.grava), 1 + x.dia);
 
   async function carregar() {
     try {
       const r = await fetch(BASE_R + 'rotina/semanas.json', {cache: 'no-store'});
       if (r.ok) { plano = await r.json(); gravarLS('rotinaCache', plano); }
     } catch {}
-    if (!plano) plano = lerLS('rotinaCache', null);
+    if (!plano || !plano.trilhas) plano = lerLS('rotinaCache', null);
+    try { doApp = new Map((await Roteiro.todos()).map(r => [r.id, r])); } catch { doApp = new Map(); }
   }
 
   /** semana "atual": a que tem postagem hoje; senão, a próxima a gravar */
   function semanaDe(d) {
-    const ss = plano.semanas;
+    const ss = semanas();
     for (const s of ss) { const g = data(s.grava); if (d > g && d <= mais(g, 7)) return s; }
     return ss.find(s => data(s.grava) >= d) || ss[ss.length - 1];
   }
 
-  function cartao(s, i, comData = true) {
-    const x = s.itens[i], e = etapa(s, i), d = diaPost(s, i);
+  async function criar(x, botao) {
+    if (criando) return;
+    if (typeof Roteiro === 'undefined' || !Roteiro.daRotina) return alert('Atualize o app (feche e abra de novo).');
+    criando = true;
+    const t0 = new Date().toISOString();
+    if (x.gerar.assunto) botao.textContent = '⏳ Escrevendo o roteiro… (até 1 min)';
+    botao.disabled = true;
+    try {
+      await Roteiro.daRotina(x.gerar, botao);
+      const novos = (await Roteiro.todos()).filter(r => r.criado >= t0).map(r => r.id);
+      if (novos.length) { const m = lerLS('rotinaRoteiros', {}); m[x.id] = [...new Set([...(m[x.id] || []), ...novos])]; gravarLS('rotinaRoteiros', m); }
+    } finally { criando = false; }
+    // gerarPdf/gerarAssunto já levam para o roteiro pronto; a Rotina se redesenha quando ele voltar
+  }
+
+  function cartao(s, x, comData = true) {
+    const e = etapa(x), d = diaPost(s, x), rs = ligados(x);
     const div = document.createElement('div');
     div.className = 'rotitem e-' + e;
     div.innerHTML = `<div class="rottopo"><span>${TIPO[x.tipo] || x.tipo}</span>${comData ? `<span>${DIAS[x.dia]} · ${fmt(d)}</span>` : ''}</div>
-      <b>${esc(x.titulo)}</b>${x.obs ? `<small>${esc(x.obs)}</small>` : ''}
+      <b>${esc(x.titulo)}</b>
       <div class="rotbarra">${ETAPAS.map((n, k) => `<i class="${k <= ETAPAS.indexOf(e) ? 'on' : ''}"></i>`).join('')}</div>
       <div class="rotacoes"><em>${ROTULO[e]}</em></div>`;
     const ac = div.querySelector('.rotacoes');
-    if (e === 'roteiro' && x.roteiro) {
-      const b = document.createElement('button'); b.className = 'sec'; b.textContent = '🎙️ Gravar';
-      b.onclick = () => tela('gravar'); ac.append(b);
-    }
-    if (e === 'pronto' || e === 'gravado' || e === 'postado') {
-      const b = document.createElement('button'); b.className = e === 'postado' ? 'sec' : 'principal';
-      b.textContent = e === 'postado' ? '↩︎ Desmarcar' : '✅ Postei';
-      b.onclick = () => { const p = lerLS('rotinaPostado', {}); if (p[chave(s, i)]) delete p[chave(s, i)]; else p[chave(s, i)] = Date.now(); gravarLS('rotinaPostado', p); desenhar(); };
-      ac.append(b);
-    }
+    const bt = (txt, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = txt; b.onclick = () => fn(b); ac.append(b); return b; };
+    if (rs.length) bt(rs.length > 1 ? `📂 Abrir (${rs.length})` : '📂 Abrir', 'sec', () => {
+      if (rs.length > 1) { tela('roteiros'); return; }
+      tela('roteiros'); Roteiro.abrir(rs[0].id);
+    });
+    else if (x.roteiro && e !== 'postado') bt('🎙️ Gravar', 'sec', () => tela('gravar'));
+    if (e === 'ideia' && x.gerar) bt('✨ Criar roteiro', 'principal', b => criar(x, b));
+    if (e !== 'ideia') bt(e === 'postado' ? '↩︎' : '✅ Postei', e === 'postado' ? 'sec' : 'sec', () => {
+      const p = lerLS('rotinaPostado', {}); if (p[x.id]) delete p[x.id]; else p[x.id] = Date.now(); gravarLS('rotinaPostado', p); desenhar();
+    });
     return div;
   }
 
   function cabecalho(s) {
     const g = data(s.grava);
-    const feitos = s.itens.filter((_, i) => etapa(s, i) === 'postado').length;
+    const feitos = s.itens.filter(x => etapa(x) === 'postado').length;
     const h = document.createElement('div');
     h.className = 'rotsemana';
-    h.innerHTML = `<small>Semana de ${fmt(mais(g, 1))} a ${fmt(mais(g, 7))} · aula ${s.aula}</small><b>${esc(s.tema)}</b>
-      <small>${esc(s.porque)}</small>${s.itens.length ? `<div class="ebarra" style="margin-top:8px"><i style="width:${Math.round(100 * feitos / s.itens.length)}%"></i></div><small>${feitos} de ${s.itens.length} postados</small>` : ''}`;
+    h.innerHTML = `<small>Semana de ${fmt(mais(g, 1))} a ${fmt(mais(g, 7))} · aula ${esc(s.aula)}</small><b>${esc(s.tema)}</b>
+      ${s.porque ? `<small>${esc(s.porque)}</small>` : ''}${s.itens.length ? `<div class="ebarra" style="margin-top:8px"><i style="width:${Math.round(100 * feitos / s.itens.length)}%"></i></div><small>${feitos} de ${s.itens.length} postados</small>` : ''}`;
     return h;
   }
 
   function vistaHoje(c) {
-    const d = hoje0(), s = semanaDe(d);
-    const domingo = d.getDay() === 0;
-    // 1. postar hoje
+    const d = hoje0();
     const h3 = t => { const h = document.createElement('h3'); h.textContent = t; c.append(h); };
     h3(`📲 Postar hoje · ${DIAS[(d.getDay() + 6) % 7]}, ${fmt(d)}`);
     let achou = false;
-    for (const sem of plano.semanas) sem.itens.forEach((x, i) => { if (+diaPost(sem, i) === +d) { c.append(cartao(sem, i, false)); achou = true; } });
+    for (const s of semanas()) s.itens.forEach(x => { if (+diaPost(s, x) === +d) { c.append(cartao(s, x, false)); achou = true; } });
     if (!achou) c.insertAdjacentHTML('beforeend', '<p class="dica">Nada para postar hoje. A semana começa na segunda.</p>');
-    // 2. gravar (domingo = dia de gravação da semana seguinte)
-    const prox = plano.semanas.find(x => data(x.grava) >= d);
+    const prox = semanas().find(s => data(s.grava) >= d);
     if (prox && prox.itens.length) {
       const dg = data(prox.grava), falta = Math.round((dg - d) / 864e5);
-      h3(domingo && falta === 0 ? '🎙️ Gravar hoje' : `🎙️ Próxima gravação · dom, ${fmt(dg)}${falta ? ` (em ${falta} dia${falta > 1 ? 's' : ''})` : ''}`);
+      h3(falta === 0 ? '🎙️ Gravar hoje' : `🎙️ Próxima gravação · dom, ${fmt(dg)} (em ${falta} dia${falta > 1 ? 's' : ''})`);
       c.append(cabecalho(prox));
-      const pg = prox.itens.map((_, i) => i).filter(i => ETAPAS.indexOf(etapa(prox, i)) < 2);
-      const prontos = pg.filter(i => etapa(prox, i) === 'roteiro' && prox.itens[i].roteiro).length;
-      c.insertAdjacentHTML('beforeend', `<p class="dica">${prontos} de ${pg.length} roteiros já estão na aba 🎙️ Gravar. Os outros o Claude ainda vai preparar antes do domingo.</p>`);
-      pg.forEach(i => c.append(cartao(prox, i)));
+      const sem = prox.itens.filter(x => etapa(x) === 'ideia').length;
+      if (sem) c.insertAdjacentHTML('beforeend', `<p class="dica">${sem} vídeo${sem > 1 ? 's' : ''} ainda sem roteiro: toque em <b>✨ Criar roteiro</b> e o app monta com o Gemini (de graça).</p>`);
+      prox.itens.filter(x => ETAPAS.indexOf(etapa(x)) < 2).forEach(x => c.append(cartao(prox, x)));
     }
-    // 3. atrasados: dia já passou e não foi postado
     const atr = [];
-    for (const sem of plano.semanas) sem.itens.forEach((x, i) => { if (diaPost(sem, i) < d && etapa(sem, i) !== 'postado') atr.push([sem, i]); });
-    if (atr.length) { h3('⏰ Ficou para trás'); atr.forEach(([sem, i]) => c.append(cartao(sem, i))); }
-    if (s && s !== prox && s.itens.length) { h3('📅 Esta semana'); c.append(cabecalho(s)); }
+    for (const s of semanas()) s.itens.forEach(x => { if (diaPost(s, x) < d && etapa(x) !== 'postado') atr.push([s, x]); });
+    if (atr.length) { h3('⏰ Ficou para trás'); atr.forEach(([s, x]) => c.append(cartao(s, x))); }
   }
 
   function vistaSemana(c) {
     const s = semanaDe(hoje0());
+    if (!s) return;
     c.append(cabecalho(s));
     if (!s.itens.length) { c.insertAdjacentHTML('beforeend', '<p class="dica">O Claude ainda vai escolher as questões desta semana.</p>'); return; }
-    s.itens.forEach((_, i) => c.append(cartao(s, i)));
+    s.itens.forEach(x => c.append(cartao(s, x)));
   }
 
   function vistaCalendario(c) {
-    const d = hoje0();
-    for (const s of plano.semanas) {
+    const d = hoje0(), atual = semanaDe(d);
+    for (const s of semanas()) {
       const passou = mais(data(s.grava), 7) < d;
       const det = document.createElement('details');
       det.className = 'mais rotcal' + (passou ? ' passou' : '');
-      const n = s.itens.length, feitos = s.itens.filter((_, i) => etapa(s, i) === 'postado').length;
+      const n = s.itens.length, feitos = s.itens.filter(x => etapa(x) === 'postado').length;
       det.innerHTML = `<summary><span>🎙️ dom ${fmt(data(s.grava))}</span> <b>${esc(s.tema)}</b> <small>${n ? `${feitos}/${n} postados` : 'a planejar'}</small></summary>`;
       det.append(cabecalho(s));
-      s.itens.forEach((_, i) => det.append(cartao(s, i)));
+      s.itens.forEach(x => det.append(cartao(s, x)));
       if (!n) det.insertAdjacentHTML('beforeend', '<p class="dica">Questões ainda não escolhidas.</p>');
-      if (s === semanaDe(d)) det.open = true;
+      if (s === atual) det.open = true;
       c.append(det);
     }
   }
 
+  const EXPLICA = {
+    enem: 'Toda semana: <b>4 questões do ENEM</b> (fácil → difícil), <b>1 curiosidade</b> e <b>1 aula resumida</b>, no assunto que mais cai.',
+    concurso: 'Toda semana: <b>4 questões de concurso</b> (FGV, Cebraspe, Vunesp, Cesgranrio), <b>1 macete</b> e <b>1 aula resumida</b>, na ordem do módulo de concursos.',
+  };
   function desenhar() {
     const c = $('#rotconteudo');
     c.innerHTML = '';
     document.querySelectorAll('[data-rv]').forEach(b => b.classList.toggle('on', b.dataset.rv === vista));
-    if (!plano || !plano.semanas || !plano.semanas.length) { c.innerHTML = '<p class="dica">O cronograma ainda não chegou. Abra com internet.</p>'; return; }
+    document.querySelectorAll('[data-rt]').forEach(b => b.classList.toggle('on', b.dataset.rt === trilha));
+    if (!semanas().length) { c.innerHTML = '<p class="dica">O cronograma ainda não chegou. Abra com internet.</p>'; return; }
     ({hoje: vistaHoje, semana: vistaSemana, calendario: vistaCalendario})[vista](c);
-    c.insertAdjacentHTML('beforeend', `<p class="dica" style="margin-top:18px">Toda semana: <b>3 ENEM</b> (fácil → difícil), <b>1 concurso</b>, <b>1 vestibular</b>, <b>1 curiosidade</b> e <b>1 aula resumida</b>. Grava no domingo (~1 h) e posta 1 por dia. Plano atualizado em ${plano.atualizado.split('-').reverse().join('/')}.</p>`);
+    c.insertAdjacentHTML('beforeend', `<p class="dica" style="margin-top:18px">${EXPLICA[trilha]} Grava no domingo e posta 1 por dia. Plano de ${plano.atualizado.split('-').reverse().join('/')}.</p>`);
   }
 
   async function mostrar() {
     document.querySelectorAll('[data-rv]').forEach(b => b.onclick = () => { vista = b.dataset.rv; try { localStorage.setItem('rotinaVista', vista); } catch {} desenhar(); });
+    document.querySelectorAll('[data-rt]').forEach(b => b.onclick = () => { trilha = b.dataset.rt; try { localStorage.setItem('rotinaTrilha', trilha); } catch {} desenhar(); });
     if (!plano) $('#rotconteudo').innerHTML = '<p class="dica">Buscando o cronograma…</p>';
     await carregar();
     desenhar();
