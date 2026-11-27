@@ -845,6 +845,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
     if (modoV() !== 'questoes') mostrarVirais();
     $('#rvoltar').onclick = () => tela('roteiros');
     $('#rtp').onclick = abrirTP;
+    if ($('#rsovoz')) $('#rsovoz').onclick = () => { const x = Gravar.deRoteiro(atual); if (!x) return alert('Este roteiro não tem falas para gravar.'); tela('gravar'); Gravar.abrir(x); };
     $('#rgravar').onclick = () => Gravador.abrir(atual, salvarR, () => abrir(atual.id));
     $('#rcopiar').onclick = async () => alert(await copiar(textoRoteiro()) ? 'Roteiro copiado!' : 'Não consegui copiar.');
     $('#rcopiarleg').onclick = async () => alert(await copiar($('#rlegenda').value) ? 'Legenda copiada!' : 'Selecione e copie à mão.');

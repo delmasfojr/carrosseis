@@ -42,9 +42,17 @@ const Gravar = (() => {
     } catch { lista = lerLS('gravarCache', []); }
     if (lista.length) gravarLS('gravarCache', lista);
     const status = lerLS('gravarStatus', {});
-    if (!lista.length) { $('#glista').innerHTML = '<p class="dica">Nenhum roteiro para gravar ainda. Quando o Claude preparar um vídeo com a sua voz, ele aparece aqui.</p>'; return; }
+    // os roteiros montados aqui no app (aba Roteiros) também entram, depois dos que vieram do PC
+    let doApp = [];
+    try { doApp = (await tx('readonly', s => s.getAll(), 'r')).sort((a, b) => b.id.localeCompare(a.id)).map(deRoteiro).filter(Boolean); } catch {}
+    if (!lista.length && !doApp.length) { $('#glista').innerHTML = '<p class="dica">Nenhum roteiro para gravar ainda. Monte um na aba Roteiros, ou espere o Claude preparar um vídeo com a sua voz.</p>'; return; }
     $('#glista').innerHTML = '';
+    const titulo = t => { const h = document.createElement('h3'); h.textContent = t; $('#glista').append(h); };
+    if (lista.length && doApp.length) titulo('💻 Do computador');
+    if (doApp.length) { lista = lista.concat(doApp); }
+    let primeiroApp = true;
     for (const x of lista) {
+      if (x.doApp && primeiroApp) { titulo('🎬 Meus roteiros do app'); primeiroApp = false; }
       const st = status[x.id] || '';
       const b = document.createElement('button');
       b.className = 'gitem' + (st === 'enviado' ? ' feito' : '');
@@ -53,6 +61,25 @@ const Gravar = (() => {
       b.onclick = () => abrir(x);
       $('#glista').append(b);
     }
+  }
+
+  /** Converte um roteiro da aba Roteiros (gancho escolhido + falas dos blocos) no formato do teleprompter:
+      cada bloco vira uma cena (gravada à parte) e cada fala é quebrada em frases. */
+  function deRoteiro(item) {
+    const c = item && item.conteudo;
+    if (!c || !c.blocos) return null;
+    const falas = [(c.ganchos || [])[item.gancho || 0] || (c.ganchos || [])[0], ...c.blocos.map(b => b.fala)].filter(f => f && f.trim());
+    const frases = [], cenas = [];
+    for (const f of falas) {
+      cenas.push(frases.length);
+      const pedacos = (f.replace(/\s+/g, ' ').match(/[^.!?…]+[.!?…]*["”']?/g) || [f]).map(t => t.trim()).filter(Boolean);
+      frases.push(...pedacos);
+    }
+    if (!frases.length) return null;
+    const tema = c.tema || 'Roteiro';
+    const palavras = frases.join(' ').split(/\s+/).length;
+    return {id: 'app-' + item.id, titulo: tema, arquivo: tema.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) + ' (minha voz)',
+      tipo: 'Roteiro do app', frases, cenas, segundos: Math.round(palavras / 2.2), doApp: true};
   }
 
   async function abrir(x) {
@@ -330,6 +357,6 @@ const Gravar = (() => {
     const f = lerLS('gravarFonte', 0); if (f) $('#gtexto').style.fontSize = f + 'px';
   }
 
-  return {iniciar, mostrar};
+  return {iniciar, mostrar, abrir, deRoteiro};
 })();
 Gravar.iniciar();
