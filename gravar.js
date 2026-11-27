@@ -7,7 +7,7 @@
  *    sozinhas. Tocar numa frase recomeça nela (para repetir); tocar no resto pula para a próxima.
  * 3. "📤 Mandar para o Drive": abre o compartilhar do celular; escolher Drive › pasta "Delmão - Minha voz".
  *    O nome do arquivo começa com o nome do vídeo, e é por ele que o PC acha a gravação certa.
- * EM BLOCOS (modo "Só a voz"): cada cena do roteiro é um bloco; grava um de cada vez (errou, regrava só aquele),
+ * EM BLOCOS (modo "Só a voz, em blocos"; o professor também pode escolher "tudo de uma vez", um take só): cada cena do roteiro é um bloco; grava um de cada vez (errou, regrava só aquele),
  *    e no fim o app junta os blocos num WAV só (0,4 s de silêncio entre eles) para mandar ao Drive.
  *    "Com o rosto" continua sendo uma gravação inteira (juntar vídeo no celular é pesado).
  * A gravação fica guardada neste celular (IndexedDB) até ser apagada, mesmo fechando o app.
@@ -96,7 +96,7 @@ const Gravar = (() => {
   }
 
   /* ---------- blocos (uma cena = um bloco) ---------- */
-  const emBlocos = () => $('#gmodo').value !== 'rosto';
+  const emBlocos = () => $('#gmodo').value === 'voz';  // 'vozinteira' e 'rosto' gravam tudo num take só
   const blocos = () => {
     const c = (atual.cenas && atual.cenas.length ? atual.cenas : [0]).concat(atual.frases.length);
     return c.slice(0, -1).map((ini, k) => [ini, c[k + 1]]).filter(([a, b]) => b > a);
@@ -348,7 +348,7 @@ const Gravar = (() => {
     nomeRitmo();
     $('#gproxima').onclick = () => irPara(frase + 1);
     $('#ganterior').onclick = () => irPara(frase - 1);
-    $('#gmodo').onchange = () => { if (atual) mostrarBlocos(); };
+    $('#gmodo').onchange = () => { gravarLS('gravarModo', $('#gmodo').value); if (atual) { irPara(0); mostrarBlocos(); } };
     $('#gmandar').onclick = mandar;
     $('#gbaixar').onclick = baixar;
     $('#gdescartar').onclick = descartar;
