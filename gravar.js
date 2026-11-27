@@ -3,7 +3,8 @@
  * 1. No PC, o fazer.py publica cada roteiro "minha voz" em gravar/roteiros.json (este app lê ao abrir a aba).
  * 2. Aqui: escolhe o roteiro, "Só a voz" ou "Com o rosto" (câmera da frente), e lê no teleprompter.
  *    Grava tudo de uma vez; errou, é só repetir a frase (no PC vale a ÚLTIMA vez que ela foi dita).
- *    Tocar no texto passa para a próxima frase (só para guiar a leitura; não corta nada).
+ *    Teleprompter karaokê: cada palavra acende no ritmo certo para o vídeo (🐢/🚶/🐇); gravando, as frases passam
+ *    sozinhas. Tocar numa frase recomeça nela (para repetir); tocar no resto pula para a próxima.
  * 3. "📤 Mandar para o Drive": abre o compartilhar do celular; escolher Drive › pasta "Delmão - Minha voz".
  *    O nome do arquivo começa com o nome do vídeo, e é por ele que o PC acha a gravação certa.
  * A gravação fica guardada neste celular (IndexedDB) até ser apagada, mesmo fechando o app.
@@ -67,20 +68,64 @@ const Gravar = (() => {
     const t = $('#gtexto');
     t.innerHTML = '';
     atual.frases.forEach((f, i) => {
-      if (atual.cenas && atual.cenas.includes(i) && i > 0) t.append(Object.assign(document.createElement('hr'), {}));
+      if (atual.cenas && atual.cenas.includes(i) && i > 0) t.append(document.createElement('hr'));
       const p = document.createElement('p');
-      p.textContent = f;
-      p.onclick = e => { e.stopPropagation(); irPara(i); };
+      for (const w of f.split(/\s+/).filter(Boolean)) {
+        const s = document.createElement('span');
+        s.className = 'w';
+        s.textContent = w + ' ';
+        p.append(s);
+      }
+      p.onclick = e => { e.stopPropagation(); irPara(i, true); };
       t.append(p);
     });
+    tempos = atual.frases.map(ritmo);
     irPara(0);
   }
 
-  function irPara(i) {
+  /* ---------- karaokê: cada palavra acende no tempo certo (ritmo do vídeo) ----------
+     O tempo de cada palavra é proporcional às sílabas, com pausa na pontuação, na velocidade escolhida
+     (🐢 1,8 / 🚶 2,2 / 🐇 2,7 palavras por segundo). Gravando, a frase passa sozinha. Tocar numa frase
+     recomeça o karaokê nela (para repetir depois de errar); tocar no resto do texto pula para a próxima. */
+  const RITMOS = {devagar: {v: 1.8, nome: '🐢 Devagar'}, normal: {v: 2.2, nome: '🚶 Normal'}, rapido: {v: 2.7, nome: '🐇 Rápido'}};
+  const PAUSA_FRASE = 0.45;  // respiro entre uma frase e outra (s)
+  let tempos = [], inicioFrase = 0, laco = null;
+  const vel = () => (RITMOS[lerLS('gravarRitmo', 'normal')] || RITMOS.normal).v;
+  function ritmo(f) {
+    const pal = f.split(/\s+/).filter(Boolean);
+    const silabas = w => /\d/.test(w) ? w.match(/\d/g).length * 1.5 + (/%/.test(w) ? 2 : 0)
+      : (w.normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[aeiouy]+/gi) || []).length;
+    const peso = pal.map(w => Math.max(1, silabas(w)));
+    const pausa = pal.map((w, k) => k === pal.length - 1 ? 0 : /[.!?…:]$/.test(w) ? 2 : /[,;—–)]$/.test(w) ? 1 : 0);
+    const total = peso.reduce((x, y) => x + y, 0) + pausa.reduce((x, y) => x + y, 0);
+    const dur = pal.length / vel();
+    const ini = [];
+    let acc = 0;
+    for (let k = 0; k < pal.length; k++) { ini.push(acc); acc += (peso[k] + pausa[k]) / total * dur; }
+    return {ini, dur};
+  }
+
+  function irPara(i, reiniciar) {
     frase = Math.max(0, Math.min(atual.frases.length - 1, i));
-    [...$('#gtexto').querySelectorAll('p')].forEach((p, k) => p.className = k < frase ? 'lida' : k === frase ? 'agora' : '');
-    const p = $('#gtexto').querySelectorAll('p')[frase];
-    if (p) p.scrollIntoView({block: 'center', behavior: 'smooth'});
+    inicioFrase = performance.now();
+    const ps = [...$('#gtexto').querySelectorAll('p')];
+    ps.forEach((p, k) => {
+      p.className = k < frase ? 'lida' : k === frase ? 'agora' : '';
+      p.querySelectorAll('.w').forEach(w => w.className = 'w');
+    });
+    if (ps[frase]) ps[frase].scrollIntoView({block: 'center', behavior: 'smooth'});
+  }
+
+  function karaoke() {
+    if (!rec || rec.state !== 'recording') return;
+    const t = (performance.now() - inicioFrase) / 1000;
+    const tf = tempos[frase];
+    if (tf && t > tf.dur + PAUSA_FRASE && frase < atual.frases.length - 1) irPara(frase + 1);
+    else if (tf) {
+      const ws = $('#gtexto').querySelectorAll('p')[frase].querySelectorAll('.w');
+      ws.forEach((w, k) => w.className = 'w' + (t >= tf.ini[k] ? (k === ws.length - 1 || t < tf.ini[k + 1] ? ' ja agora' : ' ja') : ''));
+    }
+    laco = setTimeout(karaoke, 50);
   }
 
   /* ---------- gravação ---------- */
@@ -112,12 +157,14 @@ const Gravar = (() => {
     $('#gpronto').hidden = true;
     document.body.classList.add('gravando-voz');
     irPara(0);
+    clearTimeout(laco); karaoke();
     relogio = setInterval(() => { const s = Math.round((Date.now() - inicio) / 1000); $('#grelogio').textContent = `⏺ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 500);
     try { await navigator.wakeLock?.request('screen'); } catch {}
   }
 
   function parar(descartar) {
     clearInterval(relogio);
+    clearTimeout(laco);
     $('#grelogio').textContent = '';
     document.body.classList.remove('gravando-voz');
     $('#gbotao').textContent = '⏺ Gravar';
@@ -181,6 +228,14 @@ const Gravar = (() => {
     $('#gvoltar').onclick = voltar;
     $('#gbotao').onclick = () => (rec && rec.state === 'recording' ? parar(false) : comecar());
     $('#gtexto').onclick = () => irPara(frase + 1);
+    const nomeRitmo = () => { $('#gritmo').textContent = (RITMOS[lerLS('gravarRitmo', 'normal')] || RITMOS.normal).nome; };
+    $('#gritmo').onclick = () => {
+      const ord = Object.keys(RITMOS), at = Math.max(0, ord.indexOf(lerLS('gravarRitmo', 'normal')));
+      gravarLS('gravarRitmo', ord[(at + 1) % ord.length]);
+      nomeRitmo();
+      if (atual) tempos = atual.frases.map(ritmo);
+    };
+    nomeRitmo();
     $('#gproxima').onclick = () => irPara(frase + 1);
     $('#ganterior').onclick = () => irPara(frase - 1);
     $('#gmandar').onclick = mandar;

@@ -183,7 +183,10 @@ nav button i{position:relative}
 #gtexto{background:var(--navy);color:#fff;border-radius:16px;padding:18px 16px;font-size:26px;line-height:1.35;max-height:52vh;overflow-y:auto;margin-top:12px}
 #gtexto p{margin:0 0 14px;opacity:.55;transition:opacity .2s}
 #gtexto p.lida{opacity:.3}
-#gtexto p.agora{opacity:1;color:#FFD84D}
+#gtexto p.agora{opacity:1;color:#fff}
+#gtexto p.agora .w.ja{color:#9fb0c8}
+#gtexto p.agora .w.agora{color:#FFD84D;text-shadow:0 0 12px #ff7a0088}
+body:not(.gravando-voz) #gtexto p.agora{color:#FFD84D}
 #gtexto hr{border:0;border-top:2px dashed #ffffff33;margin:10px 0 16px}
 .gbarra{display:flex;gap:8px;margin-top:10px}
 .gbarra button{flex:1}
@@ -378,9 +381,10 @@ body.gravando-voz nav{display:none}
       <video id="gcam" playsinline hidden></video>
       <div id="gtexto"></div>
       <div class="gbarra"><button id="ganterior" class="sec">◀ Frase</button><button id="gamenos" class="sec">A−</button><button id="gamais" class="sec">A+</button><button id="gproxima" class="sec">Frase ▶</button></div>
+      <button id="gritmo" class="sec" style="width:100%;margin-top:8px"></button>
       <button id="gbotao">⏺ Gravar</button>
       <div id="grelogio"></div>
-      <p class="dica">Grave tudo de uma vez, no seu ritmo. <b>Errou? Pausa e repete a frase inteira</b>: no PC vale a última vez. Toque no texto para passar para a próxima frase.</p>
+      <p class="dica">Grave tudo de uma vez, no seu ritmo. <b>Errou? Pausa e repete a frase inteira</b>: no PC vale a última vez. Gravando, <b>cada palavra acende no ritmo certo</b> (escolha a velocidade no botão de cima). Errou? Toque na frase para recomeçar nela.</p>
       <div id="gpronto" hidden>
         <h3>Sua gravação</h3>
         <div id="gplay"></div>
