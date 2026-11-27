@@ -85,9 +85,9 @@ const Gravar = (() => {
 
   /* ---------- karaokê: cada palavra acende no tempo certo (ritmo do vídeo) ----------
      O tempo de cada palavra é proporcional às sílabas, com pausa na pontuação, na velocidade escolhida
-     (🐢 1,8 / 🚶 2,2 / 🐇 2,7 palavras por segundo). Gravando, a frase passa sozinha. Tocar numa frase
+     (🐢 1,8 / 🚶 2,2 / 🐇 3,3 palavras por segundo). Gravando, a frase passa sozinha. Tocar numa frase
      recomeça o karaokê nela (para repetir depois de errar); tocar no resto do texto pula para a próxima. */
-  const RITMOS = {devagar: {v: 1.8, nome: '🐢 Devagar'}, normal: {v: 2.2, nome: '🚶 Normal'}, rapido: {v: 2.7, nome: '🐇 Rápido'}};
+  const RITMOS = {devagar: {v: 1.8, nome: '🐢 Devagar'}, normal: {v: 2.2, nome: '🚶 Normal'}, rapido: {v: 3.3, nome: '🐇 Rápido'}};
   const PAUSA_FRASE = 0.45;  // respiro entre uma frase e outra (s)
   let tempos = [], inicioFrase = 0, laco = null;
   const vel = () => (RITMOS[lerLS('gravarRitmo', 'normal')] || RITMOS.normal).v;
