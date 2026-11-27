@@ -1,6 +1,180 @@
 {
- "atualizado": "2026-11-25T19:09:29.815Z",
+ "atualizado": "2026-11-27T18:52:58.281Z",
  "roteiros": [
+  {
+   "id": "2026-11-27-1",
+   "criado": "2026-11-27T18:52:58.280Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "TOUR RÁPIDO",
+   "recurso": "Caderno de erros",
+   "conteudo": {
+    "tema": "App · Tour no Caderno de Erros",
+    "nota_viral": 9,
+    "por_que": "Mostra na prática como o app resolve a maior dor de quem estuda: esquecer o que errou.",
+    "ganchos": [
+     "Olha para onde vai cada questão que você erra no meu app.",
+     "Você refaz as questões que errou ou deixa pra lá?",
+     "Essa ferramenta do app esvazia seu caderno de erros."
+    ],
+    "texto_capa": "SEU CADERNO DE ERROS",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Toda vez que você erra uma questão treinando no meu app, ela não sumiu não. Ela vai direto para o seu Caderno de Erros.",
+      "quadro": "CADERNO DE ERROS",
+      "texto_tela": "ONDE FICAM SEUS ERROS"
+     },
+     {
+      "tempo": "11–19 s",
+      "cena": "tela",
+      "fala": "Aí o aplicativo guarda essa danada e só tira ela de lá depois que você acerta duas vezes seguidas no treino.",
+      "quadro": "ACERTE 2X SEGUIDAS",
+      "texto_tela": "SÓ SAI AO ACERTAR 2X"
+     },
+     {
+      "tempo": "19–27 s",
+      "cena": "tela",
+      "fala": "Olha só essa conta de fração: errou a primeira na pressa? O app separa ela pra você refazer no momento certo.",
+      "quadro": "½ + ⅓ = ?",
+      "texto_tela": "REFAÇA NO MOMENTO CERTO"
+     },
+     {
+      "tempo": "27–35 s",
+      "cena": "tela",
+      "fala": "Assim você para de cometer os mesmos deslizes e limpa suas dúvidas de verdade. É assim que a matemática fixa na mente.",
+      "quadro": "½ + ⅓ = ⅚",
+      "texto_tela": "APRENDA COM O ERRO"
+     },
+     {
+      "tempo": "35–45 s",
+      "cena": "tela",
+      "fala": "Você costuma anotar os erros ou esquece deles? Comenta aí, o link do app está na bio e segue o Delmão Simplifica para mais dicas.",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você costuma refazer as questões que erra ou finge que não viu? Me conta aqui!",
+    "duracao": "45 s",
+    "legenda": "Olha para onde vai cada questão que você erra no meu app. 📱\n\nErrar faz parte do aprendizado, mas repetir o mesmo erro custa caro na hora dos estudos! No meu app, toda questão que você erra vai direto para o Caderno de Erros e só sai quando você acerta duas vezes seguidas. 🎯\n\nQuer organizar sua rotina e parar de errar bobeira?\n\nLink do app na bio!\n\n#matematica #estudos #dicasdeestudo #app #revisao"
+   }
+  },
+  {
+   "id": "2026-11-27-2",
+   "criado": "2026-11-27T18:52:58.280Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "MITO x VERDADE",
+   "recurso": "Verdade ou mentira",
+   "conteudo": {
+    "tema": "App · Mito de Reler x Prática",
+    "nota_viral": 9,
+    "por_que": "Desmistifica o hábito ineficiente de só ler teoria e mostra o treino interativo no app.",
+    "ganchos": [
+     "Reler a teoria dez vezes não faz você aprender matemática.",
+     "Achar que entendeu só de ler a resposta é um perigo.",
+     "Você estuda lendo ou testando seu cérebro de verdade?"
+    ],
+    "texto_capa": "PARAR DE SÓ RELER",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Muita gente acha que estudar é ficar relendo o livro. Só que o cérebro só aprende de verdade quando é desafiado a responder.",
+      "quadro": "RELER NÃO É ESTUDAR",
+      "texto_tela": "RELER NÃO BASTA"
+     },
+     {
+      "tempo": "11–19 s",
+      "cena": "tela",
+      "fala": "No meu app tem o modo Verdade ou Mentira pra testar você na hora. Olha essa afirmação: dois terços é maior que três quartos.",
+      "quadro": "⅔ > ¾ ?",
+      "texto_tela": "VERDADE OU MENTIRA?"
+     },
+     {
+      "tempo": "19–27 s",
+      "cena": "tela",
+      "fala": "Verdade ou mentira, major? Oxe, é mentira! Três quartos vale zero vírgula setenta e cinco e dois terços dá zero vírgula meia meia.",
+      "quadro": "¾ = 0,75 | ⅔ = 0,66...",
+      "texto_tela": "É MENTIRA!"
+     },
+     {
+      "tempo": "27–35 s",
+      "cena": "tela",
+      "fala": "Esse formato rápido força a mente a raciocinar na hora e mostra exatamente onde tá a sua dúvida, sem enrolação.",
+      "quadro": "TREINO ATIVO",
+      "texto_tela": "FORÇA A MEMÓRIA"
+     },
+     {
+      "tempo": "35–45 s",
+      "cena": "tela",
+      "fala": "E aí, você acertaria essa de primeira? Comenta aí pra mim, o link do app está na bio e segue o Delmão Simplifica aí.",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você saberia dizer de cabeça qual fração era maior? Responda aí!",
+    "duracao": "45 s",
+    "legenda": "Reler a teoria dez vezes não faz você aprender matemática. 💡\n\nFicar só lendo dá uma falsa sensação de entendimento. O cérebro precisa ser provocado com perguntas rápidas! No modo Verdade ou Mentira do meu app, você treina seu raciocínio ativo em poucos minutos. ⚡\n\nBora testar seu conhecimento de verdade?\n\nLink do app na bio!\n\n#matematica #estudos #aprendizado #app #estudoativo"
+   }
+  },
+  {
+   "id": "2026-11-27-3",
+   "criado": "2026-11-27T18:52:58.281Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "PEGADINHA",
+   "recurso": "Plano ENEM (43 ilhas e nivelamento)",
+   "conteudo": {
+    "tema": "App · Pegadinha no Plano ENEM",
+    "nota_viral": 9,
+    "por_que": "Usa uma pegadinha clássica do ENEM para apresentar a trilha de 43 ilhas do aplicativo.",
+    "ganchos": [
+     "Quase todo mundo escorrega nessa pegadinha do ENEM.",
+     "Sabe por que você trava nas questões mais difíceis do ENEM?",
+     "Essa pegadinha clássica de porcentagem cai direto no ENEM."
+    ],
+    "texto_capa": "PEGADINHA DO ENEM",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Desconto de vinte por cento e depois mais vinte por cento dá quarenta por cento de desconto? Claro que não, pai véi!",
+      "quadro": "-20% e -20% = -40%?",
+      "texto_tela": "CUIDADO COM A PEGADINHA"
+     },
+     {
+      "tempo": "11–19 s",
+      "cena": "tela",
+      "fala": "Aí a pessoa erra por falta de base. Por isso no meu app a gente começa com o teste de nivelamento no Plano ENEM.",
+      "quadro": "PLANO ENEM",
+      "texto_tela": "TESTE DE NIVELAMENTO"
+     },
+     {
+      "tempo": "19–27 s",
+      "cena": "tela",
+      "fala": "São quarenta e três ilhas organizadas por assunto. Você só avança para a ilha seguinte quando domina a matéria anterior.",
+      "quadro": "43 ILHAS DE ESTUDO",
+      "texto_tela": "TRILHA ORGANIZADA"
+     },
+     {
+      "tempo": "27–35 s",
+      "cena": "tela",
+      "fala": "Assim você passa por cada conteúdo na ordem certa e não cai mais nessas pegadinhas na hora da prova real.",
+      "quadro": "BASE SÓLIDA",
+      "texto_tela": "SEM BURACOS NA BASE"
+     },
+     {
+      "tempo": "35–45 s",
+      "cena": "tela",
+      "fala": "Qual assunto do ENEM mais te assusta hoje? Me conta nos comentários, o link do app está na bio e segue o Delmão Simplifica.",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Qual o assunto de matemática que mais te dá medo no ENEM? Comenta aqui!",
+    "duracao": "45 s",
+    "legenda": "Quase todo mundo escorrega nessa pegadinha do ENEM. 📐\n\nDescontos sucessivos não se somam assim! Erros como esse acontecem por falhas na base. No meu app, o Plano ENEM te guia por 43 ilhas de conteúdo na ordem perfeita pra você não deixar buracos na preparação. 🏝️\n\nPronto para dominar a matemática do ENEM?\n\nLink do app na bio!\n\n#matematica #enem #enem2024 #estudos #app"
+   }
+  },
   {
    "id": "2026-11-25-1",
    "criado": "2026-11-25T19:09:29.814Z",
