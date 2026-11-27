@@ -7,12 +7,16 @@
  *    sozinhas. Tocar numa frase recomeça nela (para repetir); tocar no resto pula para a próxima.
  * 3. "📤 Mandar para o Drive": abre o compartilhar do celular; escolher Drive › pasta "Delmão - Minha voz".
  *    O nome do arquivo começa com o nome do vídeo, e é por ele que o PC acha a gravação certa.
+ * EM BLOCOS (modo "Só a voz"): cada cena do roteiro é um bloco; grava um de cada vez (errou, regrava só aquele),
+ *    e no fim o app junta os blocos num WAV só (0,4 s de silêncio entre eles) para mandar ao Drive.
+ *    "Com o rosto" continua sendo uma gravação inteira (juntar vídeo no celular é pesado).
  * A gravação fica guardada neste celular (IndexedDB) até ser apagada, mesmo fechando o app.
  * Microfone sem os filtros de chamada (eco/ruído/ganho): eles estragam a voz; a limpeza é feita no PC.
  */
 const Gravar = (() => {
   const $ = s => document.querySelector(s);
   const BASE_G = new URL('./', location.href).href;
+  let bloco = 0;  // bloco (cena) atual no modo em blocos
   let lista = [], atual = null, frase = 0, rec = null, pedacos = [], stream = null, inicio = 0, relogio = null;
 
   /* ---------- guarda local (gravações e status) ---------- */
@@ -57,9 +61,75 @@ const Gravar = (() => {
     $('#gtitulo').textContent = x.titulo;
     $('#gmodo').value = lerLS('gravarModo', x.rosto ? 'rosto' : 'voz');
     montarTexto();
+    bloco = 0;
     const salvo = await pegar(x.id);
     mostrarPronto(salvo);
+    await mostrarBlocos();
     window.scrollTo(0, 0);
+  }
+
+  /* ---------- blocos (uma cena = um bloco) ---------- */
+  const emBlocos = () => $('#gmodo').value !== 'rosto';
+  const blocos = () => {
+    const c = (atual.cenas && atual.cenas.length ? atual.cenas : [0]).concat(atual.frases.length);
+    return c.slice(0, -1).map((ini, k) => [ini, c[k + 1]]).filter(([a, b]) => b > a);
+  };
+  const chaveB = k => `${atual.id}#b${k}`;
+
+  async function mostrarBlocos() {
+    const box = $('#gblocos');
+    box.hidden = !emBlocos();
+    $('#gtexto').querySelectorAll('p, hr').forEach(el => { el.style.display = ''; });
+    $('#gtake').innerHTML = '';
+    $('#gfaltam').hidden = !emBlocos();
+    if (!emBlocos()) { $('#gbotao').textContent = '⏺ Gravar'; return; }
+    const bs = blocos();
+    bloco = Math.min(bloco, bs.length - 1);
+    const feitos = await Promise.all(bs.map((_, k) => pegar(chaveB(k))));
+    box.innerHTML = '';
+    bs.forEach((_, k) => {
+      const b = document.createElement('button');
+      b.className = 'gbloco' + (k === bloco ? ' on' : '') + (feitos[k] ? ' ok' : '');
+      b.textContent = `${feitos[k] ? '✅' : '⏺'} ${k + 1}`;
+      b.onclick = () => { if (!(rec && rec.state === 'recording')) { bloco = k; mostrarBlocos(); } };
+      box.append(b);
+    });
+    // só as frases do bloco atual no teleprompter
+    const [a, z] = bs[bloco];
+    $('#gtexto').querySelectorAll('p').forEach((el, i) => { el.style.display = i >= a && i < z ? '' : 'none'; });
+    $('#gtexto').querySelectorAll('hr').forEach(el => { el.style.display = 'none'; });
+    const tk = feitos[bloco];
+    if (tk) $('#gtake').innerHTML = `<audio src="${URL.createObjectURL(tk.blob)}" controls></audio>`;
+    $('#gbotao').textContent = tk ? `🔁 Regravar o bloco ${bloco + 1}` : `⏺ Gravar o bloco ${bloco + 1}`;
+    const faltam = feitos.filter(x => !x).length;
+    $('#gfaltam').textContent = faltam ? `Bloco ${bloco + 1} de ${bs.length} · faltam ${faltam}` : 'Todos os blocos gravados! Confira abaixo e mande para o Drive.';
+    irPara(a);
+    if (!faltam) await juntarBlocos(feitos);
+  }
+
+  /** Junta os blocos num WAV mono (0,4 s de silêncio entre eles), que vira a gravação a mandar. */
+  async function juntarBlocos(feitos) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const taxa = ctx.sampleRate, partes = [];
+    for (const f of feitos) {
+      const buf = await ctx.decodeAudioData(await f.blob.arrayBuffer());
+      const mono = new Float32Array(buf.length);
+      for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) mono[i] += d[i] / buf.numberOfChannels; }
+      partes.push(mono, new Float32Array(Math.round(taxa * 0.4)));
+    }
+    ctx.close();
+    const n = partes.reduce((s, x) => s + x.length, 0);
+    const dv = new DataView(new ArrayBuffer(44 + n * 2));
+    const txt = (o, t) => [...t].forEach((ch, i) => dv.setUint8(o + i, ch.charCodeAt(0)));
+    txt(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); txt(8, 'WAVE'); txt(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, taxa, true);
+    dv.setUint32(28, taxa * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); txt(36, 'data'); dv.setUint32(40, n * 2, true);
+    let o = 44;
+    for (const x of partes) for (let i = 0; i < x.length; i++, o += 2) dv.setInt16(o, Math.max(-1, Math.min(1, x[i])) * 32767, true);
+    const g = {blob: new Blob([dv], {type: 'audio/wav'}), ext: 'wav', quando: Date.now(), segundos: Math.round(n / taxa), video: false};
+    await guardar(atual.id, g);
+    const st = lerLS('gravarStatus', {}); st[atual.id] = 'gravado'; gravarLS('gravarStatus', st);
+    mostrarPronto(g);
   }
 
   function voltar() { parar(true); atual = null; $('#gfaixa').hidden = true; $('#glista').hidden = false; mostrar(); }
@@ -120,7 +190,8 @@ const Gravar = (() => {
     if (!rec || rec.state !== 'recording') return;
     const t = (performance.now() - inicioFrase) / 1000;
     const tf = tempos[frase];
-    if (tf && t > tf.dur + PAUSA_FRASE && frase < atual.frases.length - 1) irPara(frase + 1);
+    const limite = emBlocos() ? blocos()[bloco][1] - 1 : atual.frases.length - 1;
+    if (tf && t > tf.dur + PAUSA_FRASE && frase < limite) irPara(frase + 1);
     else if (tf) {
       const ws = $('#gtexto').querySelectorAll('p')[frase].querySelectorAll('.w');
       ws.forEach((w, k) => w.className = 'w' + (t >= tf.ini[k] ? (k === ws.length - 1 || t < tf.ini[k + 1] ? ' ja agora' : ' ja') : ''));
@@ -156,7 +227,7 @@ const Gravar = (() => {
     $('#gbotao').classList.add('gravando');
     $('#gpronto').hidden = true;
     document.body.classList.add('gravando-voz');
-    irPara(0);
+    irPara(emBlocos() ? blocos()[bloco][0] : 0);
     clearTimeout(laco); karaoke();
     relogio = setInterval(() => { const s = Math.round((Date.now() - inicio) / 1000); $('#grelogio').textContent = `⏺ ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }, 500);
     try { await navigator.wakeLock?.request('screen'); } catch {}
@@ -169,6 +240,7 @@ const Gravar = (() => {
     document.body.classList.remove('gravando-voz');
     $('#gbotao').textContent = '⏺ Gravar';
     $('#gbotao').classList.remove('gravando');
+    if (atual && emBlocos() && descartar) mostrarBlocos();
     if (rec && rec.state !== 'inactive') { if (descartar) rec.onstop = null; rec.stop(); }
     if (stream) stream.getTracks().forEach(t => t.stop());
     stream = null;
@@ -181,6 +253,14 @@ const Gravar = (() => {
     const ext = tipo.includes('mp4') ? (tipo.startsWith('video') ? 'mp4' : 'm4a') : 'webm';
     const g = {blob, ext, quando: Date.now(), segundos: Math.round((Date.now() - inicio) / 1000), video: tipo.startsWith('video')};
     if (blob.size < 2000) return alert('A gravação ficou vazia. Tente de novo.');
+    if (emBlocos()) {  // guarda o bloco e vai para o próximo que falta
+      await guardar(chaveB(bloco), g);
+      const bs = blocos(), feitos = await Promise.all(bs.map((_, k) => pegar(chaveB(k))));
+      const prox = feitos.findIndex((x, k) => !x && k > bloco);
+      const qualquer = feitos.findIndex(x => !x);
+      bloco = prox >= 0 ? prox : qualquer >= 0 ? qualquer : bloco;
+      return mostrarBlocos();
+    }
     await guardar(atual.id, g);
     const st = lerLS('gravarStatus', {}); st[atual.id] = 'gravado'; gravarLS('gravarStatus', st);
     mostrarPronto(g);
@@ -220,8 +300,11 @@ const Gravar = (() => {
   async function descartar() {
     if (!confirm('Apagar esta gravação do celular?')) return;
     await apagarG(atual.id);
+    if (emBlocos()) for (let k = 0; k < blocos().length; k++) await apagarG(chaveB(k));
     const st = lerLS('gravarStatus', {}); delete st[atual.id]; gravarLS('gravarStatus', st);
+    bloco = 0;
     mostrarPronto(null);
+    mostrarBlocos();
   }
 
   function iniciar() {
@@ -238,6 +321,7 @@ const Gravar = (() => {
     nomeRitmo();
     $('#gproxima').onclick = () => irPara(frase + 1);
     $('#ganterior').onclick = () => irPara(frase - 1);
+    $('#gmodo').onchange = () => { if (atual) mostrarBlocos(); };
     $('#gmandar').onclick = mandar;
     $('#gbaixar').onclick = baixar;
     $('#gdescartar').onclick = descartar;

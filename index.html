@@ -196,6 +196,11 @@ body:not(.gravando-voz) #gtexto p.agora{color:#FFD84D}
 #gcam{width:38%;border-radius:14px;float:right;margin:0 0 8px 8px;transform:scaleX(-1)}
 #gplay video,#gplay audio{width:100%;margin-top:8px;border-radius:12px}
 body.gravando-voz nav{display:none}
+.gblocos{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.gbloco{background:#fff;color:var(--navy);border:2px solid var(--cinza);padding:10px 14px}
+.gbloco.ok{border-color:#2e9e5b}
+.gbloco.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+#gtake audio{width:100%;margin-top:8px}
 </style>
 </head>
 <body>
@@ -378,12 +383,15 @@ body.gravando-voz nav{display:none}
       <h3 id="gtitulo"></h3>
       <label for="gmodo">Como gravar</label>
       <select id="gmodo"><option value="voz">🎙️ Só a voz</option><option value="rosto">🤳 Com o rosto (câmera da frente)</option></select>
+      <div id="gblocos" class="gblocos" hidden></div>
+      <p class="dica" id="gfaltam" style="margin-top:8px" hidden></p>
       <video id="gcam" playsinline hidden></video>
       <div id="gtexto"></div>
       <div class="gbarra"><button id="ganterior" class="sec">◀ Frase</button><button id="gamenos" class="sec">A−</button><button id="gamais" class="sec">A+</button><button id="gproxima" class="sec">Frase ▶</button></div>
       <button id="gritmo" class="sec" style="width:100%;margin-top:8px"></button>
       <button id="gbotao">⏺ Gravar</button>
       <div id="grelogio"></div>
+      <div id="gtake"></div>
       <p class="dica">Grave tudo de uma vez, no seu ritmo. <b>Errou? Pausa e repete a frase inteira</b>: no PC vale a última vez. Gravando, <b>cada palavra acende no ritmo certo</b> (escolha a velocidade no botão de cima). Errou? Toque na frase para recomeçar nela.</p>
       <div id="gpronto" hidden>
         <h3>Sua gravação</h3>
@@ -391,7 +399,7 @@ body.gravando-voz nav{display:none}
         <p class="dica" id="ginfo"></p>
         <button id="gmandar" class="principal">📤 Mandar para o Drive</button>
         <p class="dica">No compartilhar, escolha <b>Drive</b> e a pasta <b>“Delmão - Minha voz”</b>. Depois avise o Claude.</p>
-        <div class="acoes"><button id="gbaixar" class="sec">⬇️ Baixar</button><button id="gdescartar" class="sec">🗑️ Gravar de novo</button></div>
+        <div class="acoes"><button id="gbaixar" class="sec">⬇️ Baixar</button><button id="gdescartar" class="sec">🗑️ Apagar tudo</button></div>
       </div>
     </div>
   </section>
