@@ -174,6 +174,25 @@ nav button i{position:relative}
 .eprios{display:flex;flex-direction:column;gap:6px}.eprio{text-align:left;padding:8px 10px;font-size:14px;font-weight:400;background:#fff;border:2px solid var(--cinza);color:var(--navy,#0F1B2D)}.eprio.on{border-color:var(--lar);background:#FFF6E6}
 .edias3{grid-template-columns:repeat(3,1fr);margin-top:14px}
 #rvideofinal.pronto{outline:4px solid #FF7A00;outline-offset:6px;border-radius:12px;transition:outline-color .4s}
+
+/* 🎙️ Gravar (gravar.js) */
+.gitem{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;background:#fff;color:var(--navy);text-align:left;margin-bottom:10px;border:2px solid var(--cinza)}
+.gitem small{font-weight:400;color:#667}
+.gitem em{font-style:normal;color:var(--lar)}
+.gitem.feito{opacity:.6}
+#gtexto{background:var(--navy);color:#fff;border-radius:16px;padding:18px 16px;font-size:26px;line-height:1.35;max-height:52vh;overflow-y:auto;margin-top:12px}
+#gtexto p{margin:0 0 14px;opacity:.55;transition:opacity .2s}
+#gtexto p.lida{opacity:.3}
+#gtexto p.agora{opacity:1;color:#FFD84D}
+#gtexto hr{border:0;border-top:2px dashed #ffffff33;margin:10px 0 16px}
+.gbarra{display:flex;gap:8px;margin-top:10px}
+.gbarra button{flex:1}
+#gbotao{background:#d62828;color:#fff;font-size:20px;width:100%;margin-top:12px}
+#gbotao.gravando{background:var(--navy)}
+#grelogio{font-weight:700;color:#d62828;text-align:center;margin-top:8px;min-height:1em}
+#gcam{width:38%;border-radius:14px;float:right;margin:0 0 8px 8px;transform:scaleX(-1)}
+#gplay video,#gplay audio{width:100%;margin-top:8px;border-radius:12px}
+body.gravando-voz nav{display:none}
 </style>
 </head>
 <body>
@@ -348,6 +367,31 @@ nav button i{position:relative}
     </details>
   </section>
 
+  <section class="tela" id="gravar" hidden>
+    <h2>Gravar <span>minha voz</span></h2>
+    <div id="glista"></div>
+    <div id="gfaixa" hidden>
+      <button id="gvoltar" class="sec">← Roteiros</button>
+      <h3 id="gtitulo"></h3>
+      <label for="gmodo">Como gravar</label>
+      <select id="gmodo"><option value="voz">🎙️ Só a voz</option><option value="rosto">🤳 Com o rosto (câmera da frente)</option></select>
+      <video id="gcam" playsinline hidden></video>
+      <div id="gtexto"></div>
+      <div class="gbarra"><button id="ganterior" class="sec">◀ Frase</button><button id="gamenos" class="sec">A−</button><button id="gamais" class="sec">A+</button><button id="gproxima" class="sec">Frase ▶</button></div>
+      <button id="gbotao">⏺ Gravar</button>
+      <div id="grelogio"></div>
+      <p class="dica">Grave tudo de uma vez, no seu ritmo. <b>Errou? Pausa e repete a frase inteira</b>: no PC vale a última vez. Toque no texto para passar para a próxima frase.</p>
+      <div id="gpronto" hidden>
+        <h3>Sua gravação</h3>
+        <div id="gplay"></div>
+        <p class="dica" id="ginfo"></p>
+        <button id="gmandar" class="principal">📤 Mandar para o Drive</button>
+        <p class="dica">No compartilhar, escolha <b>Drive</b> e a pasta <b>“Delmão - Minha voz”</b>. Depois avise o Claude.</p>
+        <div class="acoes"><button id="gbaixar" class="sec">⬇️ Baixar</button><button id="gdescartar" class="sec">🗑️ Gravar de novo</button></div>
+      </div>
+    </div>
+  </section>
+
   <section class="tela" id="roteiros" hidden>
     <h2>Meus <span>posts</span></h2>
     <div class="seg"><button data-meus="lista">🖼️ Carrosséis <small class="nlista"></small></button><button class="on" data-meus="roteiros">🎬 Roteiros <small class="nroteiros"></small></button></div>
@@ -429,6 +473,7 @@ nav button i{position:relative}
   <button data-tela="virais"><i>🔥</i>Ideias</button>
   <button data-tela="concursos"><i>📡<em id="nconcursos" class="badge" hidden></em></i>Concursos</button>
   <button data-tela="estudo"><i>📚</i>Estudo</button>
+  <button data-tela="gravar"><i>🎙️</i>Gravar</button>
 </nav>
 <script src="cards.js"></script>
 <script src="app.js"></script>
@@ -437,5 +482,6 @@ nav button i{position:relative}
 <script src="estudo.js"></script>
 <script src="youtube.js"></script>
 <script src="gravador.js"></script>
+<script src="gravar.js"></script>
 </body>
 </html>

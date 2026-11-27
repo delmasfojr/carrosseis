@@ -1,0 +1,42 @@
+{
+ "roteiros": [
+  {
+   "id": "questao-enem2022-139-voz",
+   "titulo": "Questão - ENEM 2022 Q139 - escala da geladeira (minha voz)",
+   "arquivo": "Questão - ENEM 2022 Q139 - escala da geladeira (minha voz)",
+   "tipo": "Questão (Reels)",
+   "frases": [
+    "Essa caiu no ENEM 2022, e tem uma pegadinha que derruba muita gente.",
+    "Bora ver se você cai nela?",
+    "A planta tá na escala de um pra cinquenta.",
+    "Ou seja, cada centímetro no desenho vale cinquenta centímetros de verdade.",
+    "No desenho, o espaço da geladeira tem três vírgula oito de altura, e um vírgula seis de largura.",
+    "Então é só multiplicar por cinquenta.",
+    "Três vírgula oito vezes cinquenta, cento e noventa centímetros.",
+    "Um vírgula seis vezes cinquenta, oitenta centímetros.",
+    "Agora vem a pegadinha.",
+    "A geladeira precisa de dez centímetros de folga em cima, e nas laterais.",
+    "Laterais, no plural, macho véi!",
+    "Dez do lado esquerdo, e dez do lado direito.",
+    "Altura, cento e noventa menos dez, cento e oitenta centímetros, que é um vírgula oitenta metro.",
+    "Largura, oitenta menos dez, menos dez, sessenta centímetros, zero vírgula sessenta metro.",
+    "Resposta, letra A!",
+    "Quem tirou dez de um lado só, achou setenta centímetros, e marcou a B.",
+    "Não caia nessa!",
+    "Resumindo, escala é só multiplicar, mas lê o enunciado até o fim.",
+    "Salva esse vídeo, e manda pra quem vai fazer o ENEM!"
+   ],
+   "cenas": [
+    0,
+    2,
+    5,
+    8,
+    12,
+    15,
+    17
+   ],
+   "segundos": 75,
+   "rosto": false
+  }
+ ]
+}
