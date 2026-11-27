@@ -1,0 +1,252 @@
+{
+ "atualizado": "2026-11-27",
+ "semanas": [
+  {
+   "grava": "2026-11-29",
+   "tema": "Razão, proporção e regra de três",
+   "aula": "06",
+   "porque": "1º do ENEM: 62 de 450 questões (13,8%)",
+   "itens": [
+    {
+     "dia": 0,
+     "tipo": "enem",
+     "titulo": "ENEM 2022 Q139 · escala da geladeira (fácil)",
+     "etapa": "roteiro",
+     "roteiro": "questao-enem2022-139-voz"
+    },
+    {
+     "dia": 1,
+     "tipo": "curiosidade",
+     "titulo": "Regra de três em 10 segundos",
+     "etapa": "roteiro",
+     "obs": "roteiro short-razao-01 já está no PC"
+    },
+    {
+     "dia": 2,
+     "tipo": "enem",
+     "titulo": "ENEM 2023 Q167 · folhas e alunos (médio)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 3,
+     "tipo": "concurso",
+     "titulo": "Regra de três de concurso (FGV ou Vunesp)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 4,
+     "tipo": "enem",
+     "titulo": "ENEM 2025 Q150 · regra de três composta (difícil)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 5,
+     "tipo": "vestibular",
+     "titulo": "Proporção num vestibular (Fuvest/Unicamp)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 6,
+     "tipo": "aula",
+     "titulo": "Aula resumida · Razão e regra de três (com lápis)",
+     "etapa": "roteiro",
+     "obs": "piloto aula06-lapis já montado"
+    }
+   ]
+  },
+  {
+   "grava": "2026-12-06",
+   "tema": "Porcentagem",
+   "aula": "07",
+   "porque": "2º do ENEM: 33 questões (7,3%)",
+   "itens": [
+    {
+     "dia": 0,
+     "tipo": "enem",
+     "titulo": "ENEM 2024 Q153 · taxa em forma decimal (fácil)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 1,
+     "tipo": "curiosidade",
+     "titulo": "Desconto de 25% de cabeça",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 2,
+     "tipo": "enem",
+     "titulo": "ENEM 2023 Q143 · lista de espera (médio)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 3,
+     "tipo": "concurso",
+     "titulo": "Aumentos sucessivos (concurso)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 4,
+     "tipo": "enem",
+     "titulo": "ENEM 2026 Q145 · variações sucessivas (difícil)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 5,
+     "tipo": "vestibular",
+     "titulo": "Porcentagem num vestibular",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 6,
+     "tipo": "aula",
+     "titulo": "Aula resumida · Porcentagem",
+     "etapa": "ideia"
+    }
+   ]
+  },
+  {
+   "grava": "2026-12-13",
+   "tema": "Probabilidade",
+   "aula": "63",
+   "porque": "3º do ENEM: 27 questões (6,0%)",
+   "itens": [
+    {
+     "dia": 0,
+     "tipo": "enem",
+     "titulo": "ENEM 2024 Q165 · eventos independentes (fácil)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 1,
+     "tipo": "curiosidade",
+     "titulo": "O paradoxo do aniversário",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 2,
+     "tipo": "enem",
+     "titulo": "ENEM 2024 Q169 · sem reposição (médio)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 3,
+     "tipo": "concurso",
+     "titulo": "Probabilidade de concurso (Cebraspe)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 4,
+     "tipo": "enem",
+     "titulo": "ENEM 2026 Q136 · probabilidade geométrica (difícil)",
+     "etapa": "roteiro",
+     "obs": "roteiro questao-enem2026-136 já está no PC"
+    },
+    {
+     "dia": 5,
+     "tipo": "vestibular",
+     "titulo": "Probabilidade num vestibular",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 6,
+     "tipo": "aula",
+     "titulo": "Aula resumida · Probabilidade",
+     "etapa": "ideia"
+    }
+   ]
+  },
+  {
+   "grava": "2026-12-20",
+   "tema": "Unidades e notação científica",
+   "aula": "05",
+   "porque": "4º do ENEM: 22 questões (4,9%)",
+   "itens": [
+    {
+     "dia": 0,
+     "tipo": "enem",
+     "titulo": "ENEM 2025 Q159 · cm³ para mL (fácil)",
+     "etapa": "roteiro",
+     "obs": "roteiro questao-unidades já está no PC"
+    },
+    {
+     "dia": 1,
+     "tipo": "curiosidade",
+     "titulo": "Quanto é um trilhão de segundos?",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 2,
+     "tipo": "enem",
+     "titulo": "ENEM 2026 Q143 · decilitro e custo (médio)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 3,
+     "tipo": "concurso",
+     "titulo": "Conversão de unidades (concurso)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 4,
+     "tipo": "enem",
+     "titulo": "ENEM 2026 Q162 · milímetro e notação científica (difícil)",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 5,
+     "tipo": "vestibular",
+     "titulo": "Unidades num vestibular",
+     "etapa": "ideia"
+    },
+    {
+     "dia": 6,
+     "tipo": "aula",
+     "titulo": "Aula resumida · Unidades de medida",
+     "etapa": "ideia"
+    }
+   ]
+  },
+  {
+   "grava": "2026-12-27",
+   "tema": "Leitura de gráficos e tabelas",
+   "aula": "99",
+   "porque": "5º do ENEM: 21 questões (4,7%)",
+   "itens": []
+  },
+  {
+   "grava": "2027-01-03",
+   "tema": "Prismas e cilindros",
+   "aula": "49",
+   "porque": "6º do ENEM: 21 questões (4,7%)",
+   "itens": []
+  },
+  {
+   "grava": "2027-01-10",
+   "tema": "Análise combinatória",
+   "aula": "61",
+   "porque": "7º do ENEM: 20 questões (4,4%)",
+   "itens": []
+  },
+  {
+   "grava": "2027-01-17",
+   "tema": "Áreas de figuras planas",
+   "aula": "36",
+   "porque": "8º do ENEM: 18 questões (4,0%)",
+   "itens": []
+  },
+  {
+   "grava": "2027-01-24",
+   "tema": "Estatística descritiva",
+   "aula": "64",
+   "porque": "9º do ENEM: 18 questões (4,0%)",
+   "itens": []
+  },
+  {
+   "grava": "2027-01-31",
+   "tema": "Médias",
+   "aula": "29",
+   "porque": "10º do ENEM: 15 questões (3,3%)",
+   "itens": []
+  }
+ ]
+}

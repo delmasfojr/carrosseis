@@ -73,7 +73,10 @@ const YouTubePost = (() => {
   const corta = (t, n) => { const a = [...t]; return a.length <= n ? t : a.slice(0, n - 1).join('').replace(/\s+\S*$/, '') + '…'; };
   function sugestao(item, legenda) {
     const desc = limpo(legenda);
-    return {titulo: corta(limpo(item.conteudo.ganchos[item.gancho || 0] || item.conteudo.tema), 100), desc,
+    // a legenda já é a do Shorts: a 1ª linha é o título pensado para a busca do YouTube
+    const linha1 = desc.split('\n')[0].replace(/#[\p{L}\p{N}_]+/gu, '').trim();
+    const titulo = linha1 && [...linha1].length <= 100 ? linha1 : limpo(item.conteudo.ganchos[item.gancho || 0] || item.conteudo.tema);
+    return {titulo: corta(titulo, 100), desc,
       tags: [...new Set((desc.match(/#[\p{L}\p{N}_]+/gu) || []).map(x => x.slice(1)))].slice(0, 15)};
   }
   function criarUI() {

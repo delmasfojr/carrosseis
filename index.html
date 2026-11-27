@@ -201,6 +201,21 @@ body.gravando-voz nav{display:none}
 .gbloco.ok{border-color:#2e9e5b}
 .gbloco.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 #gtake audio{width:100%;margin-top:8px}
+/* 🎬 Rotina (rotina.js) */
+.rotsemana{background:var(--navy);color:#fff;border-radius:14px;padding:12px 14px;margin:8px 0}
+.rotsemana b{display:block;font:24px 'Anton',Impact,sans-serif;font-weight:400;letter-spacing:.5px;color:var(--lar);margin:2px 0}
+.rotsemana small{display:block;color:#c9d3e0;font-size:13px}
+.rotsemana .ebarra{background:#ffffff33}
+.rotitem{background:#fff;border-radius:12px;padding:10px 12px;margin:8px 0;border-left:6px solid var(--cinza)}
+.rotitem.e-roteiro{border-left-color:#3d7bd9}.rotitem.e-gravado{border-left-color:#e0a800}.rotitem.e-pronto{border-left-color:var(--lar)}.rotitem.e-postado{border-left-color:#2e9e5b;opacity:.65}
+.rottopo{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#556}
+.rotitem b{display:block;margin:3px 0}
+.rotitem small{display:block;color:#667;font-size:13px}
+.rotbarra{display:flex;gap:4px;margin:8px 0 4px}.rotbarra i{flex:1;height:6px;border-radius:3px;background:var(--cinza)}.rotbarra i.on{background:var(--lar)}
+.rotacoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.rotacoes em{flex:1;font-style:normal;font-size:14px;font-weight:700}
+.rotacoes button{margin:0;width:auto;padding:8px 14px;font-size:15px}
+.rotcal summary{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}.rotcal summary span{font-size:13px;color:#667}.rotcal summary small{color:var(--lar);margin-left:auto}
+.rotcal.passou summary{opacity:.55}
 </style>
 </head>
 <body>
@@ -375,6 +390,12 @@ body.gravando-voz nav{display:none}
     </details>
   </section>
 
+  <section class="tela" id="rotina" hidden>
+    <h2>Rotina <span>de vídeos</span></h2>
+    <div class="seg"><button data-rv="hoje">📲 Hoje</button><button data-rv="semana">🗓️ Semana</button><button data-rv="calendario">📅 Calendário</button></div>
+    <div id="rotconteudo"></div>
+  </section>
+
   <section class="tela" id="gravar" hidden>
     <h2>Gravar <span>minha voz</span></h2>
     <div id="glista"></div>
@@ -429,7 +450,7 @@ body.gravando-voz nav{display:none}
     <button id="rtp" class="sec" style="width:100%;margin-top:10px">🎬 Só teleprompter (gravar com outra câmera)</button>
     <button id="rsovoz" class="sec" style="width:100%;margin-top:10px">🎙️ Só gravar minha voz (para o Drive)</button>
     <div id="rcorpo"></div>
-    <label for="rlegenda">Legenda (pode editar)</label>
+    <label for="rlegenda">Legenda do Shorts no YouTube (pode editar)</label>
     <textarea id="rlegenda" style="min-height:180px"></textarea>
     <div class="acoes">
       <button id="rcopiar" class="sec">Copiar roteiro</button>
@@ -486,6 +507,7 @@ body.gravando-voz nav{display:none}
   <button data-tela="virais"><i>🔥</i>Ideias</button>
   <button data-tela="concursos"><i>📡<em id="nconcursos" class="badge" hidden></em></i>Concursos</button>
   <button data-tela="estudo"><i>📚</i>Estudo</button>
+  <button data-tela="rotina"><i>🎬</i>Rotina</button>
   <button data-tela="gravar"><i>🎙️</i>Gravar</button>
 </nav>
 <script src="cards.js"></script>
@@ -496,5 +518,6 @@ body.gravando-voz nav{display:none}
 <script src="youtube.js"></script>
 <script src="gravador.js"></script>
 <script src="gravar.js"></script>
+<script src="rotina.js"></script>
 </body>
 </html>

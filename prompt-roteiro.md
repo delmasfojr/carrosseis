@@ -112,13 +112,14 @@ FORMATO DE CADA ROTEIRO
   O ÚLTIMO bloco tem, nesta ordem: a chamada para comentar e a chamada para SEGUIR a página (mais a frase final, se couber).
 - comentario_fixado: pergunta ou desafio para o professor fixar nos comentários (até 120 caracteres).
 - duracao: duração total estimada, ex.: "35 s".
-- legenda: a legenda do post, pronta para colar:
-  - 1ª linha: gancho forte (aparece antes do "mais").
-  - 2 a 4 linhas curtas reforçando a dica, com 2 a 4 emojis no total.
-  - uma chamada para comentar/salvar/enviar a um amigo que precisa dessa dica.
-  - por último, em linha separada, 5 a 8 hashtags em minúsculas sobre o assunto (ex.: #matematica #reels
-    #dicasdematematica). Hashtag de prova (#enem, #vestibular, #concurso...) só se o vídeo citar essa prova.
-  - entre 250 e 800 caracteres, com quebras de linha (\n) entre os parágrafos.
+- legenda: a descrição do vídeo para os SHORTS DO YOUTUBE, pronta para colar:
+  - 1ª linha: frase curta e forte que diz o que o vídeo ensina, com a palavra que o aluno buscaria no YouTube
+    (ex.: "Regra de três em 10 segundos (ENEM)"), até 70 caracteres.
+  - 1 a 2 linhas curtas explicando a dica, com no máximo 2 emojis no total.
+  - uma chamada para se INSCREVER no canal e comentar a resposta/dúvida (no YouTube é "inscreva-se", não "seguir").
+  - por último, em linha separada, 3 a 5 hashtags em minúsculas, a primeira sempre #shorts (ex.: #shorts #matematica
+    #regradetres). Hashtag de prova (#enem, #vestibular, #concurso...) só se o vídeo citar essa prova.
+  - entre 150 e 450 caracteres, com quebras de linha (\n) entre os parágrafos.
 
 ÚLTIMO PASSO, OBRIGATÓRIO ANTES DE RESPONDER: REESCREVA AS FALAS
 Depois de montar tudo, refaça os ganchos e as falas como se o Delmão estivesse EXPLICANDO DE CABEÇA para um aluno ao lado dele,

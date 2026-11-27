@@ -193,7 +193,7 @@ async function desenharCarrossel(item, aviso) {
 
 /* ---------------------------------------------------------------- telas */
 // "Meus posts" junta Carrosséis e Roteiros (seletor no topo); abre no último que ele usou
-const ABA_MENU = {novo: 'novo', virais: 'virais', lista: 'meus', ver: 'meus', roteiros: 'meus', verroteiro: 'meus', concursos: 'concursos', estudo: 'estudo', gravar: 'gravar'};
+const ABA_MENU = {novo: 'novo', virais: 'virais', lista: 'meus', ver: 'meus', roteiros: 'meus', verroteiro: 'meus', concursos: 'concursos', estudo: 'estudo', gravar: 'gravar', rotina: 'rotina'};
 function tela(id) {
   if (id === 'meus') { try { id = localStorage.getItem('meus') || 'lista'; } catch { id = 'lista'; } }
   if (id === 'lista' || id === 'roteiros') try { localStorage.setItem('meus', id); } catch {}
@@ -212,6 +212,7 @@ function tela(id) {
   if (id === 'concursos' && typeof Radar !== 'undefined') Radar.mostrar();
   if (id === 'estudo' && typeof Estudo !== 'undefined') Estudo.mostrar();
   if (id === 'gravar' && typeof Gravar !== 'undefined') Gravar.mostrar();
+  if (id === 'rotina' && typeof Rotina !== 'undefined') Rotina.mostrar();
   window.scrollTo(0, 0);
 }
 const aviso = txt => { $('#status').textContent = txt; $('#status').hidden = !txt; };

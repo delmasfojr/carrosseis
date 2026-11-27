@@ -478,7 +478,7 @@ Crie os roteiros a partir deste ASSUNTO pedido pelo professor:
         if (!(navigator.canShare && navigator.canShare({files}))) return alert('Este navegador não compartilha vídeo. Use "Baixar vídeo".');
         const cop = copiar($('#rlegenda').value);
         navigator.share({files}).catch(e => { if (e.name !== 'AbortError') alert('Não deu para compartilhar: ' + e.message); });
-        cop.then(ok => { aviso(ok ? 'Legenda copiada: no Instagram, escolha "Reels" e cole a legenda.' : ''); setTimeout(() => aviso(''), 8000); });
+        cop.then(ok => { aviso(ok ? 'Legenda (a do Shorts) copiada: no Instagram, escolha "Reels" e cole; se quiser, troque "inscreva-se" por "siga".' : ''); setTimeout(() => aviso(''), 8000); });
       };
       $('#rbaixvid').onclick = () => { const a = document.createElement('a'); a.href = urlVideo; a.download = arquivo().name; a.click(); };
     } else $('#rvideofinal').innerHTML = '';
