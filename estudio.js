@@ -102,7 +102,7 @@ async function lerPasta(dir) {
   async function andar(d, nome, nivel) {
     for await (const [n, h] of d.entries()) {
       if (h.kind === 'file') registrar(nome, n, () => h.getFile());
-      else if (n === 'Banco de questões') bancoDaPasta(h);
+      else if (semAcento(n) === 'banco de questoes') bancoDaPasta(h);
       else if (nivel < 3 && !n.startsWith('.')) await andar(h, n, nivel + 1);
     }
   }
@@ -112,7 +112,7 @@ async function lerPasta(dir) {
 
 function lerArquivosSoltos(files) {
   grupos = new Map();
-  const bq = files.filter(f => (f.webkitRelativePath || '').includes('Banco de questões/'));
+  const bq = files.filter(f => semAcento(f.webkitRelativePath || '').includes('banco de questoes/'));
   if (bq.length) bancoDeArquivos(bq);
   for (const f of files) {
     const partes = (f.webkitRelativePath || f.name).split('/');
@@ -1406,6 +1406,7 @@ function limparBanco(msg) {
   QB.ind = null; QB.src = null; QB.atual = null;
   for (const p of QB.imgs.values()) p.then(b => b.close?.()).catch(() => {});
   QB.imgs.clear();
+  $('#qescolher').classList.remove('hide');
   $('#qconta').textContent = '';
   $('#qlista').innerHTML = `<div class="dica">${msg}</div>`;
 }
@@ -1512,8 +1513,15 @@ async function abrirQuestao(lista, i) {
   irPara(i + 1);
   qListar();
 }
+function abaEsq(qual) {
+  $$('.abasesq button').forEach(b => b.classList.toggle('on', b.dataset.aba === qual));
+  $('#abaaulas').classList.toggle('hide', qual !== 'aulas');
+  $('#abaquestoes').classList.toggle('hide', qual !== 'questoes');
+}
+$$('.abasesq button').forEach(b => b.onclick = () => abaEsq(b.dataset.aba));
+$('#qescolher').onclick = () => $('#escolherpasta').click();
 async function iniciarBanco() {
-  try { QB.ind = await QB.src.indice(); qListar(); }
+  try { QB.ind = await QB.src.indice(); $('#qescolher').classList.add('hide'); qListar(); }
   catch (e) { console.warn(e); limparBanco('Não consegui ler a pasta <b>Banco de questões</b>. Escolha de novo a pasta <b>Gerador de Aulas\\PDFs</b>.'); }
 }
 const SEM_BANCO = 'As questões aparecem quando você escolhe a pasta <b>Gerador de Aulas\\PDFs</b> (ela tem a pasta <b>Banco de questões</b>). Elas <b>não vão para a internet</b>.';

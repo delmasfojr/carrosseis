@@ -79,6 +79,9 @@ aside h3:first-child{margin-top:0}
 #vu{height:8px;border-radius:4px;background:var(--navy);overflow:hidden;margin-top:6px}
 #vu i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3c3,#fc3 70%,#f33)}
 #cola{width:100%;border-radius:6px;display:block;background:#fff}
+.abasesq{display:flex;gap:6px;margin-bottom:10px}
+.abasesq button{flex:1;padding:8px 6px;font-size:13px;border-radius:8px;background:var(--navy)}
+.abasesq button.on{background:var(--lar)}
 #qbanco select,#qbanco input{width:100%;margin-top:6px;font-size:12px;box-sizing:border-box}
 .qfontes{display:flex;gap:4px;flex-wrap:wrap}
 .qfontes button{flex:1;padding:4px 6px;font-size:11px;border-radius:6px;background:var(--navy)}
@@ -125,6 +128,8 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
   </header>
 
   <aside id="esq">
+    <div class="abasesq"><button data-aba="aulas" class="on">📚 Aulas</button><button data-aba="questoes">🧩 Questões</button></div>
+    <div id="abaaulas">
     <h3>Aulas</h3>
     <div id="vazio">
       Aponte uma vez para a pasta <b>Gerador de Aulas\PDFs</b>. As aulas <b>não saem do seu computador</b>.
@@ -141,7 +146,10 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
       <input id="avulsoinput" type="file" accept="application/pdf" class="hide">
     </div>
     <div id="lista" style="margin-top:10px"></div>
-    <h3 style="margin-top:18px">Questões</h3>
+    </div>
+    <div id="abaquestoes" class="hide">
+    <h3>Questões</h3>
+    <button id="qescolher" style="width:100%">📁 Escolher a pasta Gerador de Aulas\PDFs</button>
     <div id="qbanco">
       <div class="qfontes"><button data-f="" class="on">Todas</button><button data-f="ENEM">ENEM</button><button data-f="Vestibular">Vestib.</button><button data-f="Concurso">Concurso</button></div>
       <select id="qgrupo" aria-label="Prova ou banca"></select>
@@ -150,6 +158,7 @@ kbd{background:var(--linha);border-radius:4px;padding:0 5px;font-size:11px}
       <input id="qbusca" type="search" placeholder="Buscar (ex.: 167, UNICAMP, juros)">
       <div style="display:flex;gap:6px;align-items:center;margin-top:6px"><button id="qsortear" style="flex:1;font-size:12px">🎲 Sortear uma</button><small id="qconta" style="opacity:.7"></small></div>
       <div id="qlista"></div>
+    </div>
     </div>
   </aside>
 
