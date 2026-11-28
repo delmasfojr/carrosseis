@@ -102,6 +102,7 @@ async function lerPasta(dir) {
   async function andar(d, nome, nivel) {
     for await (const [n, h] of d.entries()) {
       if (h.kind === 'file') registrar(nome, n, () => h.getFile());
+      else if (n === 'Banco de questões') bancoDaPasta(h);
       else if (nivel < 3 && !n.startsWith('.')) await andar(h, n, nivel + 1);
     }
   }
@@ -111,6 +112,8 @@ async function lerPasta(dir) {
 
 function lerArquivosSoltos(files) {
   grupos = new Map();
+  const bq = files.filter(f => (f.webkitRelativePath || '').includes('Banco de questões/'));
+  if (bq.length) bancoDeArquivos(bq);
   for (const f of files) {
     const partes = (f.webkitRelativePath || f.name).split('/');
     registrar(partes.length > 1 ? partes[partes.length - 2] : 'Pasta', f.name, () => Promise.resolve(f));
@@ -223,7 +226,9 @@ $('#avulsoinput').onchange = e => {
    PDF
    ===================================================================== */
 async function carregar(abrir) {
-  const buf = await (await abrir()).arrayBuffer();
+  const arq = await abrir();
+  if (arq && arq.getPage) return arq; // banco de questões: já é um "documento" pronto
+  const buf = await arq.arrayBuffer();
   return pdfjs.getDocument({data: buf, isEvalSupported: false}).promise;
 }
 
@@ -1376,3 +1381,148 @@ function enviarFundo() { ganchos.fundo?.(); }
 function enviarTracos() { if (tracosMudou && ganchos.tracos && ganchos.tracos()) tracosMudou = false; }
 // para testes no console
 window.estudio = {get cena() { return cena; }, get actx() { return actx; }, get destino() { return destino; }, get pagina() { return pagina; }, get nPag() { return nPag; }, lerArquivosSoltos, abrirAula, grupos: () => grupos, trocarCena, editar, get gravador() { return gravador; }};
+
+/* =====================================================================
+   BANCO DE QUESTÕES (ENEM, vestibulares, concursos)
+   Fica no computador, dentro da pasta das aulas: Gerador de Aulas\PDFs\Banco de questões\
+   (indice.json + q\<id>.webp). Como as aulas, NUNCA vai para a internet nem para o site.
+   Cada questão vira um slide 1920×1080: questão à esquerda, espaço para resolver à direita.
+   A versão "professor" (cola) mostra também o gabarito ou o macete.
+   ===================================================================== */
+const QB = {ind: null, src: null, f: {fonte: '', grupo: '', assunto: '', ano: ''}, imgs: new Map(), atual: null};
+function bancoDaPasta(h) {
+  QB.src = {
+    indice: async () => JSON.parse(await (await (await h.getFileHandle('indice.json')).getFile()).text()),
+    img: async id => (await (await h.getDirectoryHandle('q')).getFileHandle(id + '.webp')).getFile(),
+  };
+  iniciarBanco();
+}
+function bancoDeArquivos(files) {
+  const m = new Map(files.map(f => [f.name, f]));
+  QB.src = {indice: async () => JSON.parse(await m.get('indice.json').text()), img: async id => m.get(id + '.webp')};
+  iniciarBanco();
+}
+function limparBanco(msg) {
+  QB.ind = null; QB.src = null; QB.atual = null;
+  for (const p of QB.imgs.values()) p.then(b => b.close?.()).catch(() => {});
+  QB.imgs.clear();
+  $('#qconta').textContent = '';
+  $('#qlista').innerHTML = `<div class="dica">${msg}</div>`;
+}
+function imgQuestao(q) {
+  if (!QB.imgs.has(q.id)) {
+    QB.imgs.set(q.id, QB.src.img(q.id).then(b => { if (!b) throw new Error('sem a imagem'); return createImageBitmap(b); }).catch(e => { QB.imgs.delete(q.id); throw e; }));
+    if (QB.imgs.size > 40) QB.imgs.delete(QB.imgs.keys().next().value);
+  }
+  return QB.imgs.get(q.id);
+}
+function slideQuestao(cx, q, img, prof) {
+  cx.fillStyle = CREME; cx.fillRect(0, 0, W, H);
+  cx.strokeStyle = '#F1DFC0'; cx.lineWidth = 2; cx.beginPath();
+  for (let x = 48; x < W; x += 48) { cx.moveTo(x, 96); cx.lineTo(x, H); }
+  for (let y = 96 + 48; y < H; y += 48) { cx.moveTo(0, y); cx.lineTo(W, y); }
+  cx.stroke();
+  cx.fillStyle = NAVY; cx.fillRect(0, 0, W, 90); cx.fillStyle = LAR; cx.fillRect(0, 90, W, 6);
+  cx.textBaseline = 'middle'; cx.font = '46px Impact, "Anton", sans-serif';
+  const fonte = q.fonte === 'Vestibular' ? q.grupo : q.fonte.toUpperCase();
+  cx.fillStyle = LAR; cx.fillText(fonte, 40, 47);
+  const wf = cx.measureText(fonte).width;
+  cx.fillStyle = '#fff'; cx.font = '34px Impact, "Anton", sans-serif';
+  cx.fillText(q.rotulo.replace(/^\s*(ENEM|[A-ZÁ-Ú]{2,})\s*/, '').toUpperCase(), 40 + wf + 24, 49);
+  cx.textAlign = 'right'; cx.fillStyle = '#ffffffaa'; cx.font = '28px Impact, sans-serif';
+  cx.fillText(q.assunto.toUpperCase(), W - 40, 49); cx.textAlign = 'left';
+  if (img) { // questão: cartão branco com sombra laranja
+    const bx = 40, by = 130, bw = 1040, bh = H - by - 40;
+    const e = Math.min((bw - 40) / img.width, (bh - 40) / img.height, 2.2);
+    const iw = img.width * e, ih = img.height * e;
+    cx.fillStyle = LAR; cx.fillRect(bx + 10, by + 10, iw + 40, ih + 40);
+    cx.fillStyle = '#fff'; cx.fillRect(bx, by, iw + 40, ih + 40);
+    cx.strokeStyle = NAVY; cx.lineWidth = 4; cx.strokeRect(bx, by, iw + 40, ih + 40);
+    cx.drawImage(img, bx + 20, by + 20, iw, ih);
+  }
+  cx.font = '30px Impact, sans-serif'; cx.fillStyle = LAR; cx.fillText('RESOLUÇÃO', 1140, 140);
+  if (prof && (q.gab || q.macete)) {
+    cx.fillStyle = NAVY; cx.fillRect(1140, 170, 740, q.gab ? 110 : 220);
+    cx.fillStyle = LAR; cx.font = '64px Impact, sans-serif';
+    if (q.gab) cx.fillText('RESPOSTA: ' + q.gab, 1170, 226);
+    else {
+      cx.fillStyle = '#fff'; cx.font = 'bold 30px Segoe UI, sans-serif';
+      let l = '', y = 205;
+      for (const p of ('Macete: ' + q.macete).split(' ')) { if (cx.measureText(l + p).width > 680) { cx.fillText(l, 1165, y); l = ''; y += 40; } l += p + ' '; }
+      cx.fillText(l, 1165, y);
+    }
+  }
+}
+class DocQuestoes {
+  constructor(lista, prof) { this.l = lista; this.prof = prof; this.numPages = lista.length; }
+  async getPage(n) {
+    const q = this.l[n - 1], img = await imgQuestao(q).catch(() => null), prof = this.prof;
+    return {
+      getViewport: ({scale}) => ({width: W * scale, height: H * scale}),
+      render: ({canvasContext: cx, viewport: v, transform: t}) => {
+        cx.save(); cx.translate(t[4], t[5]); cx.scale(v.width / W, v.height / H);
+        slideQuestao(cx, q, img, prof); cx.restore();
+        return {promise: Promise.resolve(), cancel() {}};
+      },
+    };
+  }
+  destroy() {}
+}
+const qFiltrados = () => {
+  const b = semAcento($('#qbusca').value.trim()), f = QB.f;
+  return QB.ind.filter(q => (!f.fonte || q.fonte === f.fonte) && (!f.grupo || q.grupo === f.grupo) && (!f.assunto || q.assunto === f.assunto)
+    && (!f.ano || String(q.ano) === f.ano) && (!b || semAcento(q.rotulo + ' ' + q.assunto).includes(b)));
+};
+function qOpcoes(sel, campo, todos) {
+  const f = QB.f;
+  const base = QB.ind.filter(q => (!f.fonte || q.fonte === f.fonte) && (campo === 'grupo' || !f.grupo || q.grupo === f.grupo) && (campo !== 'ano' || !f.assunto || q.assunto === f.assunto));
+  const vs = [...new Set(base.map(q => String(q[campo])))].sort((a, b) => campo === 'ano' ? b - a : a.localeCompare(b, 'pt'));
+  if (!vs.includes(f[campo])) f[campo] = '';
+  sel.innerHTML = '';
+  sel.append(new Option(todos, ''), ...vs.map(v => new Option(v, v, false, v === f[campo])));
+}
+function qListar() {
+  if (!QB.ind) return;
+  qOpcoes($('#qgrupo'), 'grupo', QB.f.fonte === 'Concurso' ? 'Todas as bancas' : 'Todas as provas');
+  qOpcoes($('#qassunto'), 'assunto', 'Todos os assuntos');
+  qOpcoes($('#qano'), 'ano', 'Todos os anos');
+  $$('.qfontes button').forEach(b => b.classList.toggle('on', b.dataset.f === QB.f.fonte));
+  const r = qFiltrados(), l = $('#qlista');
+  $('#qconta').textContent = r.length + ' questões';
+  l.innerHTML = '';
+  r.slice(0, 200).forEach((q, i) => {
+    const d = document.createElement('div');
+    d.className = 'qitem' + (QB.atual === q.id ? ' atual' : '');
+    d.textContent = q.rotulo;
+    const s = document.createElement('small'); s.textContent = q.assunto; d.append(s);
+    d.onclick = () => abrirQuestao(r, i);
+    l.append(d);
+  });
+  if (r.length > 200) l.insertAdjacentHTML('beforeend', `<div class="dica">Mostrando 200 de ${r.length}. Use os filtros ou a busca.</div>`);
+}
+async function abrirQuestao(lista, i) {
+  const f = QB.f;
+  const nome = 'Questões - ' + ([f.fonte, f.grupo, f.assunto, f.ano].filter(Boolean).join(' ') || 'banco');
+  if (!(aula && aula.grupo === 'Questões' && aula.lista === lista)) {
+    const a = {grupo: 'Questões', base: nome, lista, aluno: () => new DocQuestoes(lista, false), professor: () => new DocQuestoes(lista, true)};
+    await abrirAula(a, 'aluno');
+    if (!grupos.size) { $('#vazio').classList.remove('hide'); $('#busca').classList.add('hide'); $('#lista').innerHTML = ''; }
+  }
+  QB.atual = lista[i].id;
+  irPara(i + 1);
+  qListar();
+}
+async function iniciarBanco() {
+  try { QB.ind = await QB.src.indice(); qListar(); }
+  catch (e) { console.warn(e); limparBanco('Não consegui ler a pasta <b>Banco de questões</b>. Escolha de novo a pasta <b>Gerador de Aulas\\PDFs</b>.'); }
+}
+const SEM_BANCO = 'As questões aparecem quando você escolhe a pasta <b>Gerador de Aulas\\PDFs</b> (ela tem a pasta <b>Banco de questões</b>). Elas <b>não vão para a internet</b>.';
+{ const fechar = $('#fecharaulas').onclick;
+  $('#fecharaulas').onclick = async e => { const ia = !gravador; await fechar(e); if (ia) limparBanco(SEM_BANCO); }; }
+$('.qfontes').onclick = e => { const b = e.target.closest('button'); if (b) { QB.f.fonte = b.dataset.f; QB.f.grupo = ''; qListar(); } };
+$('#qgrupo').onchange = e => { QB.f.grupo = e.target.value; qListar(); };
+$('#qassunto').onchange = e => { QB.f.assunto = e.target.value; qListar(); };
+$('#qano').onchange = e => { QB.f.ano = e.target.value; qListar(); };
+$('#qbusca').oninput = qListar;
+$('#qsortear').onclick = () => { const r = QB.ind && qFiltrados(); if (r && r.length) abrirQuestao(r, Math.floor(Math.random() * r.length)); };
+if (!QB.ind) limparBanco(SEM_BANCO);
