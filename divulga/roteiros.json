@@ -1,6 +1,180 @@
 {
- "atualizado": "2026-11-27T18:52:58.281Z",
+ "atualizado": "2026-11-28T17:29:29.413Z",
  "roteiros": [
+  {
+   "id": "2026-11-28-1",
+   "criado": "2026-11-28T17:29:29.412Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "ROTINA DE 10 MINUTOS",
+   "recurso": "Verdade ou mentira",
+   "conteudo": {
+    "tema": "App · Verdade ou mentira em 10 min",
+    "nota_viral": 9,
+    "por_que": "Usa um desafio de conta rápida com pegadinha pra apresentar a rotina de dez minutos no jogo Verdade ou Mentira.",
+    "ganchos": [
+     "Dez minutos no seu dia bastam pra destravar a matemática.",
+     "Você só precisa de dez minutos por dia pra aprender matemática.",
+     "Quer estudar matemática sem cansar? Tenta essa rotina."
+    ],
+    "texto_capa": "10 MINUTOS DE MATEMÁTICA",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Olha essa afirmação: dois mais três vezes cinco é igual a vinte e cinco. Verdade ou mentira, major? Pausa o vídeo e tenta.",
+      "quadro": "2 + 3 × 5 = 25?",
+      "texto_tela": "VERDADE OU MENTIRA?"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "tela",
+      "fala": "Mentira, né! Na matemática a gente resolve a multiplicação primeiro. Três vezes cinco dá quinze, mais dois dá dezessete.",
+      "quadro": "3 × 5 = 15 → 15 + 2 = 17",
+      "texto_tela": "MULTIPLICAÇÃO PRIMEIRO"
+     },
+     {
+      "tempo": "20–30 s",
+      "cena": "tela",
+      "fala": "No meu app você faz dez minutinhos desse jogo de Verdade ou Mentira por dia e treina a matéria sem nem ver o tempo passar.",
+      "quadro": "VERDADE OU MENTIRA",
+      "texto_tela": "TREINO DE 10 MINUTOS"
+     },
+     {
+      "tempo": "30–38 s",
+      "cena": "tela",
+      "fala": "É rapidinho, tem cinco vidas e você corrige os erros na hora com explicação simples de cada regra.",
+      "quadro": "5 VIDAS E CONFERIR",
+      "texto_tela": "APRENDA NA HORA"
+     },
+     {
+      "tempo": "38–45 s",
+      "cena": "tela",
+      "fala": "Você acertaria essa de primeira? Comenta aí! O link do app tá na bio. E segue o Delmão Simplifica pra mais dicas todo dia!",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você acertou o Verdade ou Mentira de primeira? Me conta aqui nos comentários!",
+    "duracao": "45 s",
+    "legenda": "Dez minutos por dia mudam seu estudo de matemática!\n\nNo app do Delmão você treina com o modo Verdade ou Mentira, corrige os erros na hora e evolui sem cansar.\n\nComenta sua resposta e acesse o app pelo link na bio!\n\n#shorts #matematica #estudos #dicasdeestudo #app #revisao"
+   }
+  },
+  {
+   "id": "2026-11-28-2",
+   "criado": "2026-11-28T17:29:29.412Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "DOR DO ALUNO",
+   "recurso": "Plano ENEM (43 ilhas e nivelamento)",
+   "conteudo": {
+    "tema": "App · Plano ENEM das 43 ilhas",
+    "nota_viral": 9,
+    "por_que": "Ataca a dor direta de quem está perdido no cronograma do ENEM e apresenta a solução clara com o mapa do app.",
+    "ganchos": [
+     "Sabe aquele desespero de não saber por onde começar a estudar?",
+     "Perdido na matemática pro ENEM? Para de estudar sem rumo.",
+     "O maior erro de quem estuda pro ENEM é não ter um plano."
+    ],
+    "texto_capa": "PLANO COMPLETO PRO ENEM",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Você abre os livros pro ENEM, vê aquele monte de assunto acumulado e trava sem saber o que estudar primeiro.",
+      "quadro": "POR ONDE COMECAR?",
+      "texto_tela": "SEM SABER POR ONDE IR?"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "tela",
+      "fala": "Pra resolver isso, no meu app você faz um teste de nivelamento rápido e descobre exatamente seu ponto de partida.",
+      "quadro": "NIVELAMENTO",
+      "texto_tela": "TESTE DE NIVELAMENTO"
+     },
+     {
+      "tempo": "20–30 s",
+      "cena": "tela",
+      "fala": "Aí você navega pelo Plano ENEM: um mapa de quarenta e três ilhas com a matemática organizada na ordem certa.",
+      "quadro": "43 ILHAS DO ENEM",
+      "texto_tela": "43 ILHAS ORGANIZADAS"
+     },
+     {
+      "tempo": "30–38 s",
+      "cena": "tela",
+      "fala": "Você avança lição por lição, ganha medalhas, conquista pontos e não perde tempo estudando o que não precisa.",
+      "quadro": "CONQUISTAS E LIÇÕES",
+      "texto_tela": "EVOLUÇÃO PASSO A PASSO"
+     },
+     {
+      "tempo": "38–45 s",
+      "cena": "tela",
+      "fala": "Qual sua maior dificuldade na matemática do ENEM? Comenta aí! O link do app tá na bio. E segue o Delmão Simplifica aí!",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Qual o assunto da matemática do ENEM que mais te assusta? Responde aqui!",
+    "duracao": "45 s",
+    "legenda": "Organize sua preparação para o ENEM sem estresse!\n\nCom o Plano ENEM no app do Delmão, você faz o teste de nivelamento e navega pelas 43 ilhas na ordem ideal.\n\nDeixe seu comentário e clique no link da bio para testar!\n\n#shorts #enem #matematicaenem #estudosenem #app #revisao"
+   }
+  },
+  {
+   "id": "2026-11-28-3",
+   "criado": "2026-11-28T17:29:29.413Z",
+   "modelo": "gemini-3.5-flash",
+   "angulo": "DESAFIO RELÂMPAGO",
+   "recurso": "Flashcards com revisão espaçada e Revisão do dia",
+   "conteudo": {
+    "tema": "App · Flashcards e Desafio",
+    "nota_viral": 8,
+    "por_que": "Abre com um paradoxo de matemática em porcentagem que gera comentários e introduz o recurso de flashcards.",
+    "ganchos": [
+     "Você acerta essa conta de porcentagem em três segundos?",
+     "Quanto é a raiz quadrada de quarenta e nove por cento?",
+     "A maioria erra essa conta por causa de uma pegadinha."
+    ],
+    "texto_capa": "PEGADINHA NA PORCENTAGEM",
+    "blocos": [
+     {
+      "tempo": "3–11 s",
+      "cena": "tela",
+      "fala": "Quanto dá a raiz quadrada de quarenta e nove por cento? Sete por cento ou setenta por cento? Pausa e tenta responder.",
+      "quadro": "√49% = ?",
+      "texto_tela": "PAUSA E TENTA"
+     },
+     {
+      "tempo": "11–20 s",
+      "cena": "tela",
+      "fala": "Setenta por cento! Quarenta e nove por cento é quarenta e nove sobre cem. A raiz fica sete sobre dez, que é setenta por cento.",
+      "quadro": "√49/100 = 7/10 = 70%",
+      "texto_tela": "RESPOSTA: 70%"
+     },
+     {
+      "tempo": "20–30 s",
+      "cena": "tela",
+      "fala": "Macho véi, pra não esquecer macetes assim, no meu app tem a Revisão do dia com Flashcards inteligentes.",
+      "quadro": "FLASHCARDS",
+      "texto_tela": "REVISÃO DO DIA"
+     },
+     {
+      "tempo": "30–38 s",
+      "cena": "tela",
+      "fala": "O app calcula o dia certinho de te mostrar o cartão de novo pra fixar a matéria na memória de longo prazo.",
+      "quadro": "REVISÃO ESPAÇADA",
+      "texto_tela": "REVISÃO ESPAÇADA"
+     },
+     {
+      "tempo": "38–45 s",
+      "cena": "tela",
+      "fala": "Você caiu nessa pegadinha? Comenta aí! O link do app tá na bio. E segue o Delmão Simplifica, que amanhã tem mais!",
+      "quadro": "LINK NA BIO",
+      "texto_tela": "LINK NA BIO"
+     }
+    ],
+    "comentario_fixado": "Você respondeu 7% ou 70% antes da explicação? Seja sincero nos comentários!",
+    "duracao": "45 s",
+    "legenda": "Aprenda truques de matemática e nunca mais esqueça a matéria!\n\nNo app do Delmão, os flashcards com revisão espaçada mostram os conceitos no dia exato para fixar na memória.\n\nComenta aí se você acertou e acesse pelo link na bio!\n\n#shorts #matematica #estudos #flashcards #app #revisao"
+   }
+  },
   {
    "id": "2026-11-27-1",
    "criado": "2026-11-27T18:52:58.280Z",
